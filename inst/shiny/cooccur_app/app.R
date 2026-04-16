@@ -2,6 +2,11 @@ library(shiny)
 library(cooccur)
 library(DT)
 
+# Allow uploads up to 100 MB (default is 5 MB).
+# Note: if served behind nginx, also set `client_max_body_size 100m;`
+# in the server block — otherwise nginx returns 413 before Shiny sees the request.
+options(shiny.maxRequestSize = 100 * 1024^2)
+
 data("movies", package = "cooccur", envir = environment())
 data("actors", package = "cooccur", envir = environment())
 
