@@ -300,11 +300,17 @@ server <- function(input, output, session) {
   observeEvent(result(), {
     r <- result()
     if (!is.null(r) && nrow(r) > 0) {
-      mn <- round(min(r$weight, na.rm = TRUE), 4)
-      mx <- round(max(r$weight, na.rm = TRUE), 4)
+      mn_raw <- min(r$weight, na.rm = TRUE)
+      mx_raw <- max(r$weight, na.rm = TRUE)
+      # Floor the slider min below the true minimum so the initial
+      # filter (value >= min) includes every edge. Rounding up would
+      # silently drop edges at the minimum weight.
+      mn <- floor(mn_raw * 10000) / 10000
+      mx <- ceiling(mx_raw * 10000) / 10000
+      step <- if (mx > mn) round((mx - mn) / 100, 4) else 0.01
       updateSliderInput(session, "min_edge_w",
                         min   = mn, max = mx, value = mn,
-                        step  = round((mx - mn) / 100, 4))
+                        step  = step)
     }
   })
 
