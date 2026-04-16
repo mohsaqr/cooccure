@@ -17,6 +17,7 @@ cooccurrence(
   threshold = 0,
   min_occur = 1L,
   top_n = NULL,
+  output = c("default", "gephi", "igraph", "cograph", "matrix"),
   ...
 )
 
@@ -32,6 +33,7 @@ co(
   threshold = 0,
   min_occur = 1L,
   top_n = NULL,
+  output = c("default", "gephi", "igraph", "cograph", "matrix"),
   ...
 )
 }
@@ -101,23 +103,33 @@ fewer than \code{min_occur} transactions are dropped. Default 1.}
 by weight. When \code{split_by} is used, applied per group.
 Default \code{NULL} (all edges).}
 
+\item{output}{Character. Column naming convention for the output:
+\describe{
+\item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
+\item{\code{"gephi"}}{\code{Source}, \code{Target}, \code{Weight},
+\code{Type} (= \code{"Undirected"}). Ready for Gephi import.}
+\item{\code{"igraph"}}{Returns an \code{igraph} graph object directly.}
+\item{\code{"cograph"}}{Returns a \code{cograph_network} object directly.}
+\item{\code{"matrix"}}{Returns the square co-occurrence matrix.}
+}}
+
 \item{...}{Currently unused.}
 }
 \value{
-A \code{cooccurrence} data frame (inherits from \code{data.frame})
-with columns:
-\describe{
-\item{\code{from}}{Character. First entity.}
-\item{\code{to}}{Character. Second entity.}
-\item{\code{weight}}{Numeric. Similarity-normalized (and optionally
-scaled) co-occurrence value.}
-\item{\code{count}}{Integer. Raw co-occurrence count.}
-\item{\code{group}}{Character. Present only when \code{split_by} is
-used. The group label.}
+Depends on \code{output}:
+\itemize{
+\item \code{"default"}: A \code{cooccurrence} data frame with columns
+\code{from}, \code{to}, \code{weight}, \code{count} (and \code{group}
+when \code{split_by} is used).
+\item \code{"gephi"}: A data frame with columns \code{Source},
+\code{Target}, \code{Weight}, \code{Type}, \code{Count}. Ready for
+Gephi CSV import.
+\item \code{"igraph"}: An \code{igraph} graph object.
+\item \code{"cograph"}: A \code{cograph_network} object.
+\item \code{"matrix"}: A square numeric co-occurrence matrix.
 }
-Sorted by \code{weight} descending. Attributes store the full matrix
-(when \code{split_by} is not used), item frequencies, similarity method,
-and scaling.
+For the data frame outputs, rows are sorted by weight descending and
+attributes store the full matrix, item frequencies, and parameters.
 }
 \description{
 Constructs an undirected co-occurrence network from various input formats

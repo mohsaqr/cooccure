@@ -64,22 +64,31 @@
 #' @param top_n Integer or \code{NULL}. Keep only the top \code{top_n} edges
 #'   by weight. When \code{split_by} is used, applied per group.
 #'   Default \code{NULL} (all edges).
+#' @param output Character. Column naming convention for the output:
+#'   \describe{
+#'     \item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
+#'     \item{\code{"gephi"}}{\code{Source}, \code{Target}, \code{Weight},
+#'       \code{Type} (= \code{"Undirected"}). Ready for Gephi import.}
+#'     \item{\code{"igraph"}}{Returns an \code{igraph} graph object directly.}
+#'     \item{\code{"cograph"}}{Returns a \code{cograph_network} object directly.}
+#'     \item{\code{"matrix"}}{Returns the square co-occurrence matrix.}
+#'   }
 #' @param ... Currently unused.
 #'
-#' @return A \code{cooccurrence} data frame (inherits from \code{data.frame})
-#'   with columns:
-#'   \describe{
-#'     \item{\code{from}}{Character. First entity.}
-#'     \item{\code{to}}{Character. Second entity.}
-#'     \item{\code{weight}}{Numeric. Similarity-normalized (and optionally
-#'       scaled) co-occurrence value.}
-#'     \item{\code{count}}{Integer. Raw co-occurrence count.}
-#'     \item{\code{group}}{Character. Present only when \code{split_by} is
-#'       used. The group label.}
+#' @return Depends on \code{output}:
+#'   \itemize{
+#'     \item \code{"default"}: A \code{cooccurrence} data frame with columns
+#'       \code{from}, \code{to}, \code{weight}, \code{count} (and \code{group}
+#'       when \code{split_by} is used).
+#'     \item \code{"gephi"}: A data frame with columns \code{Source},
+#'       \code{Target}, \code{Weight}, \code{Type}, \code{Count}. Ready for
+#'       Gephi CSV import.
+#'     \item \code{"igraph"}: An \code{igraph} graph object.
+#'     \item \code{"cograph"}: A \code{cograph_network} object.
+#'     \item \code{"matrix"}: A square numeric co-occurrence matrix.
 #'   }
-#'   Sorted by \code{weight} descending. Attributes store the full matrix
-#'   (when \code{split_by} is not used), item frequencies, similarity method,
-#'   and scaling.
+#'   For the data frame outputs, rows are sorted by weight descending and
+#'   attributes store the full matrix, item frequencies, and parameters.
 #'
 #' @references
 #' van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
@@ -115,8 +124,11 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                                         "dice", "equivalence", "relative"),
                          scale = NULL,
                          threshold = 0, min_occur = 1L,
-                         top_n = NULL, ...) {
+                         top_n = NULL,
+                         output = c("default", "gephi", "igraph",
+                                    "cograph", "matrix"), ...) {
   similarity <- match.arg(similarity)
+  output <- match.arg(output)
   threshold <- as.numeric(threshold)
   min_occur <- as.integer(min_occur)
   stopifnot(threshold >= 0, min_occur >= 1L)
@@ -161,7 +173,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
     attr(edges, "min_occur") <- min_occur
     attr(edges, "split_by") <- split_by
     attr(edges, "groups") <- names(groups)
-    return(edges)
+    return(.co_format_output(edges, output))
   }
 
   # ---- Single-group path ----
@@ -169,7 +181,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                      similarity = similarity, scale_method = scale_method,
                      threshold = threshold, min_occur = min_occur,
                      top_n = top_n)
-  result
+
+  .co_format_output(result, output)
 }
 
 
@@ -482,4 +495,40 @@ co <- cooccurrence
   }
 
   W
+}
+
+
+# ---- Output format conversion ----
+
+#' @noRd
+.co_format_output <- function(result, output) {
+  if (output == "default") return(result)
+
+  if (output == "gephi") {
+    out <- result
+    has_group <- "group" %in% names(out)
+    names(out)[names(out) == "from"] <- "Source"
+    names(out)[names(out) == "to"] <- "Target"
+    names(out)[names(out) == "weight"] <- "Weight"
+    names(out)[names(out) == "count"] <- "Count"
+    out$Type <- "Undirected"
+    # Reorder: Source, Target, Weight, Type, Count, [group]
+    cols <- c("Source", "Target", "Weight", "Type", "Count")
+    if (has_group) cols <- c(cols, "group")
+    out <- out[, cols]
+    class(out) <- c("cooccurrence", "data.frame")
+    # Copy attributes
+    for (a in c("matrix", "raw_matrix", "items", "frequencies",
+                "similarity", "scale", "threshold", "min_occur",
+                "n_transactions", "n_items", "split_by", "groups")) {
+      attr(out, a) <- attr(result, a)
+    }
+    return(out)
+  }
+
+  if (output == "igraph") return(as_igraph(result))
+  if (output == "cograph") return(as_cograph(result))
+  if (output == "matrix") return(as_matrix(result))
+
+  result
 }

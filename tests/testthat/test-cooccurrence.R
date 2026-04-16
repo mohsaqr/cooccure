@@ -370,3 +370,42 @@ test_that("split_by stores attributes", {
   expect_equal(attr(res, "split_by"), "year")
   expect_equal(sort(attr(res, "groups")), c("2020", "2021"))
 })
+
+# ========================================
+# 10. Output formats
+# ========================================
+
+test_that("output = 'gephi' renames columns", {
+  res <- cooccurrence(.test_list, output = "gephi")
+  expect_true(all(c("Source", "Target", "Weight", "Type", "Count") %in% names(res)))
+  expect_false("from" %in% names(res))
+  expect_equal(unique(res$Type), "Undirected")
+})
+
+test_that("output = 'gephi' with split_by includes group", {
+  df <- data.frame(grp = c("X", "X", "Y", "Y"),
+                   kw = c("A; B", "A; B", "C; D", "C; D"),
+                   stringsAsFactors = FALSE)
+  res <- cooccurrence(df, field = "kw", sep = ";",
+                      split_by = "grp", output = "gephi")
+  expect_true("group" %in% names(res))
+  expect_true("Source" %in% names(res))
+})
+
+test_that("output = 'matrix' returns a matrix", {
+  res <- cooccurrence(.test_list, output = "matrix")
+  expect_true(is.matrix(res))
+  expect_equal(nrow(res), 3L)
+})
+
+test_that("output = 'igraph' returns igraph object", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list, output = "igraph")
+  expect_true(igraph::is_igraph(res))
+})
+
+test_that("output = 'cograph' returns cograph_network", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list, output = "cograph")
+  expect_true(inherits(res, "cograph_network"))
+})

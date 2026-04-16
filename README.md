@@ -276,6 +276,36 @@ attr(result, "n_transactions")  # Number of transactions
 attr(result, "n_items")         # Number of unique items
 ```
 
+## Output formats
+
+The `output` parameter controls what `cooccurrence()` returns directly:
+
+```r
+# Default: tidy data.frame with from, to, weight, count
+co(data, field = "keywords", sep = ";")
+
+# Gephi-ready: Source, Target, Weight, Type columns
+co(data, field = "keywords", sep = ";", output = "gephi")
+#>   Source  Target Weight       Type Count
+#>    graph network      3 Undirected     3
+
+# igraph object directly
+g <- co(data, field = "keywords", sep = ";", output = "igraph")
+
+# cograph_network directly
+net <- co(data, field = "keywords", sep = ";", output = "cograph")
+
+# Square matrix directly
+mat <- co(data, field = "keywords", sep = ";", output = "matrix")
+```
+
+The Gephi output can be written straight to CSV for import:
+
+```r
+write.csv(co(data, field = "keywords", sep = ";", output = "gephi"),
+          "network.csv", row.names = FALSE)
+```
+
 ## Converters
 
 Convert a `cooccurrence` result to other network formats. All converter packages are optional --- install only what you need.
@@ -340,6 +370,7 @@ Nestimate::bootstrap_network(net)
 | `threshold` | numeric | Minimum edge weight (after normalization + scaling) | `0` |
 | `min_occur` | integer | Minimum entity frequency (transactions) | `1` |
 | `top_n` | integer | Keep only the top N edges by weight (per group if split) | `NULL` |
+| `output` | character | Output format: `"default"`, `"gephi"`, `"igraph"`, `"cograph"`, `"matrix"` | `"default"` |
 
 ## How it works
 
