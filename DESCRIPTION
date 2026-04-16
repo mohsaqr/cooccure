@@ -10,7 +10,7 @@ Description: Build co-occurrence networks from delimited fields, long/bipartite
     tables, binary matrices, wide sequences, or plain lists. Returns tidy
     edge data frames with eight similarity measures (Jaccard, cosine,
     association strength, etc.) and optional scaling. Convert results to
-    igraph, cograph, Nestimate, or tidygraph objects.
+    'igraph', 'cograph', 'Nestimate', or 'tidygraph' objects.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
