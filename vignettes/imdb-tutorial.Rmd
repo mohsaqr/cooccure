@@ -18,178 +18,140 @@ This tutorial demonstrates every feature of the `cooccur` package using 1,000 hi
 
 ## Data
 
-The dataset includes two tables:
-
-- **movies**: 1,000 films with title, year, genres (comma-delimited), decade, rating, and vote count.
-- **actor_movie**: ~25,000 actor--movie pairs linking actors to the films they are "known for" on IMDB.
-
 ```{r load-data}
 library(cooccur)
 
 movies <- read.csv(system.file("extdata/imdb_movies.csv", package = "cooccur"))
 actor_movie <- read.csv(system.file("extdata/imdb_actor_movie.csv", package = "cooccur"))
-
-cat(sprintf("Movies: %d | Actor-movie pairs: %d | Unique actors: %d\n",
-            nrow(movies), nrow(actor_movie), length(unique(actor_movie$actor))))
-head(movies[, c("primaryTitle", "startYear", "genres", "averageRating")])
 ```
 
 ## 1. Genre co-occurrence (delimited field)
 
-The simplest use case. Each movie has a comma-delimited `genres` column. Genres that appear in the same movie are connected.
+Each movie has a comma-delimited `genres` column. Genres that appear in the same movie are connected.
 
 ```{r genre-basic}
-genre_net <- cooccurrence(movies, field = "genres", sep = ",")
-genre_net
+cooccurrence(movies, field = "genres", sep = ",")
 ```
 
-Drama dominates because it's the most frequent genre. Let's normalize with Jaccard similarity to control for popularity:
+Drama dominates because it's the most frequent genre. Normalize with Jaccard to control for popularity:
 
 ```{r genre-jaccard}
-genre_jac <- co(movies, field = "genres", sep = ",", similarity = "jaccard")
-genre_jac
+co(movies, field = "genres", sep = ",", similarity = "jaccard")
 ```
 
-Now the top edges reflect genuine affinity rather than just frequency. War--History films co-occur more often than chance would predict given their individual frequencies.
+Now the top edges reflect genuine affinity rather than just frequency.
 
 ### Comparing similarity measures
 
-Each similarity measure answers a different question about the relationship between two items. Here we compute the top 3 genre pairs under each measure:
+Each measure surfaces different structure. Here are the top 3 pairs under each:
 
-```{r similarity-comparison}
-sims <- c("none", "jaccard", "cosine", "inclusion",
-           "association", "dice", "equivalence")
-comparison <- do.call(rbind, lapply(sims, function(s) {
-  res <- co(movies, field = "genres", sep = ",", similarity = s, top_n = 3)
-  data.frame(similarity = s, from = res$from, to = res$to,
-             weight = round(res$weight, 4), count = res$count,
-             stringsAsFactors = FALSE)
-}))
-comparison
+```{r sim-none}
+co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
 ```
 
-Notice how different measures surface different structures:
+```{r sim-jaccard}
+co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 3)
+```
 
-- **`none`** (raw counts) is dominated by Drama because it appears in the most movies --- high frequency drives high co-occurrence regardless of affinity.
-- **`jaccard`** controls for frequency by asking: "of all movies that have genre A *or* genre B, how many have *both*?"
-- **`inclusion`** gives 1.0 when one genre almost always appears with another --- it reveals subset relationships (e.g., Film-Noir is almost always tagged as Crime or Drama).
-- **`association`** penalizes high-frequency genres the most aggressively, surfacing niche pairings that co-occur more than expected under independence.
+```{r sim-cosine}
+co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
+```
+
+```{r sim-inclusion}
+co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
+```
+
+```{r sim-association}
+co(movies, field = "genres", sep = ",", similarity = "association", top_n = 3)
+```
+
+```{r sim-dice}
+co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
+```
+
+```{r sim-equivalence}
+co(movies, field = "genres", sep = ",", similarity = "equivalence", top_n = 3)
+```
 
 ### Which similarity to use?
-
-The choice depends on what you're looking for:
 
 - **Exploratory work**: Start with `"none"` to see raw counts and understand the data, then try `"jaccard"` or `"cosine"` for a balanced view.
 - **Bibliometric and scientometric networks**: `"association"` is recommended by van Eck & Waltman (2009) because it correctly accounts for the expected number of co-occurrences under independence. Two items that are both very frequent will naturally co-occur often; association strength discounts this, revealing which pairs co-occur *more than chance alone would predict*.
 - **Detecting hierarchical or subset structure**: `"inclusion"` (the Simpson coefficient) reveals when one item almost always appears with another --- useful for identifying items that are subsets of broader categories, or for detecting dependency relationships.
 - **Binary presence/absence networks**: `"jaccard"` or `"dice"` when you only care *whether* items co-occur, not *how often*. Jaccard is stricter (penalizes unbalanced pairs more); Dice is more lenient.
-- **Scale-invariant comparison**: `"cosine"` (Salton's cosine) is invariant to the absolute frequency of items --- useful when comparing co-occurrence patterns across datasets of different sizes.
-- **Strict filtering**: `"equivalence"` (cosine squared) amplifies differences --- pairs with weak overlap get pushed closer to zero, making it useful when you want to retain only the strongest associations.
+- **Scale-invariant comparison**: `"cosine"` is invariant to absolute frequency --- useful when comparing co-occurrence patterns across datasets of different sizes.
+- **Strict filtering**: `"equivalence"` (cosine squared) amplifies differences --- pairs with weak overlap get pushed closer to zero, retaining only the strongest associations.
 
 ## 2. Counting methods
 
-By default, each movie contributes equally to co-occurrence: if a movie has genres A, B, and C, each pair (A-B, A-C, B-C) adds 1. But movies with many genres inflate the network --- a movie tagged with 5 genres creates 10 pairs, while a movie with 2 genres creates just 1.
+By default, each movie contributes equally: if a movie has genres A, B, and C, each pair adds 1. But movies with many genres inflate the network --- a 5-genre movie creates 10 pairs, while a 2-genre movie creates 1.
 
-**Fractional counting** addresses this by weighting each pair by $1/(n-1)$, where $n$ is the number of items in the transaction. A 5-genre movie contributes $1/4 = 0.25$ per pair instead of 1.
+**Fractional counting** weights each pair by $1/(n-1)$, where $n$ is the number of items.
 
 ```{r counting-full}
-# Full counting (default): each pair adds 1
-genre_full <- co(movies, field = "genres", sep = ",", top_n = 5)
-genre_full
+co(movies, field = "genres", sep = ",", top_n = 5)
 ```
 
 ```{r counting-fractional}
-# Fractional counting: each pair adds 1/(n-1)
-genre_frac <- co(movies, field = "genres", sep = ",",
-                 counting = "fractional", top_n = 5)
-genre_frac
+co(movies, field = "genres", sep = ",", counting = "fractional", top_n = 5)
 ```
 
-Compare how the rankings change:
-
-```{r counting-compare}
-full <- co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 10)
-frac <- co(movies, field = "genres", sep = ",", similarity = "jaccard",
-           counting = "fractional", top_n = 10)
-merge(
-  data.frame(pair = paste(full$from, full$to, sep = "--"),
-             weight_full = round(full$weight, 4)),
-  data.frame(pair = paste(frac$from, frac$to, sep = "--"),
-             weight_frac = round(frac$weight, 4)),
-  by = "pair", all = TRUE
-)
-```
-
-Fractional counting is particularly important in bibliometric networks where some documents have dozens of keywords while others have just two. Without it, keyword-rich documents dominate the network structure.
+Fractional counting is particularly important when some documents have many items while others have few.
 
 ## 3. Scaling
 
-Raw counts or similarity values can span a wide range. Scaling compresses the distribution for visualization or downstream analysis.
+Scaling compresses the distribution for visualization or downstream analysis.
 
-```{r scaling}
-# Log scaling: compresses heavy-tailed distributions
-genre_log <- co(movies, field = "genres", sep = ",", scale = "log")
-head(genre_log)
-
-# Min-max to [0, 1]: makes weights comparable across networks
-genre_mm <- co(movies, field = "genres", sep = ",",
-               similarity = "jaccard", scale = "minmax")
-head(genre_mm)
-
-# Binary: presence/absence of co-occurrence (useful for graph density analysis)
-genre_bin <- co(movies, field = "genres", sep = ",", scale = "binary")
-head(genre_bin)
-
-# Square root: mild compression, preserves more variation than log
-genre_sqrt <- co(movies, field = "genres", sep = ",", scale = "sqrt")
-head(genre_sqrt)
+```{r scale-log}
+co(movies, field = "genres", sep = ",", scale = "log", top_n = 5)
 ```
 
-Scaling can be combined with any similarity measure:
+```{r scale-minmax}
+co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax", top_n = 5)
+```
 
-```{r scaling-combined}
-# Association strength, log-scaled, min 20 occurrences
+```{r scale-binary}
+co(movies, field = "genres", sep = ",", scale = "binary", top_n = 5)
+```
+
+```{r scale-sqrt}
+co(movies, field = "genres", sep = ",", scale = "sqrt", top_n = 5)
+```
+
+Scaling can be combined with any similarity:
+
+```{r scale-combined}
 co(movies, field = "genres", sep = ",",
    similarity = "association", scale = "log", min_occur = 20, top_n = 5)
 ```
 
 ## 4. Filtering
 
-Three filtering mechanisms control which edges appear in the result.
-
 ### Minimum frequency
 
-Drop genres appearing in fewer than 20 movies. This removes rare genres that produce noisy co-occurrence patterns:
+Drop genres appearing in fewer than 20 movies:
 
 ```{r min-occur}
-genre_filtered <- co(movies, field = "genres", sep = ",",
-                     similarity = "jaccard", min_occur = 20)
-genre_filtered
+co(movies, field = "genres", sep = ",", similarity = "jaccard", min_occur = 20)
 ```
 
 ### Threshold
 
-Keep only edges with Jaccard similarity above 0.15. Applied *after* similarity normalization and scaling:
+Keep only edges with Jaccard similarity above 0.15:
 
 ```{r threshold}
-genre_strong <- co(movies, field = "genres", sep = ",",
-                   similarity = "jaccard", threshold = 0.15)
-genre_strong
+co(movies, field = "genres", sep = ",", similarity = "jaccard", threshold = 0.15)
 ```
 
-### Top N edges
-
-Keep the 10 strongest connections:
+### Top N
 
 ```{r top-n}
-genre_top10 <- co(movies, field = "genres", sep = ",",
-                  similarity = "jaccard", top_n = 10)
-genre_top10
+co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 10)
 ```
 
-All three can be combined:
+### Combined
 
-```{r combined-filtering}
+```{r combined-filter}
 co(movies, field = "genres", sep = ",",
    similarity = "association", counting = "fractional",
    min_occur = 15, threshold = 0.001, top_n = 20)
@@ -197,58 +159,43 @@ co(movies, field = "genres", sep = ",",
 
 ## 5. Actor co-occurrence (long/bipartite format)
 
-Actors who share movies are connected. The data is in long format: one row per actor--movie pair. Use `field` for the entity (actor) and `by` for the grouping column (movie ID).
+Actors who share movies are connected. The data is one row per actor--movie pair. Use `field` for the entity and `by` for the grouping column.
 
-```{r actor-cooccurrence}
-actor_net <- co(actor_movie, field = "actor", by = "tconst",
-                similarity = "jaccard", min_occur = 3, threshold = 0.1)
-actor_net
+```{r actor-net}
+co(actor_movie, field = "actor", by = "tconst",
+   similarity = "jaccard", min_occur = 3, threshold = 0.1)
 ```
 
-These are actors who frequently appear in each other's "known for" filmographies.
+With fractional counting:
 
-With fractional counting, actors who appear in many movies contribute less per pair:
-
-```{r actor-fractional}
-actor_frac <- co(actor_movie, field = "actor", by = "tconst",
-                 similarity = "jaccard", counting = "fractional",
-                 min_occur = 3, threshold = 0.05)
-actor_frac
+```{r actor-frac}
+co(actor_movie, field = "actor", by = "tconst",
+   similarity = "jaccard", counting = "fractional",
+   min_occur = 3, threshold = 0.05)
 ```
 
 ## 6. Splitting by groups
 
 ### Genre networks by decade
 
-How do genre pairings change over time? Use `split_by` to compute separate networks per decade:
-
-```{r split-by-decade}
-genre_decades <- co(movies, field = "genres", sep = ",",
-                    split_by = "decade", similarity = "jaccard",
-                    min_occur = 5, top_n = 5)
-genre_decades
+```{r split-decade}
+co(movies, field = "genres", sep = ",",
+   split_by = "decade", similarity = "jaccard",
+   min_occur = 5, top_n = 5)
 ```
 
-Each decade gets its own top-5 genre pairings. Filter to a specific decade:
+Filter to a specific decade:
 
 ```{r filter-decade}
-genre_decades[genre_decades$group == "2010s", ]
-```
-
-### Actor networks by decade
-
-```{r actor-decades}
-actor_decades <- co(actor_movie, field = "actor", by = "tconst",
-                    split_by = "decade", similarity = "jaccard",
-                    min_occur = 2, top_n = 3)
-actor_decades
+decades <- co(movies, field = "genres", sep = ",",
+              split_by = "decade", similarity = "jaccard",
+              min_occur = 5, top_n = 5)
+decades[decades$group == "2010s", ]
 ```
 
 ### Split by rating band
 
-Create custom grouping variables for any split:
-
-```{r split-custom}
+```{r split-rating}
 movies$rating_band <- ifelse(movies$averageRating >= 8, "8+", "7-7.9")
 co(movies, field = "genres", sep = ",",
    split_by = "rating_band", similarity = "jaccard",
@@ -257,48 +204,38 @@ co(movies, field = "genres", sep = ",",
 
 ## 7. Output formats
 
-### Default (from, to, weight, count)
+### Default
 
-The standard tidy data frame:
-
-```{r output-default}
+```{r out-default}
 co(movies, field = "genres", sep = ",", top_n = 5)
 ```
 
-### Gephi (Source, Target, Weight, Type)
+### Gephi
 
-Ready for Gephi's CSV importer:
-
-```{r output-gephi}
-gephi <- co(movies, field = "genres", sep = ",",
-            similarity = "jaccard", output = "gephi", top_n = 10)
-gephi
+```{r out-gephi}
+co(movies, field = "genres", sep = ",",
+   similarity = "jaccard", output = "gephi", top_n = 10)
 ```
 
-Export to CSV:
-
 ```{r gephi-export, eval=FALSE}
-write.csv(gephi, "genre_network_gephi.csv", row.names = FALSE)
+write.csv(
+  co(movies, field = "genres", sep = ",", similarity = "jaccard", output = "gephi"),
+  "genre_network.csv", row.names = FALSE
+)
 ```
 
 ### igraph
 
-Get an igraph object directly:
-
-```{r output-igraph}
+```{r out-igraph}
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
 ```
 
-Full igraph API:
-
-```{r igraph-analysis}
+```{r igraph-metrics}
 igraph::degree(g)
 igraph::betweenness(g)
 ```
-
-Plot:
 
 ```{r igraph-plot, fig.width=8, fig.height=8}
 plot(g,
@@ -310,9 +247,7 @@ plot(g,
 
 ### Matrix
 
-Square co-occurrence matrix:
-
-```{r output-matrix}
+```{r out-matrix}
 mat <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "matrix")
 round(mat[1:6, 1:6], 3)
@@ -320,58 +255,44 @@ round(mat[1:6, 1:6], 3)
 
 ### cograph
 
-```{r output-cograph, eval=requireNamespace("cograph", quietly=TRUE)}
-net <- co(movies, field = "genres", sep = ",",
-          similarity = "jaccard", min_occur = 20, output = "cograph")
-net
+```{r out-cograph, eval=requireNamespace("cograph", quietly=TRUE)}
+co(movies, field = "genres", sep = ",",
+   similarity = "jaccard", min_occur = 20, output = "cograph")
 ```
 
 ## 8. Converters
 
-All converters work on any `cooccurrence` result:
-
-```{r converters}
+```{r conv-matrix}
 result <- co(movies, field = "genres", sep = ",",
              similarity = "jaccard", min_occur = 20)
+as_matrix(result)
+```
 
-# Square matrix (normalized)
-mat <- as_matrix(result)
-dim(mat)
+```{r conv-raw}
+as_matrix(result, type = "raw")
+```
 
-# Raw count matrix (before similarity normalization)
-raw <- as_matrix(result, type = "raw")
-raw[1:5, 1:5]
-
-# igraph
-g <- as_igraph(result)
-cat("Nodes:", igraph::vcount(g), "| Edges:", igraph::ecount(g), "\n")
+```{r conv-igraph}
+as_igraph(result)
 ```
 
 ## 9. Six input formats, one result
 
-The same genre co-occurrence can be computed from four different representations. All produce identical results.
+The same data in four representations --- all produce identical results.
 
-### Delimited field
-
-```{r format-delimited}
+```{r fmt-delimited}
 res1 <- co(movies, field = "genres", sep = ",")
 ```
 
-### Long/bipartite table
-
-```{r format-long}
+```{r fmt-long}
 genre_long <- do.call(rbind, lapply(seq_len(nrow(movies)), function(i) {
   gs <- trimws(strsplit(movies$genres[i], ",")[[1]])
   data.frame(movie_id = movies$tconst[i], genre = gs, stringsAsFactors = FALSE)
 }))
-head(genre_long)
-
 res2 <- co(genre_long, field = "genre", by = "movie_id")
 ```
 
-### Binary matrix
-
-```{r format-binary}
+```{r fmt-binary}
 all_genres <- sort(unique(genre_long$genre))
 bin <- matrix(0L, nrow = nrow(movies), ncol = length(all_genres),
               dimnames = list(movies$tconst, all_genres))
@@ -379,44 +300,20 @@ for (i in seq_len(nrow(genre_long))) {
   row <- match(genre_long$movie_id[i], movies$tconst)
   bin[row, genre_long$genre[i]] <- 1L
 }
-
 res3 <- co(bin)
 ```
 
-### List of character vectors
-
-```{r format-list}
-genre_list <- lapply(strsplit(movies$genres, ","), trimws)
-res4 <- co(genre_list)
+```{r fmt-list}
+res4 <- co(lapply(strsplit(movies$genres, ","), trimws))
 ```
 
-### Verification
-
-```{r format-verify}
-cat("Delimited vs Long:  ", all.equal(res1$weight, res2$weight), "\n")
-cat("Delimited vs Binary:", all.equal(res1$weight, res3$weight), "\n")
-cat("Delimited vs List:  ", all.equal(res1$weight, res4$weight), "\n")
+```{r fmt-verify}
+all.equal(res1$weight, res2$weight)
+all.equal(res1$weight, res3$weight)
+all.equal(res1$weight, res4$weight)
 ```
 
-## 10. Real-world analysis: What genres define each decade?
-
-Using association strength (which controls for genre frequency) to identify the most distinctive genre pairings per decade:
-
-```{r decade-analysis}
-decades_full <- co(movies, field = "genres", sep = ",",
-                   split_by = "decade", similarity = "association",
-                   min_occur = 5)
-
-# Top 3 genre pairs per decade
-top_per_decade <- do.call(rbind, lapply(split(decades_full, decades_full$group), function(d) {
-  head(d[order(-d$weight), ], 3)
-}))
-top_per_decade[, c("group", "from", "to", "weight", "count")]
-```
-
-## 11. Complete pipeline
-
-Combining everything --- similarity, fractional counting, scaling, filtering, and direct igraph output --- in one call:
+## 10. Complete pipeline
 
 ```{r pipeline, fig.width=8, fig.height=8}
 g <- co(movies, field = "genres", sep = ",",
@@ -429,6 +326,5 @@ plot(g,
      vertex.size = igraph::degree(g) * 2.5,
      vertex.label.cex = 0.8,
      layout = igraph::layout_with_fr(g),
-     main = "IMDB Genre Co-occurrence\n(Jaccard, fractional counting, min 15 movies)")
+     main = "IMDB Genre Co-occurrence\n(Jaccard, fractional, min 15 movies)")
 ```
-
