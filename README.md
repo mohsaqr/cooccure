@@ -418,7 +418,7 @@ Saqr, M., Misiejuk, M., Wasson, B., & Dever, D. A. (2023). Scientometrics: A Con
 
 **Sonsoles López-Pernas** — University of Eastern Finland · [sonsoles.me](https://sonsoles.me)
 
-**Kamila Misiejuk** — University of Bergen
+**Kamila Misiejuk** — University of Bergen · [kamilamisiejuk.com](https://kamilamisiejuk.com)
 
 ## License
 
