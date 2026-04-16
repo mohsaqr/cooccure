@@ -224,6 +224,22 @@ write.csv(
 )
 ```
 
+### cograph (with Gephi layout)
+
+Convert to a cograph network and plot with `splot()` using the Gephi Fruchterman-Reingold layout:
+
+```{r out-cograph, fig.width=8, fig.height=8}
+net <- co(movies, field = "genres", sep = ",",
+          similarity = "jaccard", min_occur = 20, output = "cograph")
+cograph::splot(net, layout = "gephi")
+```
+
+With customized edge width and label size:
+
+```{r cograph-styled, fig.width=8, fig.height=8}
+cograph::splot(net, layout = "gephi", edge_width = 3, label_size = 0.9)
+```
+
 ### igraph
 
 ```{r out-igraph}
@@ -237,27 +253,12 @@ igraph::degree(g)
 igraph::betweenness(g)
 ```
 
-```{r igraph-plot, fig.width=8, fig.height=8}
-plot(g,
-     edge.width = igraph::E(g)$weight * 10,
-     vertex.size = igraph::degree(g) * 3,
-     vertex.label.cex = 0.8,
-     layout = igraph::layout_with_fr(g))
-```
-
 ### Matrix
 
 ```{r out-matrix}
 mat <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "matrix")
 round(mat[1:6, 1:6], 3)
-```
-
-### cograph
-
-```{r out-cograph, eval=requireNamespace("cograph", quietly=TRUE)}
-co(movies, field = "genres", sep = ",",
-   similarity = "jaccard", min_occur = 20, output = "cograph")
 ```
 
 ## 8. Converters
@@ -315,16 +316,13 @@ all.equal(res1$weight, res4$weight)
 
 ## 10. Complete pipeline
 
-```{r pipeline, fig.width=8, fig.height=8}
-g <- co(movies, field = "genres", sep = ",",
-        similarity = "jaccard", counting = "fractional",
-        scale = "minmax", min_occur = 15, threshold = 0.05,
-        output = "igraph")
+Everything in one call --- similarity, fractional counting, scaling, filtering --- piped straight to cograph for visualization:
 
-plot(g,
-     edge.width = igraph::E(g)$weight * 8,
-     vertex.size = igraph::degree(g) * 2.5,
-     vertex.label.cex = 0.8,
-     layout = igraph::layout_with_fr(g),
-     main = "IMDB Genre Co-occurrence\n(Jaccard, fractional, min 15 movies)")
+```{r pipeline, fig.width=8, fig.height=8}
+co(movies, field = "genres", sep = ",",
+   similarity = "jaccard", counting = "fractional",
+   scale = "minmax", min_occur = 15, threshold = 0.05,
+   output = "cograph") |>
+  cograph::splot(layout = "gephi", edge_width = 3, label_size = 0.9,
+                 title = "IMDB Genre Co-occurrence (Jaccard, fractional, min 15 movies)")
 ```
