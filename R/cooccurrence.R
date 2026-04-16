@@ -57,17 +57,14 @@
 #'     \item{\code{"sqrt"}}{Square root.}
 #'     \item{\code{"proportion"}}{Divide by sum of all weights.}
 #'   }
-#' @param counting Character. Counting method controlling how each
-#'   transaction contributes to co-occurrence:
+#' @param counting Character. Counting method:
 #'   \describe{
-#'     \item{\code{"full"}}{Binary: each co-occurring pair adds 1
-#'       regardless of transaction size. Default.}
+#'     \item{\code{"full"}}{Each co-occurring pair adds 1 regardless of
+#'       transaction size. Default.}
 #'     \item{\code{"fractional"}}{Each pair adds \eqn{1 / (n_i - 1)}
 #'       where \eqn{n_i} is the number of items in transaction \eqn{i}.
 #'       Transactions with many items contribute less per pair
 #'       (Perianes-Rodriguez et al., 2016).}
-#'     \item{\code{"paper"}}{Each transaction contributes a total of 1
-#'       to the network: each pair adds \eqn{2 / (n_i (n_i - 1))}.}
 #'   }
 #' @param threshold Numeric. Minimum edge weight to retain. Applied after
 #'   similarity and scaling. Default 0.
@@ -134,7 +131,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
                                         "dice", "equivalence", "relative"),
-                         counting = c("full", "fractional", "paper"),
+                         counting = c("full", "fractional"),
                          scale = NULL,
                          threshold = 0, min_occur = 1L,
                          top_n = NULL,
@@ -472,14 +469,8 @@ co <- cooccurrence
   n_per_row <- rowSums(B)
   n_per_row[n_per_row == 0] <- 1
 
-  if (counting == "fractional") {
-    # Perianes-Rodriguez: each pair contributes 1/(n-1) per transaction
-    w <- ifelse(n_per_row > 1, 1 / (n_per_row - 1), 1)
-  } else if (counting == "paper") {
-    # Total network contribution per transaction = 1
-    # Each pair = 2 / (n * (n-1)), use sqrt for crossprod
-    w <- ifelse(n_per_row > 1, 2 / (n_per_row * (n_per_row - 1)), 1)
-  }
+  # Perianes-Rodriguez: each pair contributes 1/(n-1) per transaction
+  w <- ifelse(n_per_row > 1, 1 / (n_per_row - 1), 1)
 
   # Multiply each row by sqrt(w) so crossprod gives weighted counts
   B_num <- B * 1.0

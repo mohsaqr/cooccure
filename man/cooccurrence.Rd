@@ -13,7 +13,7 @@ cooccurrence(
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional", "paper"),
+  counting = c("full", "fractional"),
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -30,7 +30,7 @@ co(
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional", "paper"),
+  counting = c("full", "fractional"),
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -82,17 +82,14 @@ additional \code{group} column. Only works with data.frame inputs.}
 \item{\code{"relative"}}{Row-normalized: each row sums to 1.}
 }}
 
-\item{counting}{Character. Counting method controlling how each
-transaction contributes to co-occurrence:
+\item{counting}{Character. Counting method:
 \describe{
-\item{\code{"full"}}{Binary: each co-occurring pair adds 1
-regardless of transaction size. Default.}
+\item{\code{"full"}}{Each co-occurring pair adds 1 regardless of
+transaction size. Default.}
 \item{\code{"fractional"}}{Each pair adds \eqn{1 / (n_i - 1)}
 where \eqn{n_i} is the number of items in transaction \eqn{i}.
 Transactions with many items contribute less per pair
 (Perianes-Rodriguez et al., 2016).}
-\item{\code{"paper"}}{Each transaction contributes a total of 1
-to the network: each pair adds \eqn{2 / (n_i (n_i - 1))}.}
 }}
 
 \item{scale}{Character or \code{NULL}. Optional scaling applied to weights
