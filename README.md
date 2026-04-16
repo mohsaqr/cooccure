@@ -156,10 +156,24 @@ cooccurrence(papers, field = "keywords", sep = ";", similarity = "association")
 
 ### Which similarity to use?
 
-- **Exploratory work**: Start with `"none"` to see raw counts, then try `"jaccard"` or `"cosine"`.
-- **Bibliometric networks**: `"association"` is recommended by van Eck & Waltman (2009) as it correctly accounts for the expected number of co-occurrences under independence.
-- **Detecting hierarchical/subset structure**: `"inclusion"` reveals when one item almost always appears with another.
-- **Binary networks**: `"jaccard"` or `"dice"` when you only care whether items co-occur, not how often.
+- **Exploratory work**: Start with `"none"` to see raw counts and understand the data, then try `"jaccard"` or `"cosine"` for a balanced view.
+- **Bibliometric and scientometric networks**: `"association"` is recommended by van Eck & Waltman (2009) because it correctly accounts for the expected number of co-occurrences under independence. Two items that are both very frequent will naturally co-occur often; association strength discounts this, revealing which pairs co-occur *more than chance alone would predict*.
+- **Detecting hierarchical/subset structure**: `"inclusion"` (Simpson coefficient) reveals when one item almost always appears with another --- useful for finding items that are subsets of broader categories, or dependency relationships.
+- **Binary presence/absence networks**: `"jaccard"` or `"dice"` when you only care *whether* items co-occur, not *how often*. Jaccard is stricter (penalizes unbalanced pairs more); Dice is more lenient.
+- **Scale-invariant comparison**: `"cosine"` is invariant to absolute frequency --- useful when comparing co-occurrence patterns across datasets of different sizes.
+- **Strict filtering**: `"equivalence"` (cosine squared) amplifies differences --- pairs with weak overlap get pushed closer to zero, retaining only the strongest associations.
+
+## Counting
+
+```r
+# Full counting (default): each co-occurring pair adds 1
+co(data, field = "keywords", sep = ";")
+
+# Fractional: each pair adds 1/(n-1) where n = items in the transaction
+co(data, field = "keywords", sep = ";", counting = "fractional")
+```
+
+Fractional counting prevents documents with many items from dominating the network. A document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting.
 
 ## Scaling
 
@@ -366,6 +380,7 @@ Nestimate::bootstrap_network(net)
 | `sep` | character | Delimiter for splitting delimited fields | `NULL` |
 | `split_by` | character | Column to split data by (separate network per group) | `NULL` |
 | `similarity` | character | Normalization measure | `"none"` |
+| `counting` | character | `"full"` or `"fractional"` | `"full"` |
 | `scale` | character | Weight scaling method | `NULL` |
 | `threshold` | numeric | Minimum edge weight (after normalization + scaling) | `0` |
 | `min_occur` | integer | Minimum entity frequency (transactions) | `1` |
