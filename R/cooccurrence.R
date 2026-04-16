@@ -211,9 +211,14 @@ co <- cooccurrence
                      scale_method, threshold, min_occur, top_n) {
   # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
+
+  if (fmt == "field_only")
+    .co_warn_missing_sep(data, field)
+
   transactions <- switch(fmt,
     delimited       = .co_parse_delimited(data, field, sep),
     multi_delimited = .co_parse_multi_delimited(data, field, sep),
+    field_only      = .co_parse_field_only(data, field),
     long            = .co_parse_long(data, field, by),
     binary          = .co_parse_binary(data),
     wide            = .co_parse_wide(data),
@@ -378,6 +383,9 @@ co <- cooccurrence
   if (!is.null(field) && !is.null(by))
     return("long")
 
+  if (!is.null(field) && is.null(sep) && is.null(by) && is.data.frame(data))
+    return("field_only")
+
   if (is.matrix(data) || is.data.frame(data)) {
     mat <- if (is.data.frame(data)) as.matrix(data) else data
     if (is.numeric(mat) && all(mat[!is.na(mat)] %in% c(0, 1)))
@@ -389,6 +397,36 @@ co <- cooccurrence
        "recognized data structure (data.frame, matrix, list).", call. = FALSE)
 }
 
+
+#' @noRd
+.co_warn_missing_sep <- function(data, field) {
+  candidates <- c(";", ",", "|", "/", "\t")
+  vals <- unlist(lapply(field, function(f) as.character(data[[f]])))
+  vals <- vals[!is.na(vals)]
+  if (length(vals) == 0L) return(invisible())
+
+  counts <- vapply(candidates, function(s) sum(grepl(s, vals, fixed = TRUE)),
+                   integer(1))
+  best <- which.max(counts)
+
+  if (counts[best] > 0L) {
+    sep_label <- if (candidates[best] == "\t") "\\t" else candidates[best]
+    pct <- round(100 * counts[best] / length(vals))
+    warning(
+      "`field` was provided without `sep`. Each value is treated as a single item. ",
+      sprintf(
+        "Found '%s' in %d%% of values. Did you mean: sep = \"%s\"?",
+        sep_label, pct, sep_label
+      ),
+      call. = FALSE
+    )
+  } else {
+    warning(
+      "`field` was provided without `sep`. Each value is treated as a single item.",
+      call. = FALSE
+    )
+  }
+}
 
 # ---- Parsers ----
 
@@ -414,6 +452,17 @@ co <- cooccurrence
     items <- trimws(items)
     items <- items[nzchar(items) & !is.na(items)]
     unique(items)
+  })
+}
+
+#' @noRd
+.co_parse_field_only <- function(data, field) {
+  stopifnot(is.data.frame(data), all(field %in% names(data)))
+  lapply(seq_len(nrow(data)), function(i) {
+    vals <- as.character(unlist(data[i, field, drop = TRUE]))
+    vals <- trimws(vals)
+    vals <- vals[!is.na(vals) & nzchar(vals)]
+    unique(vals)
   })
 }
 

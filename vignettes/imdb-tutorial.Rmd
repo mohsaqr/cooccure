@@ -22,16 +22,22 @@ This tutorial demonstrates every feature of the `cooccur` package using 1,000 hi
 library(cooccur)
 ```
 
+The dataset contains the title of the movie, the year and decade, the `genres` (comma-separated), the average rating, the number of votes, and the rating band
+```{r}
+head(movies)
+```
+
+
 ## 1. Genre co-occurrence (delimited field)
 
 Each movie has a comma-delimited `genres` column. Genres that appear in the same movie are connected.
+To analyze their co-occurrence  we need to call `cooccurrence` and specify the `field` (column in the data) and the separator (`sep`) that separates the values that co-occur, within the same field.
 
 ```{r genre-basic}
 cooccurrence(movies, field = "genres", sep = ",")
 ```
 
 Drama dominates because it's the most frequent genre. Normalize with Jaccard to control for popularity:
-
 ```{r genre-jaccard}
 co(movies, field = "genres", sep = ",", similarity = "jaccard")
 ```
@@ -221,7 +227,6 @@ write.csv(
   co(movies, field = "genres", sep = ",", similarity = "jaccard", output = "gephi"),
   "genre_network.csv", row.names = FALSE
 )
-
 ```
 
 ### cograph (with Gephi layout)
@@ -232,7 +237,6 @@ Convert to a cograph network and plot with `splot()` using the Gephi Fruchterman
 net <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "cograph")
 cograph::splot(net, layout = "fr", scale_nodes_by = "degree")
-
 ```
 
 With customized edge width and label size:

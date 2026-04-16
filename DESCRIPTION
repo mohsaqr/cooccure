@@ -1,7 +1,6 @@
 Package: cooccur
 Title: Co-Occurrence Networks from Any Data Format
 Version: 0.1.0
-
 Authors@R: c(
     person("Mohammed", "Saqr", email = "saqr@saqr.me",
            role = c("aut", "cre", "cph")),
@@ -30,3 +29,4 @@ Suggests:
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Depends: R (>= 3.5.0)
+URL: http://saqr.me/cooccur/

@@ -462,6 +462,89 @@ test_that("counting with long/bipartite format", {
 })
 
 # ========================================
+# 11b. field without sep (field_only format)
+# ========================================
+
+test_that("field without sep treats each column value as one item", {
+  df <- data.frame(g1 = c("A", "B", "A"), g2 = c("B", "C", "C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(res <- cooccurrence(df, field = c("g1", "g2")),
+                 "without `sep`")
+  expect_s3_class(res, "cooccurrence")
+  expect_equal(nrow(res), 3L)
+  expect_true(all(c("A", "B", "C") %in% c(res$from, res$to)))
+})
+
+test_that("field without sep ignores other columns", {
+  df <- data.frame(id = 1:3, x = c("A", "B", "A"), y = c("B", "C", "C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(res <- cooccurrence(df, field = c("x", "y")),
+                 "without `sep`")
+  items <- unique(c(res$from, res$to))
+  expect_false(any(items %in% c("1", "2", "3")))
+})
+
+test_that("single field without sep gives one-item transactions (no edges)", {
+  df <- data.frame(genre = c("Action", "Comedy", "Action"),
+                   stringsAsFactors = FALSE)
+  expect_warning(res <- cooccurrence(df, field = "genre"), "without `sep`")
+  expect_equal(nrow(res), 0L)
+})
+
+test_that("field without sep matches multi_delimited with no delimiters", {
+  df <- data.frame(g1 = c("A", "B", "A"), g2 = c("B", "C", "C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(res_field <- cooccurrence(df, field = c("g1", "g2")),
+                 "without `sep`")
+  res_multi <- cooccurrence(df, field = c("g1", "g2"), sep = ";")
+  key <- function(r) paste(pmin(r$from, r$to), pmax(r$from, r$to))
+  r1 <- res_field[order(key(res_field)), ]
+  r2 <- res_multi[order(key(res_multi)), ]
+  expect_equal(r1$count, r2$count)
+  expect_equal(r1$weight, r2$weight)
+})
+
+test_that("field without sep works with similarity", {
+  df <- data.frame(g1 = c("A", "B", "A"), g2 = c("B", "C", "C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(
+    res <- cooccurrence(df, field = c("g1", "g2"), similarity = "jaccard"),
+    "without `sep`"
+  )
+  expect_true(nrow(res) > 0)
+  expect_true(all(res$weight >= 0 & res$weight <= 1))
+})
+
+test_that("field without sep handles NAs", {
+  df <- data.frame(g1 = c("A", "B", NA), g2 = c("B", NA, "C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(res <- cooccurrence(df, field = c("g1", "g2")),
+                 "without `sep`")
+  expect_s3_class(res, "cooccurrence")
+})
+
+test_that("field without sep suggests separator when found", {
+  df <- data.frame(items = c("A;B;C", "B;C", "A;C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(cooccurrence(df, field = "items"),
+                 'sep = ";"')
+})
+
+test_that("field without sep suggests comma separator", {
+  df <- data.frame(items = c("A,B,C", "B,C", "A,C"),
+                   stringsAsFactors = FALSE)
+  expect_warning(cooccurrence(df, field = "items"),
+                 'sep = ","')
+})
+
+test_that("field without sep gives generic warning when no separator found", {
+  df <- data.frame(g1 = c("A", "B"), g2 = c("C", "D"),
+                   stringsAsFactors = FALSE)
+  expect_warning(cooccurrence(df, field = c("g1", "g2")),
+                 "without `sep`")
+})
+
+# ========================================
 # 12. print.cooccurrence
 # ========================================
 
