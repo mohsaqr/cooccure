@@ -26,32 +26,23 @@ ui <- fluidPage(
     .export-strip { margin-top: 18px; padding: 12px; background: #f0f4fb;
                     border-radius: 6px; border: 1px solid #d0dff5; }
     .export-strip h5 { margin-top: 0; margin-bottom: 10px; color: #2c7be5; }
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .container-fluid { flex: 1; }
     .app-footer {
-      margin-top: 40px; padding: 14px 20px;
+      padding: 12px 24px; margin-top: 30px;
       border-top: 1px solid #e4e8ee;
-      font-size: 11.5px; color: #9aa5b4;
-      text-align: center; line-height: 1.9;
+      font-size: 11px; color: #adb5bd;
+      text-align: center; line-height: 2;
+      background: #fff;
     }
-    .app-footer a { color: #9aa5b4; text-decoration: none; border-bottom: 1px dotted #c5cdd8; }
-    .app-footer a:hover { color: #555; border-bottom-color: #555; }
-    .app-footer .sep { margin: 0 8px; }
+    .app-footer a { color: #adb5bd; text-decoration: none; border-bottom: 1px dotted #ced4da; }
+    .app-footer a:hover { color: #495057; border-bottom-color: #495057; }
+    .app-footer .sep { margin: 0 8px; color: #dee2e6; }
+    .app-footer .block { display: block; margin-top: 2px; }
   "))),
 
   titlePanel("cooccur — Co-occurrence Network Explorer"),
-
-  tags$footer(class = "app-footer",
-    tags$span("Mohammed Saqr"),
-    tags$a(href = "https://saqr.me", target = "_blank", "saqr.me"),
-    tags$span(class = "sep", "·"),
-    tags$span("Sonsoles López-Pernas"),
-    tags$a(href = "https://sonsoles.me", target = "_blank", "sonsoles.me"),
-    tags$span(class = "sep", "·"),
-    tags$a(href = "https://lamethods.org", target = "_blank",
-           "Social Network Analysis in Learning Analytics"),
-    tags$span(class = "sep", "·"),
-    tags$a(href = "https://lamethods.org", target = "_blank",
-           "Methodology of Scientometrics")
-  ),
 
   sidebarLayout(
     sidebarPanel(
@@ -175,6 +166,23 @@ ui <- fluidPage(
           downloadButton("dl_graphml2", "GraphML (igraph)")
         )
       )
+    )
+  ),
+
+  tags$footer(class = "app-footer",
+    tags$span(
+      tags$a(href = "https://saqr.me",     target = "_blank", "Mohammed Saqr"),
+      tags$span(class = "sep", "·"),
+      tags$a(href = "https://sonsoles.me", target = "_blank", "Sonsoles López-Pernas")
+    ),
+    tags$span(class = "block",
+      tags$a(href = "https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html",
+             target = "_blank",
+             "Social Network Analysis: A Primer, a Guide and a Tutorial in R"),
+      tags$span(class = "sep", "·"),
+      tags$a(href = "https://link.springer.com/chapter/10.1007/978-3-031-25336-2_5",
+             target = "_blank",
+             "Scientometrics: A Concise Introduction and a Detailed Methodology")
     )
   )
 )
