@@ -10,6 +10,7 @@ cooccurrence(
   field = NULL,
   by = NULL,
   sep = NULL,
+  weight_by = NULL,
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
@@ -27,6 +28,7 @@ co(
   field = NULL,
   by = NULL,
   sep = NULL,
+  weight_by = NULL,
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
@@ -52,13 +54,23 @@ co(
 \item{field}{Character. The entity column --- determines what the nodes are.
 For delimited format, a single column split by \code{sep}. For
 long/bipartite, the item column. For multi-column delimited, a vector
-of column names pooled per row.}
+of column names pooled per row. Use \code{field = "all"} for wide
+sequence data (e.g. TraMineR / tna format) where every column is a
+time point and cell values are the items.}
 
 \item{by}{Character or \code{NULL}. Grouping column for long/bipartite
 format. Each unique value defines one transaction.}
 
 \item{sep}{Character or \code{NULL}. Separator for splitting delimited
 fields.}
+
+\item{weight_by}{Character or \code{NULL}. Column name containing a numeric
+association strength for each entity-transaction pair. Only accepted for
+long format (\code{field} + \code{by}). When supplied, each entity
+contributes its weight rather than 1, so
+\eqn{C_{ij} = \sum_d w_{id} \cdot w_{jd}}.
+Typical use: topic-document probability matrices from LDA or similar
+models.}
 
 \item{split_by}{Character or \code{NULL}. Column name to split the data
 by before computing co-occurrence. A separate network is computed per
@@ -167,6 +179,14 @@ cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),
 
 # Short alias
 co(df, field = "keywords", sep = ";", similarity = "cosine")
+
+# Weighted long format (e.g. LDA topic-document probabilities)
+theta <- data.frame(
+  doc   = c("d1","d1","d1","d2","d2","d3","d3"),
+  topic = c("T1","T2","T3","T1","T3","T2","T3"),
+  prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
+)
+cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
 
 }
 \references{

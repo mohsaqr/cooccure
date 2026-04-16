@@ -4,5 +4,11 @@
 ^\.github$
 ^.*\.Rproj$
 ^\.Rproj\.user$
-CLAUDE.md
-LICENSE.md
+^\.claude$
+^CLAUDE\.md$
+^LICENSE\.md$
+^HANDOFF\.md$
+^CHANGES\.md$
+^LEARNINGS\.md$
+^tmp$
+^cran-comments\.md$

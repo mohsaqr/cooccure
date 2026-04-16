@@ -287,22 +287,23 @@ co <- cooccurrence
   diag(C) <- 0
   diag(C_raw) <- 0
 
-  # Normalize
+  .co_finalize(C, C_raw, freq, n_trans, ncol(B),
+               similarity, scale_method, threshold, min_occur, top_n)
+}
+
+
+# ---- Shared finalization: normalize -> scale -> threshold -> edges -> stamp ----
+
+#' @noRd
+.co_finalize <- function(C, C_raw, freq, n_trans, n_items,
+                         similarity, scale_method, threshold, min_occur, top_n) {
   W <- .co_normalize(C, freq, similarity)
-
-  # Scale
   if (scale_method != "none") W <- .co_scale(W, scale_method)
-
-  # Threshold
   if (threshold > 0) W[W < threshold] <- 0
 
-  # Extract upper triangle -> tidy edge list
   edges <- .co_matrix_to_edges(W, C_raw)
-
-  # Sort by weight descending
   edges <- edges[order(-edges$weight), ]
 
-  # top_n
   if (!is.null(top_n)) {
     stopifnot(is.numeric(top_n), top_n > 0)
     top_n <- as.integer(top_n)
@@ -310,19 +311,17 @@ co <- cooccurrence
   }
 
   rownames(edges) <- NULL
-
-  # Stamp class + metadata
   class(edges) <- c("cooccurrence", "data.frame")
-  attr(edges, "matrix") <- W
-  attr(edges, "raw_matrix") <- C_raw
-  attr(edges, "items") <- colnames(W)
-  attr(edges, "frequencies") <- freq
-  attr(edges, "similarity") <- similarity
-  attr(edges, "scale") <- scale_method
-  attr(edges, "threshold") <- threshold
-  attr(edges, "min_occur") <- min_occur
+  attr(edges, "matrix")         <- W
+  attr(edges, "raw_matrix")     <- C_raw
+  attr(edges, "items")          <- colnames(W)
+  attr(edges, "frequencies")    <- freq
+  attr(edges, "similarity")     <- similarity
+  attr(edges, "scale")          <- scale_method
+  attr(edges, "threshold")      <- threshold
+  attr(edges, "min_occur")      <- min_occur
   attr(edges, "n_transactions") <- n_trans
-  attr(edges, "n_items") <- ncol(B)
+  attr(edges, "n_items")        <- n_items
 
   edges
 }
@@ -371,33 +370,8 @@ co <- cooccurrence
   storage.mode(C) <- "double"
   diag(C) <- 0
 
-  # Normalize, scale, threshold, edges — identical to standard path
-  Wmat <- .co_normalize(C, freq, similarity)
-  if (scale_method != "none") Wmat <- .co_scale(Wmat, scale_method)
-  if (threshold > 0) Wmat[Wmat < threshold] <- 0
-
-  edges <- .co_matrix_to_edges(Wmat, C_raw)
-  edges <- edges[order(-edges$weight), ]
-
-  if (!is.null(top_n)) {
-    top_n <- as.integer(top_n)
-    if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
-  }
-
-  rownames(edges) <- NULL
-  class(edges) <- c("cooccurrence", "data.frame")
-  attr(edges, "matrix")        <- Wmat
-  attr(edges, "raw_matrix")    <- C_raw
-  attr(edges, "items")         <- colnames(Wmat)
-  attr(edges, "frequencies")   <- freq
-  attr(edges, "similarity")    <- similarity
-  attr(edges, "scale")         <- scale_method
-  attr(edges, "threshold")     <- threshold
-  attr(edges, "min_occur")     <- min_occur
-  attr(edges, "n_transactions")<- n_trans
-  attr(edges, "n_items")       <- ncol(W)
-
-  edges
+  .co_finalize(C, C_raw, freq, n_trans, ncol(W),
+               similarity, scale_method, threshold, min_occur, top_n)
 }
 
 
@@ -615,7 +589,7 @@ co <- cooccurrence
 
 #' Apply counting weights to the binary transaction matrix
 #' @param B Logical matrix (rows = transactions, cols = items).
-#' @param counting "full", "fractional", or "paper".
+#' @param counting "full" or "fractional".
 #' @return Numeric matrix with row weights applied.
 #' @noRd
 .co_apply_counting <- function(B, counting) {
@@ -642,15 +616,16 @@ co <- cooccurrence
   k <- length(all_items)
   B <- matrix(FALSE, nrow = n, ncol = k,
               dimnames = list(NULL, all_items))
-  for (i in seq_len(n)) {
-    B[i, transactions[[i]]] <- TRUE
-  }
+  lens <- vapply(transactions, length, integer(1))
+  row_idx <- rep.int(seq_len(n), lens)
+  col_idx <- match(unlist(transactions, use.names = FALSE), all_items)
+  B[cbind(row_idx, col_idx)] <- TRUE
   B
 }
 
 #' @noRd
 .co_compute_matrix <- function(B) {
-  C <- as.matrix(crossprod(B * 1L))
+  C <- as.matrix(crossprod(B))
   storage.mode(C) <- "double"
   C
 }

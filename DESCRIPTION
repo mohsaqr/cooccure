@@ -30,4 +30,5 @@ Suggests:
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Depends: R (>= 3.5.0)
-URL: http://saqr.me/cooccur/
+URL: https://saqr.me/cooccur/, https://github.com/mohsaqr/cooccur
+BugReports: https://github.com/mohsaqr/cooccur/issues
