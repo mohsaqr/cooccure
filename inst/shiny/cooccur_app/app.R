@@ -345,20 +345,36 @@ server <- function(input, output, session) {
   # ---- Network tab (cograph) ----
   output$net_ui <- renderUI({
     req(result())
-    if (!requireNamespace("cograph", quietly = TRUE)) {
-      return(tags$div(class = "alert alert-danger",
+    r          <- result()
+    min_w      <- input$min_edge_w
+    filtered_n <- sum(r$weight >= min_w, na.rm = TRUE)
+    has_cograph <- requireNamespace("cograph", quietly = TRUE)
+
+    diag <- tags$div(
+      style = "font-family: monospace; font-size: 12px; color: #666;
+               background: #f8f9fa; padding: 8px 12px; margin-bottom: 12px;
+               border-left: 3px solid #2c7be5;",
+      sprintf(
+        "diagnostics  edges=%d  min_weight=%.6f  max_weight=%.6f  filter_threshold=%.6f  passing=%d  cograph_installed=%s",
+        nrow(r), min(r$weight, na.rm = TRUE), max(r$weight, na.rm = TRUE),
+        as.numeric(min_w), filtered_n, has_cograph
+      )
+    )
+
+    if (!has_cograph) {
+      return(tagList(diag, tags$div(class = "alert alert-danger",
         tags$strong("Package 'cograph' is not installed on this server."),
         tags$br(),
         "Install it with ",
         tags$code("install.packages('cograph', repos = 'https://mohsaqr.r-universe.dev')"),
-        " on the host, then restart the app."))
+        " on the host, then restart the app.")))
     }
-    res <- .filtered_cograph(result(), input$min_edge_w)
+    res <- .filtered_cograph(r, min_w)
 
-    if (res$status == "empty") {
+    body <- if (res$status == "empty") {
       tags$div(class = "alert alert-warning",
                sprintf("No edges with weight >= %.4f. Lower the minimum weight filter.",
-                       input$min_edge_w))
+                       as.numeric(min_w)))
     } else if (res$status == "error") {
       tags$div(class = "alert alert-danger",
                tags$strong("Could not build the network: "),
@@ -370,6 +386,7 @@ server <- function(input, output, session) {
     } else {
       plotOutput("cograph_plot", height = "600px")
     }
+    tagList(diag, body)
   })
 
   output$cograph_plot <- renderPlot({
