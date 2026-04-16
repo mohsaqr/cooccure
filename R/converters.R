@@ -9,6 +9,10 @@
 #' @param type Character. \code{"normalized"} (default) or \code{"raw"}.
 #' @param ... Ignored.
 #' @return A numeric matrix.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' as_matrix(res)
+#' as_matrix(res, type = "raw")
 #' @export
 as_matrix <- function(x, ...) UseMethod("as_matrix")
 
@@ -40,6 +44,12 @@ as_matrix.cooccurrence <- function(x, type = c("normalized", "raw"), ...) {
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Passed to \code{igraph::graph_from_data_frame}.
 #' @return An \code{igraph} object.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' if (requireNamespace("igraph", quietly = TRUE)) {
+#'   g <- as_igraph(res)
+#'   igraph::vcount(g)
+#' }
 #' @export
 as_igraph <- function(x, ...) UseMethod("as_igraph")
 
@@ -72,6 +82,12 @@ as_igraph.cooccurrence <- function(x, ...) {
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Ignored.
 #' @return A \code{tbl_graph} object.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' if (requireNamespace("tidygraph", quietly = TRUE) &&
+#'     requireNamespace("igraph",    quietly = TRUE)) {
+#'   as_tidygraph(res)
+#' }
 #' @export
 as_tidygraph <- function(x, ...) UseMethod("as_tidygraph")
 
@@ -93,6 +109,12 @@ as_tidygraph.cooccurrence <- function(x, ...) {
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Ignored.
 #' @return A \code{cograph_network} object.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' if (requireNamespace("cograph", quietly = TRUE)) {
+#'   net <- as_cograph(res)
+#'   net$n_nodes
+#' }
 #' @export
 as_cograph <- function(x, ...) UseMethod("as_cograph")
 
@@ -148,6 +170,12 @@ as_cograph.cooccurrence <- function(x, ...) {
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Ignored.
 #' @return A \code{netobject} with class \code{c("netobject", "cograph_network")}.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' if (requireNamespace("Nestimate", quietly = TRUE)) {
+#'   net <- as_netobject(res)
+#'   net$n_nodes
+#' }
 #' @export
 as_netobject <- function(x, ...) UseMethod("as_netobject")
 

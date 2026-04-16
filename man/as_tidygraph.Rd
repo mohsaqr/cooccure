@@ -20,3 +20,10 @@ A \code{tbl_graph} object.
 \description{
 Creates a \code{tbl_graph} from a \code{cooccurrence} edge list.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+if (requireNamespace("tidygraph", quietly = TRUE) &&
+    requireNamespace("igraph",    quietly = TRUE)) {
+  as_tidygraph(res)
+}
+}

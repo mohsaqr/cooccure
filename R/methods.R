@@ -6,6 +6,9 @@
 #' @param n Integer. Number of rows to show. Default 10.
 #' @param ... Ignored.
 #' @return Invisibly returns \code{x}.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' print(res)
 #' @export
 print.cooccurrence <- function(x, n = 10L, ...) {
   nodes <- length(unique(c(x$from, x$to)))
@@ -41,6 +44,9 @@ print.cooccurrence <- function(x, n = 10L, ...) {
 #' @param object A \code{cooccurrence} data frame.
 #' @param ... Ignored.
 #' @return Invisibly returns \code{object}.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' summary(res)
 #' @export
 summary.cooccurrence <- function(object, ...) {
   nodes <- unique(c(object$from, object$to))
@@ -89,6 +95,9 @@ summary.cooccurrence <- function(object, ...) {
 #'   (requires \pkg{igraph}).
 #' @param ... Passed to the plotting function.
 #' @return Invisibly returns \code{x}.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' plot(res)
 #' @export
 plot.cooccurrence <- function(x, type = c("heatmap", "network"), ...) {
   type <- match.arg(type)

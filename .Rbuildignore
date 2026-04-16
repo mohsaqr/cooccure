@@ -2,3 +2,8 @@
 ^\.Rproj\.user$
 ^LICENSE\.md$
 ^\.claude$
+^CLAUDE\.md$
+^tmp$
+^HANDOFF\.md$
+^CHANGES\.md$
+^LEARNINGS\.md$

@@ -19,3 +19,7 @@ Invisibly returns \code{x}.
 \description{
 Print a cooccurrence edge list
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+print(res)
+}

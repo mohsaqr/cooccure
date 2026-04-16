@@ -17,3 +17,7 @@ Invisibly returns \code{object}.
 \description{
 Summarise a cooccurrence network
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+summary(res)
+}
