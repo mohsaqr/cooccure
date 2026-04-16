@@ -1,0 +1,206 @@
+# ---- Converters for cooccurrence objects ----
+
+#' Extract the co-occurrence matrix
+#'
+#' Returns the full square co-occurrence matrix (normalized + scaled).
+#' Use \code{type = "raw"} for the raw count matrix.
+#'
+#' @param x A \code{cooccurrence} data frame.
+#' @param type Character. \code{"normalized"} (default) or \code{"raw"}.
+#' @param ... Ignored.
+#' @return A numeric matrix.
+#' @export
+as_matrix <- function(x, ...) UseMethod("as_matrix")
+
+#' @rdname as_matrix
+#' @export
+as_matrix.cooccurrence <- function(x, type = c("normalized", "raw"), ...) {
+  type <- match.arg(type)
+  mat <- if (type == "raw") attr(x, "raw_matrix") else attr(x, "matrix")
+  if (!is.null(mat)) return(mat)
+
+  # Rebuild from edges if attribute was lost
+  items <- sort(unique(c(x$from, x$to)))
+  k <- length(items)
+  M <- matrix(0, k, k, dimnames = list(items, items))
+  col <- if (type == "raw") "count" else "weight"
+  for (r in seq_len(nrow(x))) {
+    M[x$from[r], x$to[r]] <- x[[col]][r]
+    M[x$to[r], x$from[r]] <- x[[col]][r]
+  }
+  M
+}
+
+
+#' Convert to igraph
+#'
+#' Creates an undirected, weighted \code{igraph} graph from a
+#' \code{cooccurrence} edge list.
+#'
+#' @param x A \code{cooccurrence} data frame.
+#' @param ... Passed to \code{igraph::graph_from_data_frame}.
+#' @return An \code{igraph} object.
+#' @export
+as_igraph <- function(x, ...) UseMethod("as_igraph")
+
+#' @rdname as_igraph
+#' @export
+as_igraph.cooccurrence <- function(x, ...) {
+  if (!requireNamespace("igraph", quietly = TRUE))
+    stop("Package 'igraph' is required.", call. = FALSE)
+
+  items <- attr(x, "items")
+  vertices <- if (!is.null(items)) {
+    data.frame(name = items, stringsAsFactors = FALSE)
+  } else {
+    NULL
+  }
+
+  igraph::graph_from_data_frame(
+    x[, c("from", "to", "weight", "count")],
+    directed = FALSE,
+    vertices = vertices,
+    ...
+  )
+}
+
+
+#' Convert to tidygraph
+#'
+#' Creates a \code{tbl_graph} from a \code{cooccurrence} edge list.
+#'
+#' @param x A \code{cooccurrence} data frame.
+#' @param ... Ignored.
+#' @return A \code{tbl_graph} object.
+#' @export
+as_tidygraph <- function(x, ...) UseMethod("as_tidygraph")
+
+#' @rdname as_tidygraph
+#' @export
+as_tidygraph.cooccurrence <- function(x, ...) {
+  if (!requireNamespace("tidygraph", quietly = TRUE))
+    stop("Package 'tidygraph' is required.", call. = FALSE)
+  tidygraph::as_tbl_graph(as_igraph(x, ...))
+}
+
+
+#' Convert to cograph network
+#'
+#' Creates a \code{cograph_network} object from a \code{cooccurrence}
+#' edge list, compatible with \code{cograph::splot()} and other cograph
+#' functions.
+#'
+#' @param x A \code{cooccurrence} data frame.
+#' @param ... Ignored.
+#' @return A \code{cograph_network} object.
+#' @export
+as_cograph <- function(x, ...) UseMethod("as_cograph")
+
+#' @rdname as_cograph
+#' @export
+as_cograph.cooccurrence <- function(x, ...) {
+  if (!requireNamespace("cograph", quietly = TRUE))
+    stop("Package 'cograph' is required.", call. = FALSE)
+
+  mat <- as_matrix(x, type = "normalized")
+  items <- colnames(mat)
+
+  nodes_df <- data.frame(
+    id = seq_along(items), label = items, name = items,
+    x = NA_real_, y = NA_real_, stringsAsFactors = FALSE
+  )
+
+  # Edge list from upper triangle
+  idx <- which(upper.tri(mat) & mat != 0, arr.ind = TRUE)
+  if (nrow(idx) > 0L) {
+    edges_df <- data.frame(
+      from = as.integer(idx[, 1]),
+      to = as.integer(idx[, 2]),
+      weight = mat[idx],
+      stringsAsFactors = FALSE
+    )
+  } else {
+    edges_df <- data.frame(from = integer(0), to = integer(0),
+                           weight = numeric(0), stringsAsFactors = FALSE)
+  }
+
+  structure(
+    list(
+      weights = mat,
+      nodes = nodes_df,
+      edges = edges_df,
+      directed = FALSE,
+      n_nodes = length(items),
+      n_edges = nrow(edges_df),
+      meta = list(source = "cooccur", layout = NULL)
+    ),
+    class = "cograph_network"
+  )
+}
+
+
+#' Convert to Nestimate netobject
+#'
+#' Creates a \code{netobject} from a \code{cooccurrence} edge list,
+#' compatible with \code{Nestimate::centrality()},
+#' \code{Nestimate::bootstrap_network()}, etc.
+#'
+#' @param x A \code{cooccurrence} data frame.
+#' @param ... Ignored.
+#' @return A \code{netobject} with class \code{c("netobject", "cograph_network")}.
+#' @export
+as_netobject <- function(x, ...) UseMethod("as_netobject")
+
+#' @rdname as_netobject
+#' @export
+as_netobject.cooccurrence <- function(x, ...) {
+  if (!requireNamespace("Nestimate", quietly = TRUE))
+    stop("Package 'Nestimate' is required.", call. = FALSE)
+
+  mat <- as_matrix(x, type = "normalized")
+  items <- colnames(mat)
+
+  nodes_df <- data.frame(
+    id = seq_along(items), label = items, name = items,
+    x = NA_real_, y = NA_real_, stringsAsFactors = FALSE
+  )
+
+  idx <- which(upper.tri(mat) & mat != 0, arr.ind = TRUE)
+  if (nrow(idx) > 0L) {
+    edges_df <- data.frame(
+      from = as.integer(idx[, 1]),
+      to = as.integer(idx[, 2]),
+      weight = mat[idx],
+      stringsAsFactors = FALSE
+    )
+  } else {
+    edges_df <- data.frame(from = integer(0), to = integer(0),
+                           weight = numeric(0), stringsAsFactors = FALSE)
+  }
+
+  structure(
+    list(
+      data = NULL,
+      weights = mat,
+      nodes = nodes_df,
+      edges = edges_df,
+      directed = FALSE,
+      method = "cooccurrence",
+      params = list(
+        similarity = attr(x, "similarity"),
+        scale = attr(x, "scale"),
+        threshold = attr(x, "threshold"),
+        n_transactions = attr(x, "n_transactions")
+      ),
+      scaling = NULL,
+      threshold = attr(x, "threshold"),
+      n_nodes = length(items),
+      n_edges = nrow(edges_df),
+      level = NULL,
+      meta = list(source = "cooccur", layout = NULL,
+                  tna = list(method = "cooccurrence")),
+      node_groups = NULL
+    ),
+    class = c("netobject", "cograph_network")
+  )
+}
