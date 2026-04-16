@@ -23,6 +23,13 @@
 #'   of column names pooled per row.
 #' @param by Character or \code{NULL}. Grouping column for long/bipartite
 #'   format. Each unique value defines one transaction.
+#' @param weight_by Character or \code{NULL}. Column name containing a numeric
+#'   association strength for each entity-transaction pair. Only accepted for
+#'   long format (\code{field} + \code{by}). When supplied, each entity
+#'   contributes its weight rather than 1, so
+#'   \eqn{C_{ij} = \sum_d w_{id} \cdot w_{jd}}.
+#'   Typical use: topic-document probability matrices from LDA or similar
+#'   models.
 #' @param sep Character or \code{NULL}. Separator for splitting delimited
 #'   fields.
 #' @param split_by Character or \code{NULL}. Column name to split the data
@@ -125,8 +132,17 @@
 #' # Short alias
 #' co(df, field = "keywords", sep = ";", similarity = "cosine")
 #'
+#' # Weighted long format (e.g. LDA topic-document probabilities)
+#' theta <- data.frame(
+#'   doc   = c("d1","d1","d1","d2","d2","d3","d3"),
+#'   topic = c("T1","T2","T3","T1","T3","T2","T3"),
+#'   prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
+#' )
+#' cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
+#'
 #' @export
 cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
+                         weight_by = NULL,
                          split_by = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
@@ -162,6 +178,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
       sub[[split_by]] <- NULL
       edges <- tryCatch(
         .co_core(sub, field = field, by = by, sep = sep,
+                 weight_by = weight_by,
                  similarity = similarity, counting = counting,
                  scale_method = scale_method,
                  threshold = threshold, min_occur = min_occur,
@@ -190,6 +207,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 
   # ---- Single-group path ----
   result <- .co_core(data, field = field, by = by, sep = sep,
+                     weight_by = weight_by,
                      similarity = similarity, counting = counting,
                      scale_method = scale_method,
                      threshold = threshold, min_occur = min_occur,
@@ -207,10 +225,19 @@ co <- cooccurrence
 # ---- Core pipeline (used by both single and split_by paths) ----
 
 #' @noRd
-.co_core <- function(data, field, by, sep, similarity, counting,
-                     scale_method, threshold, min_occur, top_n) {
+.co_core <- function(data, field, by, sep, weight_by = NULL, similarity,
+                     counting, scale_method, threshold, min_occur, top_n) {
   # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
+
+  # Weighted path — long format only
+  if (!is.null(weight_by)) {
+    if (fmt != "long")
+      stop("`weight_by` is only supported for long format (field + by).",
+           call. = FALSE)
+    return(.co_core_weighted(data, field, by, weight_by, similarity,
+                             scale_method, threshold, min_occur, top_n))
+  }
 
   if (fmt == "field_only")
     .co_warn_missing_sep(data, field)
@@ -294,6 +321,79 @@ co <- cooccurrence
   attr(edges, "min_occur") <- min_occur
   attr(edges, "n_transactions") <- n_trans
   attr(edges, "n_items") <- ncol(B)
+
+  edges
+}
+
+
+# ---- Weighted core (long format with per-entity weights) ----
+
+#' @noRd
+.co_core_weighted <- function(data, field, by, weight_by, similarity,
+                               scale_method, threshold, min_occur, top_n) {
+  stopifnot(
+    is.data.frame(data),
+    field %in% names(data), by %in% names(data), weight_by %in% names(data)
+  )
+
+  # Build weighted matrix W: rows = transactions, cols = items
+  W <- tapply(as.numeric(data[[weight_by]]),
+              list(as.character(data[[by]]), as.character(data[[field]])),
+              FUN = sum)
+  W[is.na(W)] <- 0
+  storage.mode(W) <- "double"
+
+  # min_occur: filter by number of transactions with non-zero weight
+  if (min_occur > 1L) {
+    n_docs <- colSums(W > 0)
+    keep <- colnames(W)[n_docs >= min_occur]
+    W <- W[, keep, drop = FALSE]
+  }
+
+  if (ncol(W) == 0L)
+    stop("No items remain after min_occur filtering.", call. = FALSE)
+
+  n_trans <- nrow(W)
+
+  # Frequencies: total weight per item across all transactions
+  freq <- colSums(W)
+
+  # Raw counts: number of transactions containing both items (binary)
+  B <- (W > 0) * 1L
+  C_raw <- as.matrix(crossprod(B))
+  storage.mode(C_raw) <- "double"
+  diag(C_raw) <- 0
+
+  # Weighted co-occurrence: sum of products of weights
+  C <- as.matrix(crossprod(W))
+  storage.mode(C) <- "double"
+  diag(C) <- 0
+
+  # Normalize, scale, threshold, edges — identical to standard path
+  Wmat <- .co_normalize(C, freq, similarity)
+  if (scale_method != "none") Wmat <- .co_scale(Wmat, scale_method)
+  if (threshold > 0) Wmat[Wmat < threshold] <- 0
+
+  edges <- .co_matrix_to_edges(Wmat, C_raw)
+  edges <- edges[order(-edges$weight), ]
+
+  if (!is.null(top_n)) {
+    top_n <- as.integer(top_n)
+    if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
+  }
+
+  rownames(edges) <- NULL
+  class(edges) <- c("cooccurrence", "data.frame")
+  attr(edges, "matrix")        <- Wmat
+  attr(edges, "raw_matrix")    <- C_raw
+  attr(edges, "items")         <- colnames(Wmat)
+  attr(edges, "frequencies")   <- freq
+  attr(edges, "similarity")    <- similarity
+  attr(edges, "scale")         <- scale_method
+  attr(edges, "threshold")     <- threshold
+  attr(edges, "min_occur")     <- min_occur
+  attr(edges, "n_transactions")<- n_trans
+  attr(edges, "n_items")       <- ncol(W)
 
   edges
 }

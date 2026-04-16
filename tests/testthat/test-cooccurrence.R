@@ -582,6 +582,84 @@ test_that("print.cooccurrence with split_by shows group info", {
   expect_true(any(grepl("2 groups", out)))
 })
 
+# ========================================
+# 13. weight_by (weighted long format)
+# ========================================
+
+.theta <- data.frame(
+  doc   = c("d1","d1","d1","d2","d2","d3","d3"),
+  topic = c("T1","T2","T3","T1","T3","T2","T3"),
+  prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5),
+  stringsAsFactors = FALSE
+)
+
+test_that("weight_by returns cooccurrence object with correct columns", {
+  res <- cooccurrence(.theta, field = "topic", by = "doc", weight_by = "prob")
+  expect_s3_class(res, "cooccurrence")
+  expect_true(all(c("from", "to", "weight", "count") %in% names(res)))
+})
+
+test_that("weight_by computes correct weighted co-occurrence values", {
+  res <- cooccurrence(.theta, field = "topic", by = "doc", weight_by = "prob")
+  get_w <- function(a, b) {
+    row <- res[res$from == a & res$to == b | res$from == b & res$to == a, ]
+    row$weight
+  }
+  expect_equal(get_w("T1", "T3"), 0.6*0.1 + 0.4*0.6, tolerance = 1e-10)
+  expect_equal(get_w("T2", "T3"), 0.3*0.1 + 0.5*0.5, tolerance = 1e-10)
+  expect_equal(get_w("T1", "T2"), 0.6*0.3,            tolerance = 1e-10)
+})
+
+test_that("weight_by count column reflects binary co-occurrence", {
+  res <- cooccurrence(.theta, field = "topic", by = "doc", weight_by = "prob")
+  # T1-T2 appear together only in d1 -> count = 1
+  row <- res[res$from == "T1" & res$to == "T2" |
+             res$from == "T2" & res$to == "T1", ]
+  expect_equal(row$count, 1L)
+  # T1-T3 appear in d1 and d2 -> count = 2
+  row <- res[res$from == "T1" & res$to == "T3" |
+             res$from == "T3" & res$to == "T1", ]
+  expect_equal(row$count, 2L)
+})
+
+test_that("weight_by works with similarity normalization", {
+  res <- cooccurrence(.theta, field = "topic", by = "doc",
+                      weight_by = "prob", similarity = "cosine")
+  expect_s3_class(res, "cooccurrence")
+  expect_true(all(res$weight >= 0 & res$weight <= 1))
+})
+
+test_that("weight_by respects min_occur", {
+  res <- cooccurrence(.theta, field = "topic", by = "doc",
+                      weight_by = "prob", min_occur = 2)
+  # T1-T2 pair: T2 appears in d1 and d3 (2 docs), T1 in d1 and d2 (2 docs)
+  # All topics appear in >= 2 docs, so all 3 edges remain
+  expect_equal(nrow(res), 3L)
+})
+
+test_that("weight_by errors on non-long format", {
+  df <- data.frame(items = c("A;B", "B;C"), w = c(1, 2),
+                   stringsAsFactors = FALSE)
+  expect_error(
+    cooccurrence(df, field = "items", sep = ";", weight_by = "w"),
+    "long format"
+  )
+})
+
+test_that("weight_by works with split_by", {
+  df <- data.frame(
+    doc   = c("d1","d1","d2","d2","d3","d3"),
+    topic = c("T1","T2","T1","T2","T1","T2"),
+    prob  = c(0.6, 0.4, 0.3, 0.7, 0.5, 0.5),
+    year  = c(2020, 2020, 2020, 2020, 2021, 2021),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "topic", by = "doc",
+                      weight_by = "prob", split_by = "year")
+  expect_true("group" %in% names(res))
+  expect_equal(sort(unique(res$group)), c("2020", "2021"))
+})
+
 test_that("print.cooccurrence respects n parameter", {
   res <- cooccurrence(.test_list)
   out <- capture.output(print(res, n = 1L))
