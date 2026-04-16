@@ -1,41 +1,15 @@
 library(shiny)
 library(cooccur)
 library(DT)
-library(visNetwork)
 
-# ---- helpers ----
-
-.looks_delimited <- function(data, field) {
-  if (is.null(field) || !field %in% names(data)) return(FALSE)
-  vals <- head(as.character(data[[field]]), 30)
-  any(grepl("[,;|/]", vals, perl = TRUE))
-}
-
-.build_vis <- function(edges, min_w) {
-  edges <- edges[edges$weight >= min_w, ]
-  if (nrow(edges) == 0) return(NULL)
-  if (nrow(edges) > 2000) return("too_many")
-
-  nodes_vec <- unique(c(edges$from, edges$to))
-  deg <- table(c(edges$from, edges$to))
-
-  nodes <- data.frame(
-    id    = nodes_vec,
-    label = nodes_vec,
-    value = as.integer(deg[nodes_vec]),
-    title = paste0("<b>", nodes_vec, "</b><br>degree: ", as.integer(deg[nodes_vec])),
-    stringsAsFactors = FALSE
-  )
-
-  vis_edges <- data.frame(
-    from  = edges$from,
-    to    = edges$to,
-    value = edges$weight,
-    title = sprintf("weight: %.4g<br>count: %d", edges$weight, edges$count),
-    stringsAsFactors = FALSE
-  )
-
-  list(nodes = nodes, edges = vis_edges)
+# ---- helper: build filtered cograph object ----
+.filtered_cograph <- function(result, min_w) {
+  r <- result[result$weight >= min_w, ]
+  if (nrow(r) == 0L) return(NULL)
+  # Null stored matrices so as_cograph rebuilds from the filtered edge rows
+  attr(r, "matrix")     <- NULL
+  attr(r, "raw_matrix") <- NULL
+  tryCatch(as_cograph(r), error = function(e) NULL)
 }
 
 
@@ -47,15 +21,36 @@ ui <- fluidPage(
     .sidebar-panel { background: #f8f9fa; padding: 15px; border-radius: 6px; }
     .section-header { font-weight: 600; margin-top: 14px; margin-bottom: 4px;
                       color: #333; border-bottom: 1px solid #dee2e6; padding-bottom: 3px; }
-    .btn-primary { background-color: #2c7be5; border-color: #2c7be5; }
-    #run { margin-top: 10px; }
+    .btn-primary  { background-color: #2c7be5; border-color: #2c7be5; }
+    .btn-run      { margin-top: 6px; margin-bottom: 10px; }
+    .export-strip { margin-top: 18px; padding: 12px; background: #f0f4fb;
+                    border-radius: 6px; border: 1px solid #d0dff5; }
+    .export-strip h5 { margin-top: 0; margin-bottom: 10px; color: #2c7be5; }
+    .app-footer {
+      margin-top: 40px; padding: 14px 20px;
+      border-top: 1px solid #e4e8ee;
+      font-size: 11.5px; color: #9aa5b4;
+      text-align: center; line-height: 1.9;
+    }
+    .app-footer a { color: #9aa5b4; text-decoration: none; border-bottom: 1px dotted #c5cdd8; }
+    .app-footer a:hover { color: #555; border-bottom-color: #555; }
+    .app-footer .sep { margin: 0 8px; }
   "))),
 
-  titlePanel(
-    tags$span(
-      tags$img(src = NULL),
-      "cooccur — Co-occurrence Network Explorer"
-    )
+  titlePanel("cooccur — Co-occurrence Network Explorer"),
+
+  tags$footer(class = "app-footer",
+    tags$span("Mohammed Saqr"),
+    tags$a(href = "https://saqr.me", target = "_blank", "saqr.me"),
+    tags$span(class = "sep", "·"),
+    tags$span("Sonsoles López-Pernas"),
+    tags$a(href = "https://sonsoles.me", target = "_blank", "sonsoles.me"),
+    tags$span(class = "sep", "·"),
+    tags$a(href = "https://lamethods.org", target = "_blank",
+           "Social Network Analysis in Learning Analytics"),
+    tags$span(class = "sep", "·"),
+    tags$a(href = "https://lamethods.org", target = "_blank",
+           "Methodology of Scientometrics")
   ),
 
   sidebarLayout(
@@ -66,10 +61,10 @@ ui <- fluidPage(
       # ---- Data ----
       div(class = "section-header", "Data"),
       radioButtons("data_source", label = NULL,
-                   choices = c("Built-in: movies" = "movies",
-                               "Built-in: actors"  = "actors",
-                               "Upload CSV"        = "upload"),
-                   selected = "movies"),
+                   choices = c("Upload CSV"        = "upload",
+                               "Built-in: movies"  = "movies",
+                               "Built-in: actors"  = "actors"),
+                   selected = "upload"),
 
       conditionalPanel(
         condition = "input.data_source == 'upload'",
@@ -79,11 +74,14 @@ ui <- fluidPage(
 
       # ---- Columns ----
       div(class = "section-header", "Columns"),
-
       uiOutput("ui_field"),
       uiOutput("ui_sep"),
       uiOutput("ui_by"),
       uiOutput("ui_split_by"),
+
+      # ---- BUILD NETWORK (early) ----
+      actionButton("run", "Build network", class = "btn-primary btn-run",
+                   width = "100%", icon = icon("play")),
 
       # ---- Similarity & Counting ----
       div(class = "section-header", "Similarity"),
@@ -100,20 +98,17 @@ ui <- fluidPage(
       # ---- Filters ----
       div(class = "section-header", "Filters"),
       fluidRow(
-        column(6, numericInput("min_occur",  "Min freq",  value = 1,  min = 1, step = 1)),
-        column(6, numericInput("threshold",  "Threshold", value = 0,  min = 0, step = 0.01))
+        column(6, numericInput("min_occur", "Min freq",  value = 1, min = 1, step = 1)),
+        column(6, numericInput("threshold", "Threshold", value = 0, min = 0, step = 0.01))
       ),
       numericInput("top_n", "Top N edges (0 = all)", value = 0, min = 0, step = 25),
 
-      # ---- Scale (advanced) ----
+      # ---- Scale ----
       div(class = "section-header", "Scale (optional)"),
       selectInput("scale", label = NULL,
                   choices = c("none", "minmax", "log", "log10",
                               "binary", "zscore", "sqrt", "proportion"),
-                  selected = "none"),
-
-      actionButton("run", "Build network", class = "btn-primary",
-                   width = "100%", icon = icon("play"))
+                  selected = "none")
     ),
 
     mainPanel(
@@ -121,44 +116,64 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs",
 
+        # ---- Summary ----
         tabPanel("Summary",
-                 br(),
-                 verbatimTextOutput("summary_out"),
-                 br(),
-                 verbatimTextOutput("print_out")),
+          br(),
+          verbatimTextOutput("summary_out"),
+          br(),
+          verbatimTextOutput("print_out"),
 
-        tabPanel("Edge table",
-                 br(),
-                 DTOutput("edge_table")),
+          # Early export strip
+          uiOutput("export_strip")
+        ),
 
+        # ---- View edge table ----
+        tabPanel("View edge table",
+          br(),
+          DTOutput("edge_table")
+        ),
+
+        # ---- Network (cograph) ----
         tabPanel("Network",
-                 br(),
-                 fluidRow(
-                   column(4,
-                     sliderInput("min_edge_w", "Min edge weight",
-                                 min = 0, max = 1, value = 0, step = 0.01,
-                                 width = "100%")
-                   ),
-                   column(4,
-                     selectInput("vis_layout", "Layout",
-                                 choices = c("layout_with_fr"    = "layout_with_fr",
-                                             "layout_with_kk"    = "layout_with_kk",
-                                             "layout_nicely"     = "layout_nicely",
-                                             "layout_in_circle"  = "layout_in_circle"),
-                                 selected = "layout_with_fr", width = "100%")
-                   )
-                 ),
-                 uiOutput("net_ui")),
+          br(),
+          fluidRow(
+            column(3,
+              sliderInput("min_edge_w", "Min edge weight",
+                          min = 0, max = 1, value = 0, step = 0.01,
+                          width = "100%")
+            ),
+            column(3,
+              selectInput("net_layout", "Layout",
+                          choices = c("Fruchterman-Reingold" = "fr",
+                                      "Kamada-Kawai"         = "kk",
+                                      "Gephi"                = "gephi",
+                                      "Circle"               = "circle",
+                                      "Nicely"               = "nicely"),
+                          selected = "fr", width = "100%")
+            ),
+            column(3,
+              numericInput("label_size", "Label size", value = 0.8,
+                           min = 0.3, max = 2, step = 0.1, width = "100%")
+            ),
+            column(3,
+              numericInput("edge_width_max", "Max edge width", value = 4,
+                           min = 0.5, max = 10, step = 0.5, width = "100%")
+            )
+          ),
+          uiOutput("net_ui")
+        ),
 
+        # ---- Export ----
         tabPanel("Export",
-                 br(),
-                 h5("Download edge list"),
-                 downloadButton("dl_csv",     "CSV (default)"),
-                 " ",
-                 downloadButton("dl_gephi",   "CSV (Gephi)"),
-                 br(), br(),
-                 h5("Download network"),
-                 downloadButton("dl_graphml", "GraphML (igraph)"))
+          br(),
+          h5("Edge list"),
+          downloadButton("dl_csv2",     "CSV (default)"),
+          " ",
+          downloadButton("dl_gephi2",   "CSV (Gephi)"),
+          br(), br(),
+          h5("Network file"),
+          downloadButton("dl_graphml2", "GraphML (igraph)")
+        )
       )
     )
   )
@@ -181,38 +196,33 @@ server <- function(input, output, session) {
     )
   })
 
-  # ---- pre-fill column selectors when built-in data changes ----
+  # ---- pre-fill columns when source changes ----
   observeEvent(data_loaded(), {
-    d <- data_loaded()
+    d        <- data_loaded()
     cols     <- colnames(d)
     cols_opt <- c("— none —" = "", cols)
 
-    # field
     default_field <- if (input$data_source == "movies") "genres" else
                      if (input$data_source == "actors") "actor"  else cols[1]
     updateSelectInput(session, "field_sel",    choices = cols,     selected = default_field)
 
-    # sep
     default_sep <- if (input$data_source == "movies") "," else ""
     updateTextInput(session,   "sep_val",      value   = default_sep)
 
-    # by
     default_by <- if (input$data_source == "actors") "tconst" else ""
     updateSelectInput(session, "by_sel",       choices = cols_opt, selected = default_by)
 
-    # split_by
-    default_split <- if (input$data_source == "movies") "" else ""
-    updateSelectInput(session, "split_by_sel", choices = cols_opt, selected = default_split)
+    updateSelectInput(session, "split_by_sel", choices = cols_opt, selected = "")
   })
 
-  # ---- dynamic column UI ----
+  # ---- dynamic column selectors ----
   output$ui_field <- renderUI({
     d <- data_loaded()
     selectInput("field_sel", "Field (nodes)", choices = colnames(d))
   })
 
   output$ui_sep <- renderUI({
-    textInput("sep_val", "Separator (sep)", value = ",",
+    textInput("sep_val", "Separator (sep)", value = "",
               placeholder = "e.g.  ,  ;  |")
   })
 
@@ -228,7 +238,7 @@ server <- function(input, output, session) {
                 choices = c("— none —" = "", colnames(d)), selected = "")
   })
 
-  # ---- reactive: run cooccurrence ----
+  # ---- reactive: cooccurrence result ----
   result <- eventReactive(input$run, {
     d        <- data_loaded()
     field    <- input$field_sel
@@ -259,16 +269,14 @@ server <- function(input, output, session) {
     })
   })
 
-  # update slider range when result changes
+  # update slider range to match result weights
   observeEvent(result(), {
     r <- result()
     if (!is.null(r) && nrow(r) > 0) {
-      mn <- min(r$weight, na.rm = TRUE)
-      mx <- max(r$weight, na.rm = TRUE)
+      mn <- round(min(r$weight, na.rm = TRUE), 4)
+      mx <- round(max(r$weight, na.rm = TRUE), 4)
       updateSliderInput(session, "min_edge_w",
-                        min   = round(mn, 4),
-                        max   = round(mx, 4),
-                        value = round(mn, 4),
+                        min   = mn, max = mx, value = mn,
                         step  = round((mx - mn) / 100, 4))
     }
   })
@@ -284,59 +292,72 @@ server <- function(input, output, session) {
     print(result(), n = 10L)
   })
 
-  # ---- Edge table tab ----
+  output$export_strip <- renderUI({
+    req(result())
+    div(class = "export-strip",
+      h5("Export"),
+      downloadButton("dl_csv",     "CSV"),
+      " ",
+      downloadButton("dl_gephi",   "Gephi CSV"),
+      " ",
+      downloadButton("dl_graphml", "GraphML")
+    )
+  })
+
+  # ---- View edge table tab ----
   output$edge_table <- renderDT({
     req(result())
     r <- as.data.frame(result())
-    num_cols <- intersect(c("weight"), names(r))
-    r[num_cols] <- lapply(r[num_cols], round, digits = 6)
+    r$weight <- round(r$weight, 6)
     datatable(r,
-              filter    = "top",
-              rownames  = FALSE,
-              options   = list(pageLength = 25, scrollX = TRUE))
+              filter   = "top",
+              rownames = FALSE,
+              options  = list(pageLength = 25, scrollX = TRUE))
   })
 
-  # ---- Network tab ----
+  # ---- Network tab (cograph) ----
   output$net_ui <- renderUI({
     req(result())
-    r    <- result()
-    vis  <- .build_vis(r, input$min_edge_w)
+    r   <- result()
+    net <- .filtered_cograph(r, input$min_edge_w)
 
-    if (is.null(vis)) {
+    if (is.null(net)) {
       tags$div(class = "alert alert-warning",
                "No edges above the current weight threshold.")
-    } else if (identical(vis, "too_many")) {
+    } else if (net$n_edges > 3000) {
       tags$div(class = "alert alert-info",
-               sprintf("Too many edges to render (> 2,000). Raise the minimum weight filter."))
+               sprintf("%d edges — too many to render clearly. Raise the minimum weight filter.",
+                       net$n_edges))
     } else {
-      visNetworkOutput("vis_plot", height = "580px")
+      plotOutput("cograph_plot", height = "600px")
     }
   })
 
-  output$vis_plot <- renderVisNetwork({
+  output$cograph_plot <- renderPlot({
     req(result())
+    if (!requireNamespace("cograph", quietly = TRUE)) {
+      plot.new()
+      text(0.5, 0.5, "Package 'cograph' is required for network plots.\ninstall.packages('cograph')",
+           cex = 1.2, col = "firebrick")
+      return(invisible(NULL))
+    }
     r   <- result()
-    vis <- .build_vis(r, input$min_edge_w)
-    req(is.list(vis) && !identical(vis, "too_many"))
+    net <- .filtered_cograph(r, input$min_edge_w)
+    req(!is.null(net))
 
-    visNetwork(vis$nodes, vis$edges, width = "100%") |>
-      visOptions(highlightNearest = list(enabled = TRUE, degree = 1),
-                 nodesIdSelection = TRUE) |>
-      visNodes(scaling = list(min = 10, max = 40),
-               font   = list(size = 14)) |>
-      visEdges(scaling = list(min = 1, max = 8),
-               smooth  = list(enabled = TRUE, type = "continuous")) |>
-      visIgraphLayout(layout = input$vis_layout) |>
-      visInteraction(navigationButtons = TRUE) |>
-      visPhysics(enabled = FALSE)
+    cograph::splot(
+      net,
+      layout          = input$net_layout,
+      scale_nodes_by  = "degree",
+      label_size      = input$label_size,
+      edge_width_range = c(0.1, input$edge_width_max)
+    )
   })
 
-  # ---- Export tab ----
+  # ---- Download handlers (shared by Summary strip + Export tab) ----
   output$dl_csv <- downloadHandler(
     filename = function() paste0("cooccurrence_", Sys.Date(), ".csv"),
-    content  = function(f) {
-      write.csv(as.data.frame(result()), f, row.names = FALSE)
-    }
+    content  = function(f) write.csv(as.data.frame(result()), f, row.names = FALSE)
   )
 
   output$dl_gephi <- downloadHandler(
@@ -370,8 +391,48 @@ server <- function(input, output, session) {
         showNotification("igraph is required for GraphML export.", type = "error")
         return(NULL)
       }
-      g <- as_igraph(result())
-      igraph::write_graph(g, f, format = "graphml")
+      igraph::write_graph(as_igraph(result()), f, format = "graphml")
+    }
+  )
+
+  # ---- Export tab handlers (separate IDs to avoid duplicate-ID conflict) ----
+  output$dl_csv2 <- downloadHandler(
+    filename = function() paste0("cooccurrence_", Sys.Date(), ".csv"),
+    content  = function(f) write.csv(as.data.frame(result()), f, row.names = FALSE)
+  )
+
+  output$dl_gephi2 <- downloadHandler(
+    filename = function() paste0("cooccurrence_gephi_", Sys.Date(), ".csv"),
+    content  = function(f) {
+      req(result())
+      gephi <- tryCatch(
+        cooccurrence(data_loaded(),
+                     field      = input$field_sel,
+                     sep        = if (nzchar(trimws(input$sep_val))) trimws(input$sep_val) else NULL,
+                     by         = if (nzchar(input$by_sel))       input$by_sel       else NULL,
+                     split_by   = if (nzchar(input$split_by_sel)) input$split_by_sel else NULL,
+                     similarity = input$similarity,
+                     counting   = input$counting,
+                     scale      = if (input$scale == "none") NULL else input$scale,
+                     threshold  = input$threshold,
+                     min_occur  = as.integer(input$min_occur),
+                     top_n      = if (input$top_n > 0) as.integer(input$top_n) else NULL,
+                     output     = "gephi"),
+        error = function(e) NULL
+      )
+      write.csv(as.data.frame(gephi), f, row.names = FALSE)
+    }
+  )
+
+  output$dl_graphml2 <- downloadHandler(
+    filename = function() paste0("cooccurrence_", Sys.Date(), ".graphml"),
+    content  = function(f) {
+      req(result())
+      if (!requireNamespace("igraph", quietly = TRUE)) {
+        showNotification("igraph is required for GraphML export.", type = "error")
+        return(NULL)
+      }
+      igraph::write_graph(as_igraph(result()), f, format = "graphml")
     }
   )
 }

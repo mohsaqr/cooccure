@@ -22,7 +22,6 @@ Suggests:
     knitr,
     rmarkdown,
     shiny,
-    DT,
-    visNetwork
+    DT
 Config/testthat/edition: 3
 VignetteBuilder: knitr
