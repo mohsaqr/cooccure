@@ -20,9 +20,6 @@ This tutorial demonstrates every feature of the `cooccur` package using 1,000 hi
 
 ```{r load-data}
 library(cooccur)
-
-movies <- read.csv(system.file("extdata/imdb_movies.csv", package = "cooccur"))
-actor_movie <- read.csv(system.file("extdata/imdb_actor_movie.csv", package = "cooccur"))
 ```
 
 ## 1. Genre co-occurrence (delimited field)
@@ -162,14 +159,14 @@ co(movies, field = "genres", sep = ",",
 Actors who share movies are connected. The data is one row per actor--movie pair. Use `field` for the entity and `by` for the grouping column.
 
 ```{r actor-net}
-co(actor_movie, field = "actor", by = "tconst",
+co(actors, field = "actor", by = "tconst",
    similarity = "jaccard", min_occur = 3, threshold = 0.1)
 ```
 
 With fractional counting:
 
 ```{r actor-frac}
-co(actor_movie, field = "actor", by = "tconst",
+co(actors, field = "actor", by = "tconst",
    similarity = "jaccard", counting = "fractional",
    min_occur = 3, threshold = 0.05)
 ```
@@ -190,7 +187,9 @@ Filter to a specific decade:
 decades <- co(movies, field = "genres", sep = ",",
               split_by = "decade", similarity = "jaccard",
               min_occur = 5, top_n = 5)
+
 decades[decades$group == "2010s", ]
+
 ```
 
 ### Split by rating band
@@ -222,6 +221,7 @@ write.csv(
   co(movies, field = "genres", sep = ",", similarity = "jaccard", output = "gephi"),
   "genre_network.csv", row.names = FALSE
 )
+
 ```
 
 ### cograph (with Gephi layout)
@@ -231,13 +231,18 @@ Convert to a cograph network and plot with `splot()` using the Gephi Fruchterman
 ```{r out-cograph, fig.width=8, fig.height=8}
 net <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "cograph")
-cograph::splot(net, layout = "gephi")
+cograph::splot(net, layout = "fr", scale_nodes_by = "degree")
+
 ```
 
 With customized edge width and label size:
 
 ```{r cograph-styled, fig.width=8, fig.height=8}
-cograph::splot(net, layout = "gephi", edge_width = 3, label_size = 0.9)
+cograph::splot(net, layout = "gephi", label_size = 0.9, scale_nodes_by = "degree", edge_width_range   =c(0.1:4))
+
+
+
+
 ```
 
 ### igraph
