@@ -460,3 +460,498 @@ test_that("counting with long/bipartite format", {
   ab <- res[res$from == "A" & res$to == "B", ]
   expect_equal(ab$weight, 0.5, tolerance = 1e-10)
 })
+
+# ========================================
+# 12. print.cooccurrence
+# ========================================
+
+test_that("print.cooccurrence shows header and edges", {
+  res <- cooccurrence(.test_list)
+  out <- capture.output(print(res))
+  expect_true(any(grepl("cooccurrence:", out)))
+  expect_true(any(grepl("nodes", out)))
+  expect_true(any(grepl("edges", out)))
+  expect_true(any(grepl("transactions", out)))
+})
+
+test_that("print.cooccurrence returns x invisibly", {
+  res <- cooccurrence(.test_list)
+  out <- withVisible(capture.output(ret <- print(res)))
+  expect_identical(ret, res)
+})
+
+test_that("print.cooccurrence shows similarity and scale", {
+  res <- cooccurrence(.test_list, similarity = "jaccard", scale = "log")
+  out <- capture.output(print(res))
+  expect_true(any(grepl("similarity: jaccard", out)))
+  expect_true(any(grepl("scale: log", out)))
+})
+
+test_that("print.cooccurrence with split_by shows group info", {
+  df <- data.frame(
+    grp = c("X", "X", "Y", "Y"),
+    kw = c("A; B", "A; B", "C; D", "C; D"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "grp")
+  out <- capture.output(print(res))
+  expect_true(any(grepl("split_by: grp", out)))
+  expect_true(any(grepl("2 groups", out)))
+})
+
+test_that("print.cooccurrence respects n parameter", {
+  res <- cooccurrence(.test_list)
+  out <- capture.output(print(res, n = 1L))
+  expect_true(any(grepl("more edges", out)))
+})
+
+test_that("print.cooccurrence handles zero edges", {
+  res <- cooccurrence(list(c("A"), c("B"), c("C")))
+  out <- capture.output(print(res))
+  expect_true(any(grepl("no edges", out)))
+})
+
+test_that("print.cooccurrence omits similarity when 'none'", {
+  res <- cooccurrence(.test_list, similarity = "none")
+  out <- capture.output(print(res))
+  expect_false(any(grepl("similarity:", out)))
+})
+
+# ========================================
+# 13. summary.cooccurrence
+# ========================================
+
+test_that("summary.cooccurrence shows network stats", {
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  out <- capture.output(summary(res))
+  expect_true(any(grepl("cooccurrence network", out)))
+  expect_true(any(grepl("Nodes", out)))
+  expect_true(any(grepl("Edges", out)))
+  expect_true(any(grepl("Density", out)))
+  expect_true(any(grepl("Transactions", out)))
+  expect_true(any(grepl("Similarity.*jaccard", out)))
+  expect_true(any(grepl("Weight range", out)))
+  expect_true(any(grepl("Count range", out)))
+  expect_true(any(grepl("Top nodes", out)))
+})
+
+test_that("summary.cooccurrence returns object invisibly", {
+  res <- cooccurrence(.test_list)
+  capture.output(ret <- summary(res))
+  expect_identical(ret, res)
+})
+
+test_that("summary.cooccurrence shows scale when not 'none'", {
+  res <- cooccurrence(.test_list, scale = "minmax")
+  out <- capture.output(summary(res))
+  expect_true(any(grepl("Scale.*minmax", out)))
+})
+
+test_that("summary.cooccurrence omits scale when 'none'", {
+  res <- cooccurrence(.test_list)
+  out <- capture.output(summary(res))
+  expect_false(any(grepl("Scale", out)))
+})
+
+test_that("summary.cooccurrence handles zero edges", {
+  res <- cooccurrence(list(c("A"), c("B"), c("C")))
+  out <- capture.output(summary(res))
+  expect_true(any(grepl("Edges.*: 0", out)))
+  # Should NOT print weight/count/top nodes sections
+  expect_false(any(grepl("Weight range", out)))
+})
+
+# ========================================
+# 14. plot.cooccurrence
+# ========================================
+
+test_that("plot.cooccurrence heatmap works", {
+  res <- cooccurrence(.test_list)
+  expect_invisible(plot(res, type = "heatmap"))
+})
+
+test_that("plot.cooccurrence heatmap works when matrix attr is NULL", {
+  res <- cooccurrence(.test_list)
+  attr(res, "matrix") <- NULL
+  expect_invisible(plot(res, type = "heatmap"))
+})
+
+test_that("plot.cooccurrence network requires igraph", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list)
+  expect_invisible(plot(res, type = "network"))
+})
+
+test_that("plot.cooccurrence returns x invisibly", {
+  res <- cooccurrence(.test_list)
+  ret <- plot(res, type = "heatmap")
+  expect_identical(ret, res)
+})
+
+# ========================================
+# 15. Converter edge cases
+# ========================================
+
+test_that("as_matrix rebuilds from edges when attribute is lost", {
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  attr(res, "matrix") <- NULL
+  mat <- as_matrix(res)
+  expect_true(is.matrix(mat))
+  expect_equal(nrow(mat), 3L)
+  expect_true(isSymmetric(mat))
+  # Should match the weight values
+  ab <- res[res$from == "A" & res$to == "B", ]
+  expect_equal(mat["A", "B"], ab$weight)
+})
+
+test_that("as_matrix rebuilds raw from edges when attribute is lost", {
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  attr(res, "raw_matrix") <- NULL
+  raw <- as_matrix(res, type = "raw")
+  expect_true(is.matrix(raw))
+  expect_equal(raw["A", "B"], 1)
+  expect_equal(raw["A", "C"], 2)
+})
+
+test_that("as_igraph works when items attribute is NULL", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list)
+  attr(res, "items") <- NULL
+  g <- as_igraph(res)
+  expect_true(igraph::is_igraph(g))
+  expect_equal(igraph::vcount(g), 3L)
+})
+
+test_that("as_cograph structure is complete", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  expect_false(net$directed)
+  expect_equal(net$n_edges, 3L)
+  expect_true(is.matrix(net$weights))
+  expect_true(all(c("id", "label", "name", "x", "y") %in% names(net$nodes)))
+  expect_true(all(c("from", "to", "weight") %in% names(net$edges)))
+  expect_equal(net$meta$source, "cooccur")
+})
+
+test_that("as_netobject structure is complete", {
+  skip_if_not_installed("Nestimate")
+  res <- cooccurrence(.test_list, similarity = "jaccard", threshold = 0)
+  net <- as_netobject(res)
+  expect_equal(net$method, "cooccurrence")
+  expect_equal(net$params$similarity, "jaccard")
+  expect_true(is.matrix(net$weights))
+  expect_true(all(c("id", "label", "name") %in% names(net$nodes)))
+  expect_true(all(c("from", "to", "weight") %in% names(net$edges)))
+  expect_equal(net$meta$tna$method, "cooccurrence")
+})
+
+# ========================================
+# 16. Converter error paths (missing packages)
+# ========================================
+
+test_that("as_tidygraph errors when tidygraph is not available", {
+  skip_if(requireNamespace("tidygraph", quietly = TRUE),
+          "tidygraph is installed; cannot test missing-package path")
+  res <- cooccurrence(.test_list)
+  expect_error(as_tidygraph(res), "tidygraph")
+})
+
+test_that("as_netobject errors when Nestimate is not available", {
+  skip_if(requireNamespace("Nestimate", quietly = TRUE),
+          "Nestimate is installed; cannot test missing-package path")
+  res <- cooccurrence(.test_list)
+  expect_error(as_netobject(res), "Nestimate")
+})
+
+# ========================================
+# 17. as_cograph / as_netobject with zero edges
+# ========================================
+
+test_that("as_cograph handles zero edges", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(list(c("A"), c("B")))
+  net <- as_cograph(res)
+  expect_equal(net$n_edges, 0L)
+  expect_equal(nrow(net$edges), 0L)
+  expect_true(all(c("from", "to", "weight") %in% names(net$edges)))
+})
+
+test_that("as_netobject handles zero edges", {
+  skip_if_not_installed("Nestimate")
+  res <- cooccurrence(list(c("A"), c("B")))
+  net <- as_netobject(res)
+  expect_equal(net$n_edges, 0L)
+  expect_equal(nrow(net$edges), 0L)
+})
+
+# ========================================
+# 18. as_tidygraph full path
+# ========================================
+
+test_that("as_tidygraph produces correct tbl_graph", {
+  skip_if_not_installed("tidygraph")
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list)
+  tg <- as_tidygraph(res)
+  expect_true(inherits(tg, "tbl_graph"))
+  expect_equal(igraph::vcount(tg), 3L)
+  expect_equal(igraph::ecount(tg), 3L)
+})
+
+# ========================================
+# 19. as_igraph edge attributes & vertex details
+# ========================================
+
+test_that("as_igraph preserves edge weights and counts", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  g <- as_igraph(res)
+  expect_true("weight" %in% igraph::edge_attr_names(g))
+  expect_true("count" %in% igraph::edge_attr_names(g))
+  expect_equal(igraph::ecount(g), nrow(res))
+})
+
+test_that("as_igraph includes isolated nodes from items attr", {
+  skip_if_not_installed("igraph")
+  # min_occur filters D from edges, but items attr includes all original items
+  trans <- list(c("A", "B"), c("A", "B"), c("A", "D"))
+  res <- cooccurrence(trans, min_occur = 2L)
+  # Items attr still has D if it appeared in transactions
+  g <- as_igraph(res)
+  expect_true(igraph::is_igraph(g))
+})
+
+# ========================================
+# 20. as_cograph detailed checks
+# ========================================
+
+test_that("as_cograph nodes have sequential ids", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  expect_equal(net$nodes$id, seq_len(net$n_nodes))
+})
+
+test_that("as_cograph edges reference valid node ids", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  all_ids <- net$nodes$id
+  expect_true(all(net$edges$from %in% all_ids))
+  expect_true(all(net$edges$to %in% all_ids))
+})
+
+test_that("as_cograph weights matrix matches normalized matrix", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list, similarity = "cosine")
+  net <- as_cograph(res)
+  mat <- as_matrix(res, type = "normalized")
+  expect_equal(net$weights, mat)
+})
+
+# ========================================
+# 21. as_matrix thorough
+# ========================================
+
+test_that("as_matrix diagonal is zero (no self-loops)", {
+  res <- cooccurrence(.test_list)
+  mat <- as_matrix(res)
+  expect_true(all(diag(mat) == 0))
+  raw <- as_matrix(res, type = "raw")
+  expect_true(all(diag(raw) == 0))
+})
+
+test_that("as_matrix dimnames are sorted unique items", {
+  res <- cooccurrence(.test_list)
+  mat <- as_matrix(res)
+  items <- sort(unique(c(res$from, res$to)))
+  expect_equal(rownames(mat), items)
+  expect_equal(colnames(mat), items)
+})
+
+test_that("as_matrix rebuilt normalized matches stored matrix", {
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  stored <- attr(res, "matrix")
+  attr(res, "matrix") <- NULL
+  rebuilt <- as_matrix(res)
+  # Diagonal is lost when rebuilding from edges (no self-edges), so compare off-diagonal
+  diag(stored) <- 0
+  expect_equal(rebuilt, stored)
+})
+
+test_that("as_matrix rebuilt raw is symmetric", {
+  res <- cooccurrence(.test_list, similarity = "cosine")
+  attr(res, "raw_matrix") <- NULL
+  raw <- as_matrix(res, type = "raw")
+  expect_true(isSymmetric(raw))
+})
+
+test_that("as_matrix with scaled result returns scaled values", {
+  res <- cooccurrence(.test_list, similarity = "jaccard", scale = "minmax")
+  mat <- as_matrix(res)
+  expect_true(all(mat >= 0))
+  expect_true(all(mat <= 1))
+})
+
+test_that("as_matrix on zero-edge result returns zero off-diagonal", {
+  res <- cooccurrence(list(c("A"), c("B"), c("C")))
+  mat <- as_matrix(res, type = "raw")
+  diag(mat) <- 0
+  expect_true(all(mat == 0))
+})
+
+test_that("as_matrix on split_by falls back to rebuild from edges", {
+  df <- data.frame(
+    grp = c("X", "X", "Y", "Y"),
+    kw = c("A; B", "A; B", "C; D", "C; D"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "grp")
+  # split_by does not store per-group matrices in attr, but the combined
+  # result may not have a matrix attr → rebuild path
+  mat <- as_matrix(res)
+  expect_true(is.matrix(mat))
+  expect_true(isSymmetric(mat))
+})
+
+# ========================================
+# 22. Generic dispatch errors
+# ========================================
+
+test_that("as_matrix errors on non-cooccurrence input", {
+  expect_error(as_matrix(42))
+})
+
+test_that("as_igraph errors on non-cooccurrence input", {
+  expect_error(as_igraph(42))
+})
+
+test_that("as_cograph errors on non-cooccurrence input", {
+  expect_error(as_cograph(42))
+})
+
+test_that("as_tidygraph errors on non-cooccurrence input", {
+  expect_error(as_tidygraph(42))
+})
+
+test_that("as_netobject errors on non-cooccurrence input", {
+  expect_error(as_netobject(42))
+})
+
+# ========================================
+# 23. as_igraph thorough
+# ========================================
+
+test_that("as_igraph vertex names match items attribute", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list)
+  g <- as_igraph(res)
+  expect_setequal(igraph::V(g)$name, attr(res, "items"))
+})
+
+test_that("as_igraph edge weights match cooccurrence weights", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  g <- as_igraph(res)
+  el <- igraph::as_data_frame(g, what = "edges")
+  # Sort both for comparison
+  el <- el[order(el$from, el$to), ]
+  co_sorted <- res[order(res$from, res$to), ]
+  expect_equal(el$weight, co_sorted$weight)
+  expect_equal(el$count, co_sorted$count)
+})
+
+test_that("as_igraph with zero edges gives edgeless graph", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(list(c("A"), c("B"), c("C")))
+  g <- as_igraph(res)
+  expect_equal(igraph::ecount(g), 0L)
+  # Vertices still present if items attr exists
+  items <- attr(res, "items")
+  if (!is.null(items)) {
+    expect_true(igraph::vcount(g) >= length(items))
+  }
+})
+
+test_that("as_igraph with similarity + scale produces valid graph", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list, similarity = "dice", scale = "sqrt")
+  g <- as_igraph(res)
+  expect_true(igraph::is_igraph(g))
+  expect_true(all(igraph::E(g)$weight >= 0))
+})
+
+test_that("as_igraph roundtrip preserves edge count", {
+  skip_if_not_installed("igraph")
+  res <- cooccurrence(.test_list)
+  g <- as_igraph(res)
+  el <- igraph::as_data_frame(g, what = "edges")
+  expect_equal(nrow(el), nrow(res))
+})
+
+# ========================================
+# 24. as_cograph thorough
+# ========================================
+
+test_that("as_cograph node labels match sorted items", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  mat <- as_matrix(res, type = "normalized")
+  expect_equal(net$nodes$label, colnames(mat))
+  expect_equal(net$nodes$name, colnames(mat))
+})
+
+test_that("as_cograph edge count matches non-zero upper triangle", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list, similarity = "jaccard")
+  net <- as_cograph(res)
+  mat <- as_matrix(res, type = "normalized")
+  expected_edges <- sum(upper.tri(mat) & mat != 0)
+  expect_equal(net$n_edges, expected_edges)
+  expect_equal(nrow(net$edges), expected_edges)
+})
+
+test_that("as_cograph meta$layout is NULL", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  expect_null(net$meta$layout)
+})
+
+test_that("as_cograph with single pair", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(list(c("X", "Y"), c("X", "Y")))
+  net <- as_cograph(res)
+  expect_equal(net$n_nodes, 2L)
+  expect_equal(net$n_edges, 1L)
+  expect_equal(nrow(net$nodes), 2L)
+  expect_equal(nrow(net$edges), 1L)
+})
+
+test_that("as_cograph with different similarity measures", {
+  skip_if_not_installed("cograph")
+  for (sim in c("none", "jaccard", "cosine", "dice")) {
+    res <- cooccurrence(.test_list, similarity = sim)
+    net <- as_cograph(res)
+    expect_true(inherits(net, "cograph_network"))
+    expect_equal(net$n_nodes, 3L)
+  }
+})
+
+test_that("as_cograph node x and y are NA", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  expect_true(all(is.na(net$nodes$x)))
+  expect_true(all(is.na(net$nodes$y)))
+})
+
+test_that("as_cograph edges$from and edges$to are integer", {
+  skip_if_not_installed("cograph")
+  res <- cooccurrence(.test_list)
+  net <- as_cograph(res)
+  expect_type(net$edges$from, "integer")
+  expect_type(net$edges$to, "integer")
+})

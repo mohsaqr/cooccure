@@ -238,11 +238,10 @@ cograph::splot(net, layout = "fr", scale_nodes_by = "degree")
 With customized edge width and label size:
 
 ```{r cograph-styled, fig.width=8, fig.height=8}
-cograph::splot(net, layout = "gephi", label_size = 0.9, scale_nodes_by = "degree", edge_width_range   =c(0.1:4))
-
-
-
-
+cograph::splot(net, layout = "gephi", label_size = .8, label_fontface = "bold",
+               node_fill = "#F9C22E",  
+               node_border_width = 0.0001, edge_color = "black",
+               scale_nodes_by = "degree", edge_width_range = c(0.1:4))
 ```
 
 ### igraph

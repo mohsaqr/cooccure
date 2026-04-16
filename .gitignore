@@ -8,3 +8,5 @@ src/*.so
 src/*.dll
 .claude/
 tmp/
+docs
+tests/testthat/Rplots.pdf
