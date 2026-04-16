@@ -25,6 +25,10 @@
 #'   format. Each unique value defines one transaction.
 #' @param sep Character or \code{NULL}. Separator for splitting delimited
 #'   fields.
+#' @param split_by Character or \code{NULL}. Column name to split the data
+#'   by before computing co-occurrence. A separate network is computed per
+#'   group and the results are combined into a single data frame with an
+#'   additional \code{group} column. Only works with data.frame inputs.
 #' @param similarity Character. Similarity measure:
 #'   \describe{
 #'     \item{\code{"none"}}{Raw co-occurrence counts.}
@@ -58,7 +62,8 @@
 #' @param min_occur Integer. Minimum entity frequency. Entities appearing in
 #'   fewer than \code{min_occur} transactions are dropped. Default 1.
 #' @param top_n Integer or \code{NULL}. Keep only the top \code{top_n} edges
-#'   by weight. Default \code{NULL} (all edges).
+#'   by weight. When \code{split_by} is used, applied per group.
+#'   Default \code{NULL} (all edges).
 #' @param ... Currently unused.
 #'
 #' @return A \code{cooccurrence} data frame (inherits from \code{data.frame})
@@ -69,9 +74,12 @@
 #'     \item{\code{weight}}{Numeric. Similarity-normalized (and optionally
 #'       scaled) co-occurrence value.}
 #'     \item{\code{count}}{Integer. Raw co-occurrence count.}
+#'     \item{\code{group}}{Character. Present only when \code{split_by} is
+#'       used. The group label.}
 #'   }
-#'   Sorted by \code{weight} descending. Attributes store the full matrix,
-#'   item frequencies, similarity method, and scaling.
+#'   Sorted by \code{weight} descending. Attributes store the full matrix
+#'   (when \code{split_by} is not used), item frequencies, similarity method,
+#'   and scaling.
 #'
 #' @references
 #' van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
@@ -88,6 +96,10 @@
 #' )
 #' cooccurrence(df, field = "keywords", sep = ";")
 #'
+#' # Split by a grouping variable
+#' df$year <- c(2020, 2020, 2021, 2021)
+#' cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
+#'
 #' # List of transactions with Jaccard similarity
 #' cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),
 #'              similarity = "jaccard")
@@ -97,6 +109,7 @@
 #'
 #' @export
 cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
+                         split_by = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
                                         "dice", "equivalence", "relative"),
@@ -116,7 +129,61 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                                        "proportion"))
   }
 
-  # Parse input → list of character vectors (transactions)
+  # ---- split_by: compute per group, combine ----
+  if (!is.null(split_by)) {
+    stopifnot(is.data.frame(data), split_by %in% names(data))
+    groups <- split(data, data[[split_by]])
+    parts <- lapply(names(groups), function(g) {
+      sub <- groups[[g]]
+      # Drop the split_by column so it doesn't interfere with format detection
+      sub[[split_by]] <- NULL
+      edges <- tryCatch(
+        .co_core(sub, field = field, by = by, sep = sep,
+                 similarity = similarity, scale_method = scale_method,
+                 threshold = threshold, min_occur = min_occur,
+                 top_n = top_n),
+        error = function(e) NULL
+      )
+      if (is.null(edges) || nrow(edges) == 0L) return(NULL)
+      edges$group <- g
+      edges
+    })
+    parts <- parts[!vapply(parts, is.null, logical(1))]
+    if (length(parts) == 0L)
+      stop("No groups produced any edges.", call. = FALSE)
+    edges <- do.call(rbind, parts)
+    rownames(edges) <- NULL
+
+    class(edges) <- c("cooccurrence", "data.frame")
+    attr(edges, "similarity") <- similarity
+    attr(edges, "scale") <- scale_method
+    attr(edges, "threshold") <- threshold
+    attr(edges, "min_occur") <- min_occur
+    attr(edges, "split_by") <- split_by
+    attr(edges, "groups") <- names(groups)
+    return(edges)
+  }
+
+  # ---- Single-group path ----
+  result <- .co_core(data, field = field, by = by, sep = sep,
+                     similarity = similarity, scale_method = scale_method,
+                     threshold = threshold, min_occur = min_occur,
+                     top_n = top_n)
+  result
+}
+
+
+#' @rdname cooccurrence
+#' @export
+co <- cooccurrence
+
+
+# ---- Core pipeline (used by both single and split_by paths) ----
+
+#' @noRd
+.co_core <- function(data, field, by, sep, similarity, scale_method,
+                     threshold, min_occur, top_n) {
+  # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
   transactions <- switch(fmt,
     delimited       = .co_parse_delimited(data, field, sep),
@@ -142,7 +209,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
       stop("No transactions remain after min_occur filtering.", call. = FALSE)
   }
 
-  # Build binary transaction matrix → co-occurrence
+  # Build binary transaction matrix -> co-occurrence
   B <- .co_transactions_to_matrix(transactions)
   C <- .co_compute_matrix(B)
   n_trans <- nrow(B)
@@ -150,21 +217,19 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
   # Item frequencies
   freq <- diag(C)
 
-  # Zero diagonal (edges are between distinct items)
+  # Zero diagonal
   diag(C) <- 0
 
   # Normalize
   W <- .co_normalize(C, freq, similarity)
 
   # Scale
-  if (scale_method != "none") {
-    W <- .co_scale(W, scale_method)
-  }
+  if (scale_method != "none") W <- .co_scale(W, scale_method)
 
   # Threshold
   if (threshold > 0) W[W < threshold] <- 0
 
-  # Extract upper triangle → tidy edge list
+  # Extract upper triangle -> tidy edge list
   edges <- .co_matrix_to_edges(W, C)
 
   # Sort by weight descending
@@ -179,7 +244,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 
   rownames(edges) <- NULL
 
-  # Stamp class + metadata as attributes
+  # Stamp class + metadata
   class(edges) <- c("cooccurrence", "data.frame")
   attr(edges, "matrix") <- W
   attr(edges, "raw_matrix") <- C
@@ -196,17 +261,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 }
 
 
-#' @rdname cooccurrence
-#' @export
-co <- cooccurrence
-
-
 # ---- Extract edges from matrix ----
 
-#' Convert upper triangle of a matrix to an edge data.frame
-#' @param W Normalized weight matrix (diagonal = 0).
-#' @param C Raw count matrix (diagonal = 0).
-#' @return data.frame with from, to, weight, count.
 #' @noRd
 .co_matrix_to_edges <- function(W, C) {
   idx <- which(upper.tri(W) & W != 0, arr.ind = TRUE)
@@ -228,7 +284,6 @@ co <- cooccurrence
 
 # ---- Scaling ----
 
-#' Scale edge weights
 #' @noRd
 .co_scale <- function(W, method) {
   vals <- W[W != 0]

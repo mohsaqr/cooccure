@@ -14,8 +14,12 @@ print.cooccurrence <- function(x, n = 10L, ...) {
   sc <- attr(x, "scale")
   n_trans <- attr(x, "n_transactions")
 
+  sb <- attr(x, "split_by")
+  grps <- attr(x, "groups")
+
   cat(sprintf("# cooccurrence: %d nodes, %d edges", nodes, edges))
   if (!is.null(n_trans)) cat(sprintf(" (%d transactions)", n_trans))
+  if (!is.null(sb)) cat(sprintf(" | split_by: %s (%d groups)", sb, length(grps)))
   if (!is.null(sim) && sim != "none") cat(sprintf(" | similarity: %s", sim))
   if (!is.null(sc) && sc != "none") cat(sprintf(" | scale: %s", sc))
   cat("\n")

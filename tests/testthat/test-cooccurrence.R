@@ -289,3 +289,84 @@ test_that("count is always the raw co-occurrence", {
   ab <- res[res$from == "A" & res$to == "B", ]
   expect_equal(ab$count, 1L)
 })
+
+# ========================================
+# 9. split_by
+# ========================================
+
+test_that("split_by produces a group column", {
+  df <- data.frame(
+    year = c(2020, 2020, 2020, 2021, 2021, 2021),
+    kw = c("A; B; C", "B; C", "A; C", "B; C; D", "C; D", "B; D"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "year")
+  expect_s3_class(res, "cooccurrence")
+  expect_true("group" %in% names(res))
+  expect_equal(sort(unique(res$group)), c("2020", "2021"))
+})
+
+test_that("split_by computes separate networks per group", {
+  df <- data.frame(
+    grp = c("X", "X", "Y", "Y"),
+    kw = c("A; B", "A; B", "C; D", "C; D"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "grp")
+  # Group X has only A-B; group Y has only C-D
+  res_x <- res[res$group == "X", ]
+  res_y <- res[res$group == "Y", ]
+  expect_equal(nrow(res_x), 1L)
+  expect_equal(nrow(res_y), 1L)
+  expect_true(all(c(res_x$from, res_x$to) %in% c("A", "B")))
+  expect_true(all(c(res_y$from, res_y$to) %in% c("C", "D")))
+})
+
+test_that("split_by + similarity works", {
+  df <- data.frame(
+    grp = c("X", "X", "X", "Y", "Y", "Y"),
+    kw = c("A; B; C", "B; C", "A; C", "A; B; C", "B; C", "A; C"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";",
+                      split_by = "grp", similarity = "jaccard")
+  # Both groups have the same data → same weights
+  res_x <- res[res$group == "X", ]
+  res_y <- res[res$group == "Y", ]
+  expect_equal(sort(res_x$weight), sort(res_y$weight))
+})
+
+test_that("split_by + top_n applies per group", {
+  df <- data.frame(
+    grp = c("X", "X", "X", "Y", "Y", "Y"),
+    kw = c("A; B; C", "B; C", "A; C", "D; E; F", "E; F", "D; F"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";",
+                      split_by = "grp", top_n = 1L)
+  # 1 edge per group → 2 total
+  expect_equal(nrow(res), 2L)
+  expect_equal(length(unique(res$group)), 2L)
+})
+
+test_that("split_by skips groups with no edges", {
+  df <- data.frame(
+    grp = c("X", "X", "Y"),
+    kw = c("A; B", "A; B", "C"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "grp")
+  # Y has only one item → no edges → should be absent
+  expect_equal(unique(res$group), "X")
+})
+
+test_that("split_by stores attributes", {
+  df <- data.frame(
+    year = c(2020, 2021),
+    kw = c("A; B", "A; B"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "kw", sep = ";", split_by = "year")
+  expect_equal(attr(res, "split_by"), "year")
+  expect_equal(sort(attr(res, "groups")), c("2020", "2021"))
+})

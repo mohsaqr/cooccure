@@ -10,6 +10,7 @@ cooccurrence(
   field = NULL,
   by = NULL,
   sep = NULL,
+  split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   scale = NULL,
@@ -24,6 +25,7 @@ co(
   field = NULL,
   by = NULL,
   sep = NULL,
+  split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   scale = NULL,
@@ -53,6 +55,11 @@ format. Each unique value defines one transaction.}
 
 \item{sep}{Character or \code{NULL}. Separator for splitting delimited
 fields.}
+
+\item{split_by}{Character or \code{NULL}. Column name to split the data
+by before computing co-occurrence. A separate network is computed per
+group and the results are combined into a single data frame with an
+additional \code{group} column. Only works with data.frame inputs.}
 
 \item{similarity}{Character. Similarity measure:
 \describe{
@@ -91,7 +98,8 @@ similarity and scaling. Default 0.}
 fewer than \code{min_occur} transactions are dropped. Default 1.}
 
 \item{top_n}{Integer or \code{NULL}. Keep only the top \code{top_n} edges
-by weight. Default \code{NULL} (all edges).}
+by weight. When \code{split_by} is used, applied per group.
+Default \code{NULL} (all edges).}
 
 \item{...}{Currently unused.}
 }
@@ -104,9 +112,12 @@ with columns:
 \item{\code{weight}}{Numeric. Similarity-normalized (and optionally
 scaled) co-occurrence value.}
 \item{\code{count}}{Integer. Raw co-occurrence count.}
+\item{\code{group}}{Character. Present only when \code{split_by} is
+used. The group label.}
 }
-Sorted by \code{weight} descending. Attributes store the full matrix,
-item frequencies, similarity method, and scaling.
+Sorted by \code{weight} descending. Attributes store the full matrix
+(when \code{split_by} is not used), item frequencies, similarity method,
+and scaling.
 }
 \description{
 Constructs an undirected co-occurrence network from various input formats
@@ -121,6 +132,10 @@ df <- data.frame(
                "matrix; algebra", "network; algebra; graph")
 )
 cooccurrence(df, field = "keywords", sep = ";")
+
+# Split by a grouping variable
+df$year <- c(2020, 2020, 2021, 2021)
+cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
 
 # List of transactions with Jaccard similarity
 cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),

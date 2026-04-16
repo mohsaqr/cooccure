@@ -206,6 +206,34 @@ cooccurrence(papers, field = "keywords", sep = ";",
              threshold = 0.01, top_n = 50)
 ```
 
+## Splitting by groups
+
+The `split_by` argument computes a separate co-occurrence network for each level of a grouping variable and returns them in a single data frame with a `group` column.
+
+```r
+papers <- data.frame(
+  year = c(2020, 2020, 2020, 2021, 2021, 2021),
+  keywords = c("network; graph; matrix", "graph; algebra",
+               "network; algebra; graph",
+               "deep learning; nlp", "nlp; transformers",
+               "deep learning; transformers; nlp")
+)
+
+co(papers, field = "keywords", sep = ";", split_by = "year",
+   similarity = "jaccard")
+#> # cooccurrence: 7 nodes, 8 edges | split_by: year (2 groups) | similarity: jaccard
+#>           from           to    weight count group
+#>        algebra        graph 0.6666667     2  2020
+#>          graph      network 0.6666667     2  2020
+#>  deep learning          nlp 0.6666667     2  2021
+#>            nlp transformers 0.6666667     2  2021
+#>            ...
+```
+
+This is useful for comparing co-occurrence patterns across time periods, disciplines, journals, or any categorical variable. Each group gets its own similarity computation, so item frequencies are group-specific.
+
+All other parameters (`similarity`, `scale`, `threshold`, `min_occur`, `top_n`) apply per group.
+
 ## Output
 
 `cooccurrence()` returns a data frame with class `cooccurrence`. It prints nicely, summarizes, and plots:
@@ -306,11 +334,12 @@ Nestimate::bootstrap_network(net)
 | `field` | character | Column(s) containing entities (nodes) | `NULL` |
 | `by` | character | Column grouping entities into transactions | `NULL` |
 | `sep` | character | Delimiter for splitting delimited fields | `NULL` |
+| `split_by` | character | Column to split data by (separate network per group) | `NULL` |
 | `similarity` | character | Normalization measure | `"none"` |
 | `scale` | character | Weight scaling method | `NULL` |
 | `threshold` | numeric | Minimum edge weight (after normalization + scaling) | `0` |
 | `min_occur` | integer | Minimum entity frequency (transactions) | `1` |
-| `top_n` | integer | Keep only the top N edges by weight | `NULL` |
+| `top_n` | integer | Keep only the top N edges by weight (per group if split) | `NULL` |
 
 ## How it works
 
