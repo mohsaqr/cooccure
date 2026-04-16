@@ -63,17 +63,11 @@ Drama dominates because it’s the most frequent genre. Normalize with
 Jaccard to control for popularity:
 
 ``` r
-library(Nestimate)
-
-data("human_cat")
-
-
 library(cograph)
 
 Net <- co(movies, field = "genres", sep = ",", similarity = "jaccard")
 
 Gr<- as_cograph(Net, directed = TRUE)
-
 
 cograph::degree_distribution(Gr)
 ```
@@ -524,9 +518,9 @@ cograph::splot(net, layout = "gephi", label_size = .8, label_fontface = "bold",
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 3eb1e22 UNW- 17 102 -- 
+#> IGRAPH c16a1f7 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 3eb1e22 (vertex names):
+#> + edges from c16a1f7 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -692,9 +686,9 @@ as_matrix(result, type = "raw")
 
 ``` r
 as_igraph(result)
-#> IGRAPH 1d9c9f5 UNW- 17 102 -- 
+#> IGRAPH 64b7dd4 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 1d9c9f5 (vertex names):
+#> + edges from 64b7dd4 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
