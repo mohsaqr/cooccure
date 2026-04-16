@@ -2,11 +2,11 @@ Package: cooccur
 Title: Co-Occurrence Networks from Any Data Format
 Version: 0.1.0
 Authors@R: person("Mohammed", "Saqr", email = "saqr@saqr.me",
-                  role = c("aut", "cre"))
-Description: Build co-occurrence networks from delimited fields, long/bipartite
+role = c("aut", "cre"))
+Description: Builds co-occurrence networks from delimited fields, long/bipartite
     tables, binary matrices, wide sequences, or plain lists. Returns tidy
     edge data frames with eight similarity measures (Jaccard, cosine,
-    association strength, etc.) and optional scaling. Convert results to
+    association strength, etc.) and optional scaling. Converts results to
     igraph, cograph, Nestimate, or tidygraph objects.
 License: MIT + file LICENSE
 Encoding: UTF-8
