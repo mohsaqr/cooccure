@@ -21,3 +21,10 @@ An \code{igraph} object.
 Creates an undirected, weighted \code{igraph} graph from a
 \code{cooccurrence} edge list.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+if (requireNamespace("igraph", quietly = TRUE)) {
+  g <- as_igraph(res)
+  igraph::vcount(g)
+}
+}

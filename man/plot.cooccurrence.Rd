@@ -21,3 +21,7 @@ Invisibly returns \code{x}.
 Plots the co-occurrence matrix as a heatmap. If \pkg{igraph} is available,
 plots a network graph instead.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+plot(res)
+}

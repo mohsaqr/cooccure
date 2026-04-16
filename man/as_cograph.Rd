@@ -22,3 +22,10 @@ Creates a \code{cograph_network} object from a \code{cooccurrence}
 edge list, compatible with \code{cograph::splot()} and other cograph
 functions.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+if (requireNamespace("cograph", quietly = TRUE)) {
+  net <- as_cograph(res)
+  net$n_nodes
+}
+}

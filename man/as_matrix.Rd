@@ -23,3 +23,8 @@ A numeric matrix.
 Returns the full square co-occurrence matrix (normalized + scaled).
 Use \code{type = "raw"} for the raw count matrix.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+as_matrix(res)
+as_matrix(res, type = "raw")
+}

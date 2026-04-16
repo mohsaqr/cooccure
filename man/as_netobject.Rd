@@ -22,3 +22,10 @@ Creates a \code{netobject} from a \code{cooccurrence} edge list,
 compatible with \code{Nestimate::centrality()},
 \code{Nestimate::bootstrap_network()}, etc.
 }
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+if (requireNamespace("Nestimate", quietly = TRUE)) {
+  net <- as_netobject(res)
+  net$n_nodes
+}
+}

@@ -1,12 +1,17 @@
 Package: cooccur
 Title: Co-Occurrence Networks from Any Data Format
 Version: 0.1.0
-Authors@R: person("Mohammed", "Saqr", email = "saqr@saqr.me", role = c("aut", "cre"))
+
+Authors@R: c(
+    person("Mohammed", "Saqr", email = "saqr@saqr.me",
+           role = c("aut", "cre", "cph")),
+    person("Sonsoles", "López-Pernas", email = "sonsoles.lopez@uef.fi",
+           role = c("aut", "cph")))
 Description: Builds co-occurrence networks from delimited fields, long/bipartite
     tables, binary matrices, wide sequences, or plain lists. Returns tidy
     edge data frames with eight similarity measures (Jaccard, cosine,
     association strength, etc.) and optional scaling. Converts results to
-    igraph, cograph, Nestimate, or tidygraph objects.
+    'igraph', 'cograph', 'Nestimate', or 'tidygraph' objects.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -21,7 +26,7 @@ Suggests:
     knitr,
     rmarkdown,
     shiny,
-    DT,
-    visNetwork
+    DT
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+Depends: R (>= 3.5.0)
