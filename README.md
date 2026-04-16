@@ -1,8 +1,8 @@
 # cooccur
 
-Build co-occurrence networks from any data format. One function, six input formats, eight similarity measures, eight scaling methods, and seamless conversion to igraph, tidygraph, cograph, and Nestimate.
+Build co-occurrence networks from multipe data format. A single function that accepts six input formats for usability. The function has methods for similarity measures,  scaling methods, and allows conversion to igraph, tidygraph, cograph, and Nestimate.
 
-Returns a tidy edge data frame --- not a matrix, not a custom object. Just `from`, `to`, `weight`, `count`. Use it directly, pipe it, filter it, join it.
+cooccur Returns a tidy edge data frame for ease of use. The format uses basic universal structure `from`, `to`, `weight`, `count`.
 
 ## Installation
 
