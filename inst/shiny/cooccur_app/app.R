@@ -11,13 +11,22 @@ data("movies", package = "cooccur", envir = environment())
 data("actors", package = "cooccur", envir = environment())
 
 # ---- helper: build filtered cograph object ----
+# Returns a list(status, value, message). status is one of:
+#   "ok"      — value is the cograph_network
+#   "empty"   — no rows survived the weight filter
+#   "error"   — as_cograph() failed; message has the reason
 .filtered_cograph <- function(result, min_w) {
   r <- result[result$weight >= min_w, ]
-  if (nrow(r) == 0L) return(NULL)
+  if (nrow(r) == 0L)
+    return(list(status = "empty", value = NULL, message = NULL))
   # Null stored matrices so as_cograph rebuilds from the filtered edge rows
   attr(r, "matrix")     <- NULL
   attr(r, "raw_matrix") <- NULL
-  tryCatch(as_cograph(r), error = function(e) NULL)
+  tryCatch(
+    list(status = "ok", value = as_cograph(r), message = NULL),
+    error = function(e) list(status = "error", value = NULL,
+                             message = conditionMessage(e))
+  )
 }
 
 
@@ -336,16 +345,28 @@ server <- function(input, output, session) {
   # ---- Network tab (cograph) ----
   output$net_ui <- renderUI({
     req(result())
-    r   <- result()
-    net <- .filtered_cograph(r, input$min_edge_w)
+    if (!requireNamespace("cograph", quietly = TRUE)) {
+      return(tags$div(class = "alert alert-danger",
+        tags$strong("Package 'cograph' is not installed on this server."),
+        tags$br(),
+        "Install it with ",
+        tags$code("install.packages('cograph', repos = 'https://mohsaqr.r-universe.dev')"),
+        " on the host, then restart the app."))
+    }
+    res <- .filtered_cograph(result(), input$min_edge_w)
 
-    if (is.null(net)) {
+    if (res$status == "empty") {
       tags$div(class = "alert alert-warning",
-               "No edges above the current weight threshold.")
-    } else if (net$n_edges > 3000) {
+               sprintf("No edges with weight >= %.4f. Lower the minimum weight filter.",
+                       input$min_edge_w))
+    } else if (res$status == "error") {
+      tags$div(class = "alert alert-danger",
+               tags$strong("Could not build the network: "),
+               res$message)
+    } else if (res$value$n_edges > 3000) {
       tags$div(class = "alert alert-info",
                sprintf("%d edges — too many to render clearly. Raise the minimum weight filter.",
-                       net$n_edges))
+                       res$value$n_edges))
     } else {
       plotOutput("cograph_plot", height = "600px")
     }
@@ -353,18 +374,12 @@ server <- function(input, output, session) {
 
   output$cograph_plot <- renderPlot({
     req(result())
-    if (!requireNamespace("cograph", quietly = TRUE)) {
-      plot.new()
-      text(0.5, 0.5, "Package 'cograph' is required for network plots.\ninstall.packages('cograph')",
-           cex = 1.2, col = "firebrick")
-      return(invisible(NULL))
-    }
-    r   <- result()
-    net <- .filtered_cograph(r, input$min_edge_w)
-    req(!is.null(net))
+    req(requireNamespace("cograph", quietly = TRUE))
+    res <- .filtered_cograph(result(), input$min_edge_w)
+    req(res$status == "ok")
 
     cograph::splot(
-      net,
+      res$value,
       layout          = input$net_layout,
       scale_nodes_by  = "degree",
       label_size      = input$label_size,
