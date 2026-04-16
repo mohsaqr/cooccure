@@ -1,12 +1,14 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>http://saqr.me/cooccur/404.html</loc></url>
 <url><loc>http://saqr.me/cooccur/CLAUDE.html</loc></url>
+<url><loc>http://saqr.me/cooccur/HANDOFF.html</loc></url>
 <url><loc>http://saqr.me/cooccur/LICENSE-text.html</loc></url>
 <url><loc>http://saqr.me/cooccur/LICENSE.html</loc></url>
 <url><loc>http://saqr.me/cooccur/articles/imdb-tutorial.html</loc></url>
 <url><loc>http://saqr.me/cooccur/articles/index.html</loc></url>
 <url><loc>http://saqr.me/cooccur/authors.html</loc></url>
 <url><loc>http://saqr.me/cooccur/index.html</loc></url>
+<url><loc>http://saqr.me/cooccur/news/index.html</loc></url>
 <url><loc>http://saqr.me/cooccur/reference/actors.html</loc></url>
 <url><loc>http://saqr.me/cooccur/reference/as_cograph.html</loc></url>
 <url><loc>http://saqr.me/cooccur/reference/as_igraph.html</loc></url>

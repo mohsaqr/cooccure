@@ -12,6 +12,7 @@ cooccurrence(
   field = NULL,
   by = NULL,
   sep = NULL,
+  weight_by = NULL,
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
@@ -29,6 +30,7 @@ co(
   field = NULL,
   by = NULL,
   sep = NULL,
+  weight_by = NULL,
   split_by = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
@@ -63,7 +65,9 @@ co(
   Character. The entity column — determines what the nodes are. For
   delimited format, a single column split by `sep`. For long/bipartite,
   the item column. For multi-column delimited, a vector of column names
-  pooled per row.
+  pooled per row. Use `field = "all"` for wide sequence data (e.g.
+  TraMineR / tna format) where every column is a time point and cell
+  values are the items.
 
 - by:
 
@@ -73,6 +77,15 @@ co(
 - sep:
 
   Character or `NULL`. Separator for splitting delimited fields.
+
+- weight_by:
+
+  Character or `NULL`. Column name containing a numeric association
+  strength for each entity-transaction pair. Only accepted for long
+  format (`field` + `by`). When supplied, each entity contributes its
+  weight rather than 1, so \\C\_{ij} = \sum_d w\_{id} \cdot w\_{jd}\\.
+  Typical use: topic-document probability matrices from LDA or similar
+  models.
 
 - split_by:
 
@@ -291,4 +304,17 @@ co(df, field = "keywords", sep = ";", similarity = "cosine")
 #>    graph  matrix 0.4082483     1
 #>  algebra network 0.4082483     1
 #>   matrix network 0.4082483     1
+
+# Weighted long format (e.g. LDA topic-document probabilities)
+theta <- data.frame(
+  doc   = c("d1","d1","d1","d2","d2","d3","d3"),
+  topic = c("T1","T2","T3","T1","T3","T2","T3"),
+  prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
+)
+cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
+#> # cooccurrence: 3 nodes, 3 edges (3 transactions)
+#>  from to weight count
+#>    T1 T3   0.30     2
+#>    T2 T3   0.28     2
+#>    T1 T2   0.18     1
 ```
