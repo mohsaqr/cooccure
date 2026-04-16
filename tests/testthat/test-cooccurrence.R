@@ -56,11 +56,17 @@ test_that("binary matrix works", {
   expect_equal(nrow(res), 3L)
 })
 
-test_that("wide sequence works", {
+test_that("wide sequence works with field = 'all'", {
   df <- data.frame(V1 = c("A","B","A"), V2 = c("B","C","C"),
                    V3 = c("C", NA, NA), stringsAsFactors = FALSE)
-  res <- cooccurrence(df)
+  res <- cooccurrence(df, field = "all")
   expect_equal(nrow(res), 3L)
+})
+
+test_that("non-binary data frame without field = 'all' errors", {
+  df <- data.frame(V1 = c("A","B","A"), V2 = c("B","C","C"),
+                   stringsAsFactors = FALSE)
+  expect_error(cooccurrence(df), "field = \"all\"")
 })
 
 test_that("list input works", {

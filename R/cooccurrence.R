@@ -20,7 +20,9 @@
 #' @param field Character. The entity column --- determines what the nodes are.
 #'   For delimited format, a single column split by \code{sep}. For
 #'   long/bipartite, the item column. For multi-column delimited, a vector
-#'   of column names pooled per row.
+#'   of column names pooled per row. Use \code{field = "all"} for wide
+#'   sequence data (e.g. TraMineR / tna format) where every column is a
+#'   time point and cell values are the items.
 #' @param by Character or \code{NULL}. Grouping column for long/bipartite
 #'   format. Each unique value defines one transaction.
 #' @param weight_by Character or \code{NULL}. Column name containing a numeric
@@ -474,6 +476,9 @@ co <- cooccurrence
   if (is.list(data) && !is.data.frame(data) && !is.matrix(data))
     return("list")
 
+  if (!is.null(field) && length(field) == 1L && identical(field, "all"))
+    return("wide")
+
   if (!is.null(sep) && !is.null(field) && length(field) > 1L)
     return("multi_delimited")
 
@@ -490,7 +495,8 @@ co <- cooccurrence
     mat <- if (is.data.frame(data)) as.matrix(data) else data
     if (is.numeric(mat) && all(mat[!is.na(mat)] %in% c(0, 1)))
       return("binary")
-    return("wide")
+    stop("Cannot detect input format. For wide sequence data use field = \"all\".",
+         call. = FALSE)
   }
 
   stop("Cannot detect input format. Provide field/by/sep arguments or a ",
