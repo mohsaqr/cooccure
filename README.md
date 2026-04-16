@@ -1,4 +1,6 @@
-# cooccur
+# cooccur <img src="man/figures/logo.png" align="right" height="99"  alt="" />
+
+
 
 Build co-occurrence networks from multipe data format. A single function that accepts six input formats for usability. The function has methods for similarity measures,  scaling methods, and allows conversion to igraph, tidygraph, cograph, and Nestimate.
 
