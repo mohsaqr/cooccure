@@ -409,3 +409,68 @@ test_that("output = 'cograph' returns cograph_network", {
   res <- cooccurrence(.test_list, output = "cograph")
   expect_true(inherits(res, "cograph_network"))
 })
+
+# ========================================
+# 11. Counting methods
+# ========================================
+
+# Transactions: {A,B,C} (n=3), {B,C} (n=2), {A,C} (n=2)
+
+test_that("counting = 'full' gives raw counts (default)", {
+  res <- cooccurrence(.test_list, counting = "full")
+  ab <- res[res$from == "A" & res$to == "B", ]
+  expect_equal(ab$weight, 1)
+  expect_equal(ab$count, 1L)
+})
+
+test_that("counting = 'fractional' weights by 1/(n-1)", {
+  # {A,B,C}: n=3, each pair gets 1/(3-1) = 0.5
+  # {B,C}: n=2, each pair gets 1/(2-1) = 1
+  # {A,C}: n=2, each pair gets 1
+  # A-B: only in {A,B,C} → 0.5
+  # B-C: in {A,B,C}(0.5) + {B,C}(1.0) = 1.5
+  # A-C: in {A,B,C}(0.5) + {A,C}(1.0) = 1.5
+  res <- cooccurrence(.test_list, counting = "fractional")
+  ab <- res[res$from == "A" & res$to == "B", ]
+  bc <- res[res$from == "B" & res$to == "C", ]
+  ac <- res[res$from == "A" & res$to == "C", ]
+  expect_equal(ab$weight, 0.5, tolerance = 1e-10)
+  expect_equal(bc$weight, 1.5, tolerance = 1e-10)
+  expect_equal(ac$weight, 1.5, tolerance = 1e-10)
+  # count is always raw
+  expect_equal(ab$count, 1L)
+  expect_equal(bc$count, 2L)
+})
+
+test_that("counting = 'paper' gives total = 1 per transaction", {
+  # {A,B,C}: n=3, C(3,2)=3 pairs, each pair gets 2/(3*2)=1/3
+  # {B,C}: n=2, C(2,2)=1 pair, each pair gets 2/(2*1)=1
+  # {A,C}: n=2, same → 1
+  # A-B: 1/3
+  # B-C: 1/3 + 1 = 4/3
+  # A-C: 1/3 + 1 = 4/3
+  res <- cooccurrence(.test_list, counting = "paper")
+  ab <- res[res$from == "A" & res$to == "B", ]
+  bc <- res[res$from == "B" & res$to == "C", ]
+  expect_equal(ab$weight, 1 / 3, tolerance = 1e-10)
+  expect_equal(bc$weight, 4 / 3, tolerance = 1e-10)
+})
+
+test_that("counting = 'fractional' + similarity works", {
+  res <- cooccurrence(.test_list, counting = "fractional", similarity = "jaccard")
+  expect_true(nrow(res) > 0)
+  # Weights should differ from full counting
+  res_full <- cooccurrence(.test_list, counting = "full", similarity = "jaccard")
+  expect_false(isTRUE(all.equal(res$weight, res_full$weight)))
+})
+
+test_that("counting with long/bipartite format", {
+  df <- data.frame(
+    doc = c(1, 1, 1, 2, 2, 3, 3),
+    item = c("A", "B", "C", "B", "C", "A", "C"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "item", by = "doc", counting = "fractional")
+  ab <- res[res$from == "A" & res$to == "B", ]
+  expect_equal(ab$weight, 0.5, tolerance = 1e-10)
+})

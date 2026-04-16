@@ -57,6 +57,18 @@
 #'     \item{\code{"sqrt"}}{Square root.}
 #'     \item{\code{"proportion"}}{Divide by sum of all weights.}
 #'   }
+#' @param counting Character. Counting method controlling how each
+#'   transaction contributes to co-occurrence:
+#'   \describe{
+#'     \item{\code{"full"}}{Binary: each co-occurring pair adds 1
+#'       regardless of transaction size. Default.}
+#'     \item{\code{"fractional"}}{Each pair adds \eqn{1 / (n_i - 1)}
+#'       where \eqn{n_i} is the number of items in transaction \eqn{i}.
+#'       Transactions with many items contribute less per pair
+#'       (Perianes-Rodriguez et al., 2016).}
+#'     \item{\code{"paper"}}{Each transaction contributes a total of 1
+#'       to the network: each pair adds \eqn{2 / (n_i (n_i - 1))}.}
+#'   }
 #' @param threshold Numeric. Minimum edge weight to retain. Applied after
 #'   similarity and scaling. Default 0.
 #' @param min_occur Integer. Minimum entity frequency. Entities appearing in
@@ -122,12 +134,14 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
                                         "dice", "equivalence", "relative"),
+                         counting = c("full", "fractional", "paper"),
                          scale = NULL,
                          threshold = 0, min_occur = 1L,
                          top_n = NULL,
                          output = c("default", "gephi", "igraph",
                                     "cograph", "matrix"), ...) {
   similarity <- match.arg(similarity)
+  counting <- match.arg(counting)
   output <- match.arg(output)
   threshold <- as.numeric(threshold)
   min_occur <- as.integer(min_occur)
@@ -151,7 +165,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
       sub[[split_by]] <- NULL
       edges <- tryCatch(
         .co_core(sub, field = field, by = by, sep = sep,
-                 similarity = similarity, scale_method = scale_method,
+                 similarity = similarity, counting = counting,
+                 scale_method = scale_method,
                  threshold = threshold, min_occur = min_occur,
                  top_n = top_n),
         error = function(e) NULL
@@ -178,7 +193,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 
   # ---- Single-group path ----
   result <- .co_core(data, field = field, by = by, sep = sep,
-                     similarity = similarity, scale_method = scale_method,
+                     similarity = similarity, counting = counting,
+                     scale_method = scale_method,
                      threshold = threshold, min_occur = min_occur,
                      top_n = top_n)
 
@@ -194,8 +210,8 @@ co <- cooccurrence
 # ---- Core pipeline (used by both single and split_by paths) ----
 
 #' @noRd
-.co_core <- function(data, field, by, sep, similarity, scale_method,
-                     threshold, min_occur, top_n) {
+.co_core <- function(data, field, by, sep, similarity, counting,
+                     scale_method, threshold, min_occur, top_n) {
   # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
   transactions <- switch(fmt,
@@ -222,16 +238,23 @@ co <- cooccurrence
       stop("No transactions remain after min_occur filtering.", call. = FALSE)
   }
 
-  # Build binary transaction matrix -> co-occurrence
+  # Build binary transaction matrix
   B <- .co_transactions_to_matrix(transactions)
-  C <- .co_compute_matrix(B)
   n_trans <- nrow(B)
 
-  # Item frequencies
-  freq <- diag(C)
+  # Apply counting method (weights rows of B before crossprod)
+  B_weighted <- .co_apply_counting(B, counting)
 
-  # Zero diagonal
+  # Co-occurrence matrices
+  C <- .co_compute_matrix(B_weighted)        # counting-weighted
+  C_raw <- .co_compute_matrix(B)             # always full (for count column)
+
+  # Item frequencies (always from the binary matrix, not weighted)
+  freq <- colSums(B)
+
+  # Zero diagonals
   diag(C) <- 0
+  diag(C_raw) <- 0
 
   # Normalize
   W <- .co_normalize(C, freq, similarity)
@@ -243,7 +266,7 @@ co <- cooccurrence
   if (threshold > 0) W[W < threshold] <- 0
 
   # Extract upper triangle -> tidy edge list
-  edges <- .co_matrix_to_edges(W, C)
+  edges <- .co_matrix_to_edges(W, C_raw)
 
   # Sort by weight descending
   edges <- edges[order(-edges$weight), ]
@@ -260,7 +283,7 @@ co <- cooccurrence
   # Stamp class + metadata
   class(edges) <- c("cooccurrence", "data.frame")
   attr(edges, "matrix") <- W
-  attr(edges, "raw_matrix") <- C
+  attr(edges, "raw_matrix") <- C_raw
   attr(edges, "items") <- colnames(W)
   attr(edges, "frequencies") <- freq
   attr(edges, "similarity") <- similarity
@@ -433,6 +456,34 @@ co <- cooccurrence
     items <- items[!is.na(items) & nzchar(items)]
     unique(items)
   })
+}
+
+
+# ---- Counting ----
+
+#' Apply counting weights to the binary transaction matrix
+#' @param B Logical matrix (rows = transactions, cols = items).
+#' @param counting "full", "fractional", or "paper".
+#' @return Numeric matrix with row weights applied.
+#' @noRd
+.co_apply_counting <- function(B, counting) {
+  if (counting == "full") return(B)
+
+  n_per_row <- rowSums(B)
+  n_per_row[n_per_row == 0] <- 1
+
+  if (counting == "fractional") {
+    # Perianes-Rodriguez: each pair contributes 1/(n-1) per transaction
+    w <- ifelse(n_per_row > 1, 1 / (n_per_row - 1), 1)
+  } else if (counting == "paper") {
+    # Total network contribution per transaction = 1
+    # Each pair = 2 / (n * (n-1)), use sqrt for crossprod
+    w <- ifelse(n_per_row > 1, 2 / (n_per_row * (n_per_row - 1)), 1)
+  }
+
+  # Multiply each row by sqrt(w) so crossprod gives weighted counts
+  B_num <- B * 1.0
+  B_num * sqrt(w)
 }
 
 
