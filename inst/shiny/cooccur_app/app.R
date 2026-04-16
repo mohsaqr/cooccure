@@ -83,9 +83,9 @@ ui <- fluidPage(
       # ---- Columns ----
       div(class = "section-header", "Columns"),
       uiOutput("ui_field"),
-      uiOutput("ui_sep"),
       uiOutput("ui_by"),
       uiOutput("ui_split_by"),
+      uiOutput("ui_sep"),
 
       # ---- BUILD NETWORK (early) ----
       actionButton("run", "Build network", class = "btn-primary btn-run",
