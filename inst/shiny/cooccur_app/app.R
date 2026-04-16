@@ -176,7 +176,9 @@ ui <- fluidPage(
     tags$span(
       tags$a(href = "https://saqr.me",     target = "_blank", "Mohammed Saqr"),
       tags$span(class = "sep", "·"),
-      tags$a(href = "https://sonsoles.me", target = "_blank", "Sonsoles López-Pernas")
+      tags$a(href = "https://sonsoles.me", target = "_blank", "Sonsoles López-Pernas"),
+      tags$span(class = "sep", "·"),
+      tags$a(href = "https://kamilamisiejuk.com", target = "_blank", "Kamila Misiejuk")
     ),
     tags$span(class = "block",
       tags$a(href = "https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html",

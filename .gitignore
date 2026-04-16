@@ -10,3 +10,4 @@ src/*.dll
 tmp/
 docs
 tests/testthat/Rplots.pdf
+.DS_Store
