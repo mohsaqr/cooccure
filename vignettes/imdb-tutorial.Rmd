@@ -39,21 +39,13 @@ cooccurrence(movies, field = "genres", sep = ",")
 
 Drama dominates because it's the most frequent genre. Normalize with Jaccard to control for popularity:
 ```{r genre-jaccard}
-library(Nestimate)
-
-data("human_cat")
-
-
 library(cograph)
 
 Net <- co(movies, field = "genres", sep = ",", similarity = "jaccard")
 
 Gr<- as_cograph(Net, directed = TRUE)
 
-
 cograph::degree_distribution(Gr)
-
-
 ```
 
 Now the top edges reflect genuine affinity rather than just frequency.
