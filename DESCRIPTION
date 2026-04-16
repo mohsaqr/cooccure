@@ -5,7 +5,8 @@ Authors@R: c(
     person("Mohammed", "Saqr", email = "saqr@saqr.me",
            role = c("aut", "cre", "cph")),
     person("Sonsoles", "López-Pernas", email = "sonsoles.lopez@uef.fi",
-           role = c("aut", "cph")))
+           role = c("aut", "cph")),
+    person("Kamila", "Misiejuk", role = c("aut", "cph")))
 Description: Build co-occurrence networks from delimited fields, long/bipartite
     tables, binary matrices, wide sequences, or plain lists. Returns tidy
     edge data frames with eight similarity measures (Jaccard, cosine,
