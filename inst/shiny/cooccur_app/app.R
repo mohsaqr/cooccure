@@ -2,6 +2,9 @@ library(shiny)
 library(cooccur)
 library(DT)
 
+data("movies", package = "cooccur", envir = environment())
+data("actors", package = "cooccur", envir = environment())
+
 # ---- helper: build filtered cograph object ----
 .filtered_cograph <- function(result, min_w) {
   r <- result[result$weight >= min_w, ]
@@ -195,8 +198,8 @@ server <- function(input, output, session) {
   # ---- reactive: loaded data ----
   data_loaded <- reactive({
     switch(input$data_source,
-      movies = cooccur::movies,
-      actors = cooccur::actors,
+      movies = movies,
+      actors = actors,
       upload = {
         req(input$file)
         read.csv(input$file$datapath, stringsAsFactors = FALSE)
