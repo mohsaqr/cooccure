@@ -136,12 +136,21 @@
 <span>                <span class="st">"Smith2020"</span>, <span class="st">"Lee2021"</span>, <span class="st">"Park2022"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">citations</span>, field <span class="op">=</span> <span class="st">"reference"</span>, by <span class="op">=</span> <span class="st">"paper_id"</span><span class="op">)</span></span></code></pre></div>
+<p>For weighted long format — for example, LDA topic-document probabilities where each document contributes a topic with a given probability — pass the numeric weight column via <code>weight_by</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  doc   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"d1"</span>,<span class="st">"d1"</span>,<span class="st">"d1"</span>,<span class="st">"d2"</span>,<span class="st">"d2"</span>,<span class="st">"d3"</span>,<span class="st">"d3"</span><span class="op">)</span>,</span>
+<span>  topic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T1"</span>,<span class="st">"T2"</span>,<span class="st">"T3"</span>,<span class="st">"T1"</span>,<span class="st">"T3"</span>,<span class="st">"T2"</span>,<span class="st">"T3"</span><span class="op">)</span>,</span>
+<span>  prob  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>, <span class="fl">0.3</span>, <span class="fl">0.1</span>, <span class="fl">0.4</span>, <span class="fl">0.6</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">theta</span>, field <span class="op">=</span> <span class="st">"topic"</span>, by <span class="op">=</span> <span class="st">"doc"</span>, weight_by <span class="op">=</span> <span class="st">"prob"</span><span class="op">)</span></span></code></pre></div>
+<p>The co-occurrence between topics <code>i</code> and <code>j</code> becomes <code>sum_d w_id * w_jd</code> instead of a binary count. The <code>count</code> column still reports the number of documents where both topics are present.</p>
 </div>
 <div class="section level3">
 <h3 id="id_4-binary-matrix">4. Binary matrix<a class="anchor" aria-label="anchor" href="#id_4-binary-matrix"></a>
 </h3>
 <p>A document-term matrix where columns are items and values are 0/1. Auto-detected when all values in the data are 0 or 1 and no <code>field</code>/<code>by</code>/<code>sep</code> arguments are provided.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dtm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,</span>
 <span>                <span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">0</span>,</span>
 <span>                <span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -152,21 +161,21 @@
 <div class="section level3">
 <h3 id="id_5-wide-sequence">5. Wide sequence<a class="anchor" aria-label="anchor" href="#id_5-wide-sequence"></a>
 </h3>
-<p>Non-binary data frames or matrices where each row is a sequence or record. The unique values in each row form a transaction. This is the native format for sequence analysis tools like TraMineR and tna.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>Non-binary data frames or matrices where each row is a sequence or record. The unique values in each row form a transaction. This is the native format for sequence analysis tools like TraMineR and tna. Pass <code>field = "all"</code> so every column is treated as a time point:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sequences</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"A"</span><span class="op">)</span>,</span>
 <span>  t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
 <span>  t3 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="cn">NA</span>,  <span class="cn">NA</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">sequences</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">sequences</span>, field <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></code></pre></div>
 <p>NAs, empty strings, and TraMineR void markers (<code>%</code>, <code>*</code>) are automatically removed.</p>
 </div>
 <div class="section level3">
 <h3 id="id_6-list-of-character-vectors">6. List of character vectors<a class="anchor" aria-label="anchor" href="#id_6-list-of-character-vectors"></a>
 </h3>
 <p>The most direct format. Each list element is a transaction.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">baskets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bread"</span>, <span class="st">"milk"</span>, <span class="st">"eggs"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bread"</span>, <span class="st">"butter"</span><span class="op">)</span>,</span>
@@ -234,7 +243,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Jaccard similarity</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
 <span></span>
@@ -262,7 +271,7 @@
 <div class="section level2">
 <h2 id="counting">Counting<a class="anchor" aria-label="anchor" href="#counting"></a>
 </h2>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Full counting (default): each co-occurring pair adds 1</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">data</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span>
 <span></span>
@@ -324,7 +333,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Log-scaled Jaccard similarity</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, scale <span class="op">=</span> <span class="st">"log"</span><span class="op">)</span></span>
 <span></span>
@@ -335,7 +344,7 @@
 <h2 id="filtering">Filtering<a class="anchor" aria-label="anchor" href="#filtering"></a>
 </h2>
 <p>Three filtering mechanisms control which edges appear in the result:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Drop entities appearing in fewer than 3 transactions</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, min_occur <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span></span>
@@ -345,7 +354,7 @@
 <span><span class="co"># Keep only the 10 strongest edges</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, top_n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
 <p>All three can be combined:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>,</span>
 <span>             similarity <span class="op">=</span> <span class="st">"association"</span>, min_occur <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>             threshold <span class="op">=</span> <span class="fl">0.01</span>, top_n <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
@@ -354,7 +363,7 @@
 <h2 id="splitting-by-groups">Splitting by groups<a class="anchor" aria-label="anchor" href="#splitting-by-groups"></a>
 </h2>
 <p>The <code>split_by</code> argument computes a separate co-occurrence network for each level of a grouping variable and returns them in a single data frame with a <code>group</code> column.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">papers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2020</span>, <span class="fl">2020</span>, <span class="fl">2020</span>, <span class="fl">2021</span>, <span class="fl">2021</span>, <span class="fl">2021</span><span class="op">)</span>,</span>
 <span>  keywords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"network; graph; matrix"</span>, <span class="st">"graph; algebra"</span>,</span>
@@ -379,7 +388,7 @@
 <h2 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
 </h2>
 <p><code><a href="reference/cooccurrence.html">cooccurrence()</a></code> returns a data frame with class <code>cooccurrence</code>. It prints nicely, summarizes, and plots:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Tidy data.frame — pipe it, filter it, join it</span></span>
@@ -403,7 +412,7 @@
 <h3 id="attributes">Attributes<a class="anchor" aria-label="anchor" href="#attributes"></a>
 </h3>
 <p>The full matrix, item frequencies, and all parameters are stored as attributes on the data frame:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">result</span>, <span class="st">"matrix"</span><span class="op">)</span>          <span class="co"># Normalized weight matrix</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">result</span>, <span class="st">"raw_matrix"</span><span class="op">)</span>      <span class="co"># Raw count matrix (diagonal zeroed)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">result</span>, <span class="st">"items"</span><span class="op">)</span>           <span class="co"># Character vector of all items</span></span>
@@ -418,7 +427,7 @@
 <h2 id="output-formats">Output formats<a class="anchor" aria-label="anchor" href="#output-formats"></a>
 </h2>
 <p>The <code>output</code> parameter controls what <code><a href="reference/cooccurrence.html">cooccurrence()</a></code> returns directly:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Default: tidy data.frame with from, to, weight, count</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">data</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span>
 <span></span>
@@ -436,7 +445,7 @@
 <span><span class="co"># Square matrix directly</span></span>
 <span><span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">data</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span></code></pre></div>
 <p>The Gephi output can be written straight to CSV for import:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">data</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"gephi"</span><span class="op">)</span>,</span>
 <span>          <span class="st">"network.csv"</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -447,7 +456,7 @@
 <div class="section level3">
 <h3 id="matrix">Matrix<a class="anchor" aria-label="anchor" href="#matrix"></a>
 </h3>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Normalized similarity matrix</span></span>
 <span><span class="fu"><a href="reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span></span>
@@ -457,7 +466,7 @@
 <div class="section level3">
 <h3 id="igraph">igraph<a class="anchor" aria-label="anchor" href="#igraph"></a>
 </h3>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("igraph")</span></span>
 <span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">g</span>, edge.width <span class="op">=</span> <span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/E.html" class="external-link">E</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span><span class="op">$</span><span class="va">weight</span> <span class="op">*</span> <span class="fl">3</span><span class="op">)</span></span>
@@ -467,7 +476,7 @@
 <div class="section level3">
 <h3 id="tidygraph">tidygraph<a class="anchor" aria-label="anchor" href="#tidygraph"></a>
 </h3>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("tidygraph")</span></span>
 <span><span class="va">tg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_tidygraph.html">as_tidygraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="co"># Use with ggraph</span></span></code></pre></div>
@@ -475,7 +484,7 @@
 <div class="section level3">
 <h3 id="cograph">cograph<a class="anchor" aria-label="anchor" href="#cograph"></a>
 </h3>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># remotes::install_github("mohsaqr/cograph")</span></span>
 <span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_cograph.html">as_cograph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot</a></span><span class="op">(</span><span class="va">net</span><span class="op">)</span></span>
@@ -484,7 +493,7 @@
 <div class="section level3">
 <h3 id="nestimate">Nestimate<a class="anchor" aria-label="anchor" href="#nestimate"></a>
 </h3>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># remotes::install_github("mohsaqr/Nestimate")</span></span>
 <span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_netobject.html">as_netobject</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
 <span><span class="fu">Nestimate</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/Nestimate/man/centrality.html" class="external-link">centrality</a></span><span class="op">(</span><span class="va">net</span><span class="op">)</span></span>
@@ -527,24 +536,30 @@
 <td><code>NULL</code></td>
 </tr>
 <tr class="even">
+<td><code>weight_by</code></td>
+<td>character</td>
+<td>Column with numeric weights for long format (e.g. LDA topic probabilities)</td>
+<td><code>NULL</code></td>
+</tr>
+<tr class="odd">
 <td><code>sep</code></td>
 <td>character</td>
 <td>Delimiter for splitting delimited fields</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>split_by</code></td>
 <td>character</td>
 <td>Column to split data by (separate network per group)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>similarity</code></td>
 <td>character</td>
 <td>Normalization measure</td>
 <td><code>"none"</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>counting</code></td>
 <td>character</td>
 <td>
@@ -552,31 +567,31 @@
 </td>
 <td><code>"full"</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>scale</code></td>
 <td>character</td>
 <td>Weight scaling method</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>threshold</code></td>
 <td>numeric</td>
 <td>Minimum edge weight (after normalization + scaling)</td>
 <td><code>0</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>min_occur</code></td>
 <td>integer</td>
 <td>Minimum entity frequency (transactions)</td>
 <td><code>1</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>top_n</code></td>
 <td>integer</td>
 <td>Keep only the top N edges by weight (per group if split)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>output</code></td>
 <td>character</td>
 <td>Output format: <code>"default"</code>, <code>"gephi"</code>, <code>"igraph"</code>, <code>"cograph"</code>, <code>"matrix"</code>

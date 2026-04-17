@@ -104,6 +104,23 @@ citations <- data.frame(
 cooccurrence(citations, field = "reference", by = "paper_id")
 ```
 
+For weighted long format — for example, LDA topic-document probabilities
+where each document contributes a topic with a given probability — pass
+the numeric weight column via `weight_by`:
+
+``` r
+theta <- data.frame(
+  doc   = c("d1","d1","d1","d2","d2","d3","d3"),
+  topic = c("T1","T2","T3","T1","T3","T2","T3"),
+  prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
+)
+cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
+```
+
+The co-occurrence between topics `i` and `j` becomes `sum_d w_id * w_jd`
+instead of a binary count. The `count` column still reports the number
+of documents where both topics are present.
+
 ### 4. Binary matrix
 
 A document-term matrix where columns are items and values are 0/1.
@@ -125,7 +142,8 @@ get auto-named `V1`, `V2`, etc.
 
 Non-binary data frames or matrices where each row is a sequence or
 record. The unique values in each row form a transaction. This is the
-native format for sequence analysis tools like TraMineR and tna.
+native format for sequence analysis tools like TraMineR and tna. Pass
+`field = "all"` so every column is treated as a time point:
 
 ``` r
 sequences <- data.frame(
@@ -133,7 +151,7 @@ sequences <- data.frame(
   t2 = c("B", "C", "C"),
   t3 = c("C", NA,  NA)
 )
-cooccurrence(sequences)
+cooccurrence(sequences, field = "all")
 ```
 
 NAs, empty strings, and TraMineR void markers (`%`, `*`) are
@@ -435,6 +453,7 @@ Nestimate::bootstrap_network(net)
 | `data`       | various   | Input data (data.frame, matrix, or list)                                   | required    |
 | `field`      | character | Column(s) containing entities (nodes)                                      | `NULL`      |
 | `by`         | character | Column grouping entities into transactions                                 | `NULL`      |
+| `weight_by`  | character | Column with numeric weights for long format (e.g. LDA topic probabilities) | `NULL`      |
 | `sep`        | character | Delimiter for splitting delimited fields                                   | `NULL`      |
 | `split_by`   | character | Column to split data by (separate network per group)                       | `NULL`      |
 | `similarity` | character | Normalization measure                                                      | `"none"`    |
