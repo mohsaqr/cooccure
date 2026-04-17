@@ -466,26 +466,11 @@ optimized BLAS routines for the matrix multiplication.
 
 ## References
 
-van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
-data? An analysis of some well-known similarity measures. *Journal of
-the American Society for Information Science and Technology*, 60(8),
-1635–1651.
-
-Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).
-Constructing bibliometric networks: A comparison between full and
-fractional counting. *Journal of Informetrics*, 10(4), 1178–1195.
-
 Saqr, M., López-Pernas, S., Conde, M. Á., & Hernández-García, Á. (2023).
 Social Network Analysis: A Primer, a Guide and a Tutorial in R. In Saqr,
 M. & López-Pernas, S. (Eds.), *Learning Analytics Methods and Tutorials:
 A Practical Guide Using R*. Springer.
 <https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html>
-
-Saqr, M., Misiejuk, M., Wasson, B., & Dever, D. A. (2023).
-Scientometrics: A Concise Introduction and a Detailed Methodology for
-Mapping the Scientific Field of Computing Education Research. In
-Barendsen, E. & Hubwieser, P. (Eds.), *Informatics in Schools*.
-Springer. <https://doi.org/10.1007/978-3-031-25336-2_5>
 
 ## Authors
 
