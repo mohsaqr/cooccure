@@ -190,114 +190,93 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs",
 
-        # ---- Help / About ----
-        tabPanel(
-          title = tagList(tags$span(style = "color:#1a56db;", "\u2139\ufe0f"), " Help"),
-          value = "help",
+        # ---- Quick Start (landing) ----
+        tabPanel("Quick Start", value = "quickstart",
           br(),
-
           fluidRow(
-            column(8,
-
+            column(6, offset = 3,
               div(class = "help-section",
-                tags$h4("\U0001f9e0 What is co-occurrence analysis?"),
-                tags$p(
-                  "Co-occurrence analysis detects how often items appear together across ",
-                  "transactions — documents, films, sessions, papers, or any grouping unit. ",
-                  "The result is a weighted network whose nodes are items and whose edges ",
-                  "reflect the strength of their co-appearance. This package supports ",
-                  tags$strong("six input formats"), " and ", tags$strong("eight similarity measures"),
-                  " so you can work with almost any tabular dataset without reshaping it first."
+                tags$h4("\u26a1 Get started in 3 steps"),
+                tags$ol(style = "font-size: 15px; line-height: 2;",
+                  tags$li("Pick a dataset in the sidebar — upload your own CSV or try a built-in demo (", tags$em("movies"), " or ", tags$em("actors"), ")."),
+                  tags$li("Select the ", tags$strong("Field"), " column that holds your items. Set ", tags$strong("Separator"), " if items are comma-separated inside one cell, or ", tags$strong("Group by"), " if each row is one item in a transaction."),
+                  tags$li("Click ", tags$strong("Build network"), ", then explore results in the ", tags$strong("Summary"), ", ", tags$strong("View edge table"), ", and ", tags$strong("Network"), " tabs.")
                 )
               ),
-
               div(class = "help-section",
-                tags$h4("\U0001f4c2 Input formats"),
-                tags$p("The app auto-detects the format from your data shape. You can also guide it with the ", tags$code("sep"), " and ", tags$code("by"), " fields."),
+                tags$h4("\u2139\ufe0f Key options"),
                 tags$table(class = "measure-table",
-                  tags$thead(tags$tr(
-                    tags$th("Format"), tags$th("Description"), tags$th("Example")
-                  )),
+                  tags$thead(tags$tr(tags$th("Option"), tags$th("What it does"))),
                   tags$tbody(
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "delimited")),
-                            tags$td("One cell holds multiple items separated by a delimiter"),
-                            tags$td(tags$code("genres = \"Drama,Action\""))),
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "long")),
-                            tags$td("Each row is one item; a second column groups them"),
-                            tags$td(tags$code("actor + movie_id"))),
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "wide")),
-                            tags$td("Each row is a transaction; multiple columns are items"),
-                            tags$td("survey response columns")),
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "binary")),
-                            tags$td("Wide matrix of 0/1 presence flags"),
-                            tags$td("term-document matrix")),
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "list")),
-                            tags$td("R list of character vectors (programmatic use)"),
-                            tags$td("\u2014")),
-                    tags$tr(tags$td(tags$span(class = "badge-fmt", "multi_delimited")),
-                            tags$td("Multiple delimited columns to merge before counting"),
-                            tags$td("keywords_1, keywords_2 columns"))
+                    tags$tr(tags$td(tags$code("Similarity")), tags$td("How edge weights are calculated. Jaccard is a safe default for most datasets.")),
+                    tags$tr(tags$td(tags$code("Min freq")),   tags$td("Drop rare items that appear in fewer than N transactions.")),
+                    tags$tr(tags$td(tags$code("Threshold")),  tags$td("Hide weak edges below this weight.")),
+                    tags$tr(tags$td(tags$code("Top N edges")), tags$td("Keep only the N strongest edges — useful for large networks.")),
+                    tags$tr(tags$td(tags$code("split_by")),   tags$td("Build one network per group (e.g. per year) in a single run."))
                   )
                 )
               ),
+              tags$p(style = "text-align:center; color:#adb5bd; font-size:12px; margin-top:8px;",
+                "For input format details and similarity measure definitions, see the ",
+                tags$strong("Help"), " tab."
+              )
+            )
+          )
+        ),
 
+        # ---- Help (reference) ----
+        tabPanel("Help", value = "help",
+          br(),
+          fluidRow(
+            column(6,
               div(class = "help-section",
-                tags$h4("\U0001f4cf Similarity measures"),
+                tags$h4("\U0001f4c2 Input formats"),
+                tags$p("The app auto-detects format from your data. Guide it with ", tags$code("sep"), " and ", tags$code("by"), " if needed."),
                 tags$table(class = "measure-table",
-                  tags$thead(tags$tr(
-                    tags$th("Measure"), tags$th("Interpretation"), tags$th("Best for")
-                  )),
+                  tags$thead(tags$tr(tags$th("Format"), tags$th("Description"), tags$th("Example"))),
                   tags$tbody(
-                    tags$tr(tags$td(tags$strong("none")),    tags$td("Raw co-occurrence count"),          tags$td("Frequency-based analyses")),
-                    tags$tr(tags$td(tags$strong("jaccard")), tags$td("Intersection / union"),             tags$td("General-purpose; unaffected by item frequency")),
-                    tags$tr(tags$td(tags$strong("cosine")),  tags$td("Geometric similarity of profiles"), tags$td("Text / keyword networks")),
-                    tags$tr(tags$td(tags$strong("inclusion")), tags$td("How much A contains B"),          tags$td("Hierarchical / subset relationships")),
-                    tags$tr(tags$td(tags$strong("association")), tags$td("Lift above independence"),      tags$td("Market-basket / rule mining")),
-                    tags$tr(tags$td(tags$strong("dice")),    tags$td("Harmonic Jaccard"),                 tags$td("Balanced co-occurrence")),
-                    tags$tr(tags$td(tags$strong("equivalence")), tags$td("Bibliographic coupling style"), tags$td("Citation / reference networks")),
-                    tags$tr(tags$td(tags$strong("relative")), tags$td("Normalized by total pairs"),       tags$td("Comparing across different-sized datasets"))
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "delimited")),
+                            tags$td("Multiple items in one cell, separated by a delimiter"),
+                            tags$td(tags$code("\"Drama,Action\""))),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "long")),
+                            tags$td("One item per row; a second column groups them"),
+                            tags$td(tags$code("actor + movie_id"))),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "wide")),
+                            tags$td("Each row is a transaction; columns are items"),
+                            tags$td("survey response columns")),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "binary")),
+                            tags$td("Wide 0/1 presence matrix"),
+                            tags$td("term-document matrix")),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "multi_delimited")),
+                            tags$td("Multiple delimited columns merged before counting"),
+                            tags$td(tags$code("kw_1, kw_2")))
                   )
                 )
               )
             ),
-
-            column(4,
-
+            column(6,
               div(class = "help-section",
-                tags$h4("\u26a1 Quick start"),
-                tags$ol(
-                  tags$li("Choose ", tags$strong("Upload CSV"), " or a built-in dataset in the sidebar."),
-                  tags$li("Select the ", tags$strong("Field"), " column that holds your items (e.g. genres, actors, keywords)."),
-                  tags$li("If items are comma-separated inside one cell, set ", tags$strong("Separator"), " (e.g. ", tags$code(","), ")."),
-                  tags$li("For long-format data (one item per row), pick the ", tags$strong("Group by"), " column that identifies each transaction."),
-                  tags$li("Choose a ", tags$strong("Similarity"), " measure (Jaccard is a safe default)."),
-                  tags$li("Click ", tags$strong("Build network"), "."),
-                  tags$li("Explore results in the ", tags$strong("Summary"), ", ", tags$strong("View edge table"), ", and ", tags$strong("Network"), " tabs.")
+                tags$h4("\U0001f4cf Similarity measures"),
+                tags$table(class = "measure-table",
+                  tags$thead(tags$tr(tags$th("Measure"), tags$th("Best for"))),
+                  tags$tbody(
+                    tags$tr(tags$td(tags$strong("none")),        tags$td("Raw counts — frequency-based analyses")),
+                    tags$tr(tags$td(tags$strong("jaccard")),     tags$td("General-purpose; robust to unequal frequencies")),
+                    tags$tr(tags$td(tags$strong("cosine")),      tags$td("Text and keyword networks")),
+                    tags$tr(tags$td(tags$strong("inclusion")),   tags$td("Subset / hierarchical relationships")),
+                    tags$tr(tags$td(tags$strong("association")), tags$td("Market-basket / association rules")),
+                    tags$tr(tags$td(tags$strong("dice")),        tags$td("Balanced co-occurrence (harmonic Jaccard)")),
+                    tags$tr(tags$td(tags$strong("equivalence")), tags$td("Bibliographic coupling / citation networks")),
+                    tags$tr(tags$td(tags$strong("relative")),    tags$td("Comparing across different-sized corpora"))
+                  )
                 )
               ),
-
-              div(class = "help-section",
-                tags$h4("\u2699\ufe0f Key parameters"),
-                tags$dl(
-                  tags$dt(tags$code("split_by")),
-                  tags$dd("Build a separate network per group (e.g. per year). Adds a ", tags$code("group"), " column to the edge table."),
-                  tags$dt(tags$code("Min freq")),
-                  tags$dd("Drop items that appear in fewer than this many transactions — removes noise."),
-                  tags$dt(tags$code("Threshold")),
-                  tags$dd("Drop edges below this similarity — keeps only strong connections."),
-                  tags$dt(tags$code("Top N edges")),
-                  tags$dd("Keep only the N strongest edges. Use with large datasets."),
-                  tags$dt(tags$code("Scale")),
-                  tags$dd("Optional post-normalization rescaling (min-max, log, z-score, …).")
-                )
-              ),
-
               div(class = "help-section",
                 tags$h4("\U0001f4be Export formats"),
                 tags$ul(
-                  tags$li(tags$strong("CSV (default)"), " — standard edge list for R / Python."),
-                  tags$li(tags$strong("CSV (Gephi)"), " — ", tags$code("Source / Target / Weight"), " columns for Gephi import."),
-                  tags$li(tags$strong("GraphML"), " — interoperable XML graph format for Gephi, Cytoscape, NetworkX.")
+                  tags$li(tags$strong("CSV"), " — standard edge list for R / Python."),
+                  tags$li(tags$strong("CSV (Gephi)"), " — ", tags$code("Source / Target / Weight"), " columns for direct Gephi import."),
+                  tags$li(tags$strong("GraphML"), " — interoperable XML format for Gephi, Cytoscape, NetworkX.")
                 )
               )
             )
@@ -492,6 +471,8 @@ server <- function(input, output, session) {
                         min   = mn, max = mx, value = mn,
                         step  = step)
     }
+    # Switch to Summary tab so results are immediately visible
+    updateTabsetPanel(session, "tabs", selected = "Summary")
   })
 
   # ---- Summary tab ----
