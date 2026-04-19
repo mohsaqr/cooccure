@@ -66,3 +66,21 @@
 #' head(actor_genres)
 #' cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")
 "actor_genres"
+
+
+#' Demo actor-movie-genre table
+#'
+#' A small hand-crafted dataset of 30 well-known actors across 10 classic
+#' films with genre labels. Designed for quick exploration in the Shiny app.
+#' Use \code{field = "actor"} with \code{by = "movie"} or \code{by = "genre"}.
+#'
+#' @format A data frame with 34 rows and 3 variables:
+#' \describe{
+#'   \item{movie}{Movie title.}
+#'   \item{actor}{Actor name.}
+#'   \item{genre}{Primary genre label.}
+#' }
+#' @examples
+#' head(demo)
+#' cooccurrence(demo, field = "actor", by = "movie", similarity = "jaccard")
+"demo"

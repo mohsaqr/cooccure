@@ -10,6 +10,7 @@ options(shiny.maxRequestSize = 100 * 1024^2)
 data("movies",       package = "cooccur", envir = environment())
 data("actors",       package = "cooccur", envir = environment())
 data("actor_genres", package = "cooccur", envir = environment())
+data("demo",         package = "cooccur", envir = environment())
 
 # ---- helper: build filtered cograph object ----
 # Returns a list(status, value, message). status is one of:
@@ -137,6 +138,7 @@ ui <- fluidPage(
       div(class = "section-header", "Data"),
       radioButtons("data_source", label = NULL,
                    choices = c("Upload CSV"              = "upload",
+                               "Built-in: demo"          = "demo",
                                "Built-in: movies"        = "movies",
                                "Built-in: actors"        = "actors",
                                "Built-in: actor genres"  = "actor_genres"),
@@ -378,6 +380,7 @@ server <- function(input, output, session) {
       movies       = movies,
       actors       = actors,
       actor_genres = actor_genres,
+      demo         = demo,
       upload = {
         req(input$file)
         read.csv(input$file$datapath, stringsAsFactors = FALSE)
@@ -395,6 +398,7 @@ server <- function(input, output, session) {
       movies       = "genres",
       actors       = "actor",
       actor_genres = "actor",
+      demo         = "actor",
       cols[1]
     )
     updateSelectInput(session, "field_sel", choices = cols, selected = default_field)
@@ -405,6 +409,7 @@ server <- function(input, output, session) {
     default_by <- switch(input$data_source,
       actors       = "tconst",
       actor_genres = "genre",
+      demo         = "movie",
       ""
     )
     updateSelectInput(session, "by_sel",       choices = cols_opt, selected = default_by)
