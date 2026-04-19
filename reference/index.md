@@ -19,6 +19,8 @@
 - [`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md)
   [`co()`](http://saqr.me/cooccur/reference/cooccurrence.md) : Build a
   co-occurrence network
+- [`demo`](http://saqr.me/cooccur/reference/demo.md) : Demo
+  actor-movie-genre table
 - [`launch_app()`](http://saqr.me/cooccur/reference/launch_app.md) :
   Launch the cooccur Shiny explorer
 - [`movies`](http://saqr.me/cooccur/reference/movies.md) : IMDB movie
