@@ -1,101 +1,58 @@
-# Session Handoff — 2026-04-17
+# Session Handoff — 2026-04-19
 
 ## Completed
 
-- **`R/cooccurrence.R` refactor** (no behavior change):
-  - Extracted `.co_finalize()` helper — shared tail (normalize → scale →
-    threshold → edges → sort → top_n → stamp attrs) used by both `.co_core`
-    and `.co_core_weighted`. Removed ~35 duplicated lines.
-  - Vectorized `.co_transactions_to_matrix` — dropped the `for` loop in
-    favor of `B[cbind(row_idx, col_idx)] <- TRUE` with `match()`.
-  - Dropped redundant `B * 1L` in `.co_compute_matrix` (`crossprod`
-    coerces logical internally).
-  - Fixed stale `"paper"` option mentioned in `.co_apply_counting`
-    roxygen (only `"full"` and `"fractional"` exist).
-- **CRAN submission prep**:
-  - `DESCRIPTION`: `http://` → `https://`, added `BugReports` field.
-  - `NEWS.md` created (0.1.0 initial release notes).
-  - `cran-comments.md` created (first-submission template).
-  - `.Rbuildignore`: added `.claude`, `HANDOFF.md`, `tmp`, `CHANGES.md`,
-    `LEARNINGS.md`, `cran-comments.md` — cleared both R CMD check NOTEs
-    from earlier in the session.
-- **README polish**:
-  - Added `weight_by` row to the parameter reference table and a short
-    LDA-style example in the long-format section.
-  - Fixed stale wide-sequence example to include `field = "all"`
-    (previously would error since commit `aa0bb1d`).
-  - Sonsoles's online edits (commit `abe1fc0`) preserved.
-- **Shiny app hardening** (`inst/shiny/cooccur_app/app.R`):
-  - Raised upload limit to 100 MB via `options(shiny.maxRequestSize = ...)`.
-    Comment notes nginx must also bump `client_max_body_size`.
-  - Reordered sidebar column selectors: Field → by → split_by → sep.
-  - `.filtered_cograph()` now returns `list(status, value, message)`
-    instead of swallowing all errors as `NULL`. UI distinguishes empty
-    filter, cograph build error, and missing package.
-  - Added a diagnostic banner at the top of the Network tab showing
-    total edges, min/max weight, filter threshold, passing count, and
-    `cograph` install status. Meant to debug the "No edges above
-    threshold" issue without shell access to the server.
-  - Slider min now uses `floor(min_weight * 10000) / 10000` instead of
-    `round()` so the initial filter includes every edge (round-up was
-    silently dropping the minimum edge, and in degenerate cases all
-    edges at the rounded minimum).
+- **Shiny app UI overhaul** (`inst/shiny/cooccur_app/app.R`):
+  - Branded gradient title bar replacing plain `titlePanel()`.
+  - Split help content into two tabs: **Quick Start** (landing page, 3-step guide + key options table) and **Help** (full reference: input formats, similarity measures, export formats).
+  - After clicking "Build network", app auto-switches to the Summary tab.
+  - Default similarity changed from `jaccard` to `none`.
+  - Default network layout changed to `gephi`.
+  - Footer: author names enlarged to 15px bold with blue links.
+
+- **New built-in datasets**:
+  - `actors.rda`: trimmed from 25,636 → 1,267 rows (624 actors appearing in 2+ movies). Eliminates the 25k×25k OOM crash.
+  - `actor_genres.rda`: 2,502 rows, actor × genre (one row per actor-genre pair), 20 genres. Runs in ~0.03s.
+  - `demo.rda`: 34 rows, 30 actors across 10 classic films (Godfather, Heat, Pulp Fiction, Inception, etc.), 3 genres. Produces 43 edges by movie, 172 by genre — ideal for quick demos.
+  - All three documented in `R/data.R` and `man/`.
+
+- **Shiny app dataset wiring**:
+  - Added "Built-in: demo" and "Built-in: actor genres" options.
+  - Each dataset pre-fills correct field/by defaults on selection.
+
+- **r-universe**: `cooccur` added to `mohsaqr/universe` packages.json — will auto-build at `mohsaqr.r-universe.dev/cooccur`.
+
+- **Bug fix**: `actor_genres.rda` was accidentally zeroed by a failed filter script and restored.
 
 ## Current State
 
-- `devtools::check()`: 0 errors / 0 warnings / 1 NOTE ("unable to verify
-  current time" — network-only, CRAN ignores).
-- `devtools::test()`: 236 PASS / 0 FAIL / 2 SKIP (optional packages).
-- `covr::package_coverage()`: **94.91%** (cooccurrence.R 96.4%,
-  converters.R 96.2%, methods.R 98.5%, launch_app.R 0% — Shiny
-  entrypoint, not unit-testable).
-- `urlchecker::url_check()`: clean, HTTPS only.
-- All 8 exports have full `@param` + `@return` + `@examples`.
-- Repo clean, pushed to `origin/main`. Latest commit: `4e33c22`.
+- `devtools::test()`: not re-run this session (no R source changes, only data and Shiny).
+- All four built-in datasets verified correct: movies (1000), actors (1267), actor_genres (2502), demo (34).
+- Repo clean, pushed to `origin/main`. Latest commit: `169b791`.
+- Server not yet redeployed this session.
 
 ## Key Decisions
 
-- `.co_finalize()` extraction was chosen over keeping the two paths
-  separate because the tails were byte-for-byte identical except for
-  input variable names. Future attribute additions now require one
-  edit, not two.
-- The Shiny `.filtered_cograph()` helper was changed from `NULL`-on-error
-  to a tagged status list so the UI can show the *actual* failure mode
-  (e.g. missing `cograph` package) instead of the misleading
-  "No edges above threshold" message.
-- The slider rounding was switched to `floor`/`ceiling` (not `round`)
-  because the previous behavior could push the slider's starting value
-  *above* the true data minimum, silently dropping the minimum edge.
+- `actors` dataset pre-filtered to 2+ movie actors rather than using `min_occur` workarounds in the app — cleaner, no hacks.
+- `demo` dataset hand-crafted rather than derived from IMDB — small, legible, instantly renderable network.
+- `actor_genres` kept as raw long-format (not pre-computed edges) so users can choose any similarity measure in the app.
 
 ## Open Issues
 
-- **Shiny Network tab deployment**: user reports hundreds of edges,
-  filter clearly above threshold, yet still sees "No edges above the
-  current weight threshold." Local reproduction with 1225 edges works
-  end-to-end through `as_cograph` and `cograph::splot` (all layouts
-  except "nicely", which errors with a clear message). The diagnostic
-  banner was added to pinpoint the deployed cause, but the user did
-  not paste the banner output before stopping the session. Next
-  session should start by asking for that one line.
-- `.github/workflows/deploy.yml` targets `192.168.50.39` from
-  `runs-on: ubuntu-latest`. GitHub-hosted runners cannot reach RFC1918
-  private IPs; this workflow will hang unless a self-hosted runner is
-  configured (user confirmed they host it but did not confirm a
-  self-hosted runner exists). Left as-is per user instruction.
+- `actor_genres` produces 172k edges with default settings (no threshold) — still too many to render in the Network tab. User has not yet specified how to handle this; filtering approach was interrupted. Needs resolution next session.
+- Server not redeployed — user should run: `cd /srv/shiny-server/cooccur && sudo git pull && sudo systemctl restart shiny-server`.
 
 ## Next Steps
 
-1. Get the diagnostic banner output from the deployed Shiny app to
-   identify why the Network tab isn't rendering in production.
-2. After diagnosis, remove the diagnostic banner (it was meant to be
-   temporary).
-3. Submit to CRAN when ready — all preflight checks pass.
-4. Consider adding a CRAN-badge to README once the package is on CRAN.
+1. Resolve the `actor_genres` edge count issue for the Network tab (user interrupted discussion).
+2. Redeploy to production server.
+3. CRAN submission when ready — all preflight checks were passing as of last session.
 
 ## Context
 
 - Package: `cooccur` v0.1.0, GitHub at `mohsaqr/cooccur`, main branch.
-- R-universe: `mohsaqr.r-universe.dev`.
 - Authors: Mohammed Saqr, Sonsoles López-Pernas, Kamila Misiejuk.
-- Shiny production host: `/srv/shiny-server/cooccur` (user's own server).
-- Redeploy flow: `cd /srv/shiny-server/cooccur && sudo git pull && sudo systemctl restart shiny-server`.
+- Shiny production host: `/srv/shiny-server/cooccur`.
+- Redeploy: `cd /srv/shiny-server/cooccur && sudo git pull && sudo systemctl restart shiny-server`.
+- r-universe: `mohsaqr.r-universe.dev`.
+- **Never add Co-Authored-By Claude to commit messages.**
