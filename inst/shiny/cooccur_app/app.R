@@ -35,6 +35,26 @@ data("actors", package = "cooccur", envir = environment())
 ui <- fluidPage(
   tags$head(tags$style(HTML("
     body { font-size: 14px; }
+
+    /* ── Title bar ── */
+    .app-title {
+      padding: 16px 24px 12px;
+      background: linear-gradient(135deg, #1a56db 0%, #2c7be5 60%, #4facfe 100%);
+      margin-bottom: 0;
+    }
+    .app-title-main {
+      display: block;
+      font-size: 28px; font-weight: 700; letter-spacing: -0.5px;
+      color: #fff; font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+    .app-title-sub {
+      display: block;
+      font-size: 13px; font-weight: 400; letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.80); margin-top: 2px;
+      font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+
+    /* ── Sidebar ── */
     .sidebar-panel { background: #f8f9fa; padding: 15px; border-radius: 6px; }
     .section-header { font-weight: 600; margin-top: 14px; margin-bottom: 4px;
                       color: #333; border-bottom: 1px solid #dee2e6; padding-bottom: 3px; }
@@ -43,23 +63,69 @@ ui <- fluidPage(
     .export-strip { margin-top: 18px; padding: 12px; background: #f0f4fb;
                     border-radius: 6px; border: 1px solid #d0dff5; }
     .export-strip h5 { margin-top: 0; margin-bottom: 10px; color: #2c7be5; }
+
+    /* ── Help page ── */
+    .help-section {
+      background: #fff; border: 1px solid #e4e8ee; border-radius: 8px;
+      padding: 20px 24px; margin-bottom: 18px;
+    }
+    .help-section h4 {
+      color: #1a56db; font-weight: 700; margin-top: 0; margin-bottom: 10px;
+      border-bottom: 2px solid #e8eff9; padding-bottom: 6px;
+    }
+    .help-section p, .help-section li { color: #444; line-height: 1.65; }
+    .help-section code {
+      background: #f0f4fb; color: #c7254e;
+      padding: 1px 5px; border-radius: 3px; font-size: 92%;
+    }
+    .measure-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .measure-table th {
+      background: #1a56db; color: #fff;
+      padding: 7px 12px; text-align: left; font-weight: 600;
+    }
+    .measure-table td { padding: 6px 12px; border-bottom: 1px solid #eee; }
+    .measure-table tr:last-child td { border-bottom: none; }
+    .measure-table tr:nth-child(even) td { background: #f8f9ff; }
+    .badge-fmt {
+      display: inline-block; padding: 2px 8px; border-radius: 12px;
+      font-size: 11px; font-weight: 600; margin-right: 4px;
+      background: #e8eff9; color: #1a56db;
+    }
+
+    /* ── Footer ── */
     html, body { height: 100%; }
     body { display: flex; flex-direction: column; min-height: 100vh; }
     .container-fluid { flex: 1; }
     .app-footer {
-      padding: 12px 24px; margin-top: 30px;
-      border-top: 1px solid #e4e8ee;
-      font-size: 11px; color: #adb5bd;
-      text-align: center; line-height: 2;
-      background: #fff;
+      padding: 18px 24px 14px;
+      margin-top: 30px;
+      border-top: 2px solid #e4e8ee;
+      text-align: center;
+      background: #fafbfd;
     }
-    .app-footer a { color: #adb5bd; text-decoration: none; border-bottom: 1px dotted #ced4da; }
-    .app-footer a:hover { color: #495057; border-bottom-color: #495057; }
-    .app-footer .sep { margin: 0 8px; color: #dee2e6; }
-    .app-footer .block { display: block; margin-top: 2px; }
+    .app-footer .footer-authors {
+      font-size: 15px; font-weight: 600; color: #2c3e50;
+      margin-bottom: 6px;
+    }
+    .app-footer .footer-authors a {
+      color: #1a56db; text-decoration: none;
+    }
+    .app-footer .footer-authors a:hover { text-decoration: underline; }
+    .app-footer .footer-authors .sep { margin: 0 10px; color: #adb5bd; font-weight: 400; }
+    .app-footer .footer-refs {
+      font-size: 11px; color: #adb5bd; line-height: 2;
+    }
+    .app-footer .footer-refs a {
+      color: #adb5bd; text-decoration: none; border-bottom: 1px dotted #ced4da;
+    }
+    .app-footer .footer-refs a:hover { color: #495057; border-bottom-color: #495057; }
+    .app-footer .footer-refs .sep { margin: 0 8px; color: #dee2e6; }
   "))),
 
-  titlePanel("cooccur — Co-occurrence Network Explorer"),
+  tags$div(class = "app-title",
+    tags$span(class = "app-title-main", "cooccur"),
+    tags$span(class = "app-title-sub", "Co-occurrence Network Explorer")
+  ),
 
   sidebarLayout(
     sidebarPanel(
@@ -124,6 +190,120 @@ ui <- fluidPage(
       tabsetPanel(
         id = "tabs",
 
+        # ---- Help / About ----
+        tabPanel(
+          title = tagList(tags$span(style = "color:#1a56db;", "\u2139\ufe0f"), " Help"),
+          value = "help",
+          br(),
+
+          fluidRow(
+            column(8,
+
+              div(class = "help-section",
+                tags$h4("\U0001f9e0 What is co-occurrence analysis?"),
+                tags$p(
+                  "Co-occurrence analysis detects how often items appear together across ",
+                  "transactions — documents, films, sessions, papers, or any grouping unit. ",
+                  "The result is a weighted network whose nodes are items and whose edges ",
+                  "reflect the strength of their co-appearance. This package supports ",
+                  tags$strong("six input formats"), " and ", tags$strong("eight similarity measures"),
+                  " so you can work with almost any tabular dataset without reshaping it first."
+                )
+              ),
+
+              div(class = "help-section",
+                tags$h4("\U0001f4c2 Input formats"),
+                tags$p("The app auto-detects the format from your data shape. You can also guide it with the ", tags$code("sep"), " and ", tags$code("by"), " fields."),
+                tags$table(class = "measure-table",
+                  tags$thead(tags$tr(
+                    tags$th("Format"), tags$th("Description"), tags$th("Example")
+                  )),
+                  tags$tbody(
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "delimited")),
+                            tags$td("One cell holds multiple items separated by a delimiter"),
+                            tags$td(tags$code("genres = \"Drama,Action\""))),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "long")),
+                            tags$td("Each row is one item; a second column groups them"),
+                            tags$td(tags$code("actor + movie_id"))),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "wide")),
+                            tags$td("Each row is a transaction; multiple columns are items"),
+                            tags$td("survey response columns")),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "binary")),
+                            tags$td("Wide matrix of 0/1 presence flags"),
+                            tags$td("term-document matrix")),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "list")),
+                            tags$td("R list of character vectors (programmatic use)"),
+                            tags$td("\u2014")),
+                    tags$tr(tags$td(tags$span(class = "badge-fmt", "multi_delimited")),
+                            tags$td("Multiple delimited columns to merge before counting"),
+                            tags$td("keywords_1, keywords_2 columns"))
+                  )
+                )
+              ),
+
+              div(class = "help-section",
+                tags$h4("\U0001f4cf Similarity measures"),
+                tags$table(class = "measure-table",
+                  tags$thead(tags$tr(
+                    tags$th("Measure"), tags$th("Interpretation"), tags$th("Best for")
+                  )),
+                  tags$tbody(
+                    tags$tr(tags$td(tags$strong("none")),    tags$td("Raw co-occurrence count"),          tags$td("Frequency-based analyses")),
+                    tags$tr(tags$td(tags$strong("jaccard")), tags$td("Intersection / union"),             tags$td("General-purpose; unaffected by item frequency")),
+                    tags$tr(tags$td(tags$strong("cosine")),  tags$td("Geometric similarity of profiles"), tags$td("Text / keyword networks")),
+                    tags$tr(tags$td(tags$strong("inclusion")), tags$td("How much A contains B"),          tags$td("Hierarchical / subset relationships")),
+                    tags$tr(tags$td(tags$strong("association")), tags$td("Lift above independence"),      tags$td("Market-basket / rule mining")),
+                    tags$tr(tags$td(tags$strong("dice")),    tags$td("Harmonic Jaccard"),                 tags$td("Balanced co-occurrence")),
+                    tags$tr(tags$td(tags$strong("equivalence")), tags$td("Bibliographic coupling style"), tags$td("Citation / reference networks")),
+                    tags$tr(tags$td(tags$strong("relative")), tags$td("Normalized by total pairs"),       tags$td("Comparing across different-sized datasets"))
+                  )
+                )
+              )
+            ),
+
+            column(4,
+
+              div(class = "help-section",
+                tags$h4("\u26a1 Quick start"),
+                tags$ol(
+                  tags$li("Choose ", tags$strong("Upload CSV"), " or a built-in dataset in the sidebar."),
+                  tags$li("Select the ", tags$strong("Field"), " column that holds your items (e.g. genres, actors, keywords)."),
+                  tags$li("If items are comma-separated inside one cell, set ", tags$strong("Separator"), " (e.g. ", tags$code(","), ")."),
+                  tags$li("For long-format data (one item per row), pick the ", tags$strong("Group by"), " column that identifies each transaction."),
+                  tags$li("Choose a ", tags$strong("Similarity"), " measure (Jaccard is a safe default)."),
+                  tags$li("Click ", tags$strong("Build network"), "."),
+                  tags$li("Explore results in the ", tags$strong("Summary"), ", ", tags$strong("View edge table"), ", and ", tags$strong("Network"), " tabs.")
+                )
+              ),
+
+              div(class = "help-section",
+                tags$h4("\u2699\ufe0f Key parameters"),
+                tags$dl(
+                  tags$dt(tags$code("split_by")),
+                  tags$dd("Build a separate network per group (e.g. per year). Adds a ", tags$code("group"), " column to the edge table."),
+                  tags$dt(tags$code("Min freq")),
+                  tags$dd("Drop items that appear in fewer than this many transactions — removes noise."),
+                  tags$dt(tags$code("Threshold")),
+                  tags$dd("Drop edges below this similarity — keeps only strong connections."),
+                  tags$dt(tags$code("Top N edges")),
+                  tags$dd("Keep only the N strongest edges. Use with large datasets."),
+                  tags$dt(tags$code("Scale")),
+                  tags$dd("Optional post-normalization rescaling (min-max, log, z-score, …).")
+                )
+              ),
+
+              div(class = "help-section",
+                tags$h4("\U0001f4be Export formats"),
+                tags$ul(
+                  tags$li(tags$strong("CSV (default)"), " — standard edge list for R / Python."),
+                  tags$li(tags$strong("CSV (Gephi)"), " — ", tags$code("Source / Target / Weight"), " columns for Gephi import."),
+                  tags$li(tags$strong("GraphML"), " — interoperable XML graph format for Gephi, Cytoscape, NetworkX.")
+                )
+              )
+            )
+          )
+        ),
+
         # ---- Summary ----
         tabPanel("Summary",
           br(),
@@ -187,18 +367,18 @@ ui <- fluidPage(
   ),
 
   tags$footer(class = "app-footer",
-    tags$span(
+    tags$div(class = "footer-authors",
       tags$a(href = "https://saqr.me",     target = "_blank", "Mohammed Saqr"),
-      tags$span(class = "sep", "·"),
-      tags$a(href = "https://sonsoles.me", target = "_blank", "Sonsoles López-Pernas"),
-      tags$span(class = "sep", "·"),
+      tags$span(class = "sep", "\u00b7"),
+      tags$a(href = "https://sonsoles.me", target = "_blank", "Sonsoles L\u00f3pez-Pernas"),
+      tags$span(class = "sep", "\u00b7"),
       tags$a(href = "https://kamilamisiejuk.com", target = "_blank", "Kamila Misiejuk")
     ),
-    tags$span(class = "block",
+    tags$div(class = "footer-refs",
       tags$a(href = "https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html",
              target = "_blank",
              "Social Network Analysis: A Primer, a Guide and a Tutorial in R"),
-      tags$span(class = "sep", "·"),
+      tags$span(class = "sep", "\u00b7"),
       tags$a(href = "https://link.springer.com/chapter/10.1007/978-3-031-25336-2_5",
              target = "_blank",
              "Scientometrics: A Concise Introduction and a Detailed Methodology")
