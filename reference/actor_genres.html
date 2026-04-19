@@ -75,27 +75,10 @@ same genres? Pass <code>field = "actor"</code> and <code>by = "genre"</code> to
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">actor_genres</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            actor     genre</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    Phil Harris Adventure</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    Phil Harris Animation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    Phil Harris    Comedy</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 Larry Clemmons Adventure</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 Larry Clemmons Animation</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 Larry Clemmons    Comedy</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] actor genre</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;0 rows&gt; (or 0-length row.names)</span>
 <span class="r-in"><span><span class="fu"><a href="cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">actor_genres</span>, field <span class="op">=</span> <span class="st">"actor"</span>, by <span class="op">=</span> <span class="st">"genre"</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # cooccurrence: 624 nodes, 172390 edges (20 transactions) | similarity: jaccard</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            from               to weight count</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      Adam Brown      Adnan Ghani      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      Adam Brown   Akimasa Ohmori      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Adnan Ghani   Akimasa Ohmori      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Adam Strick         Aleks Le      1     3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       Akash Dev Anil K. Shivaram      1     5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        Abhilash     Anson Antony      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        Abhilash  Antony Varghese      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    Anson Antony  Antony Varghese      1     4</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  Ashwani Chopra     Asif Ali Beg      1     5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          Aamani         Banerjee      1     3</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> # ... 172380 more edges</span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> No non-empty transactions found in the input data.</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
