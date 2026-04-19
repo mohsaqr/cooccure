@@ -518,9 +518,9 @@ cograph::splot(net, layout = "gephi", label_size = .8, label_fontface = "bold",
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 9cc0d09 UNW- 17 102 -- 
+#> IGRAPH 951a07e UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 9cc0d09 (vertex names):
+#> + edges from 951a07e (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -686,9 +686,9 @@ as_matrix(result, type = "raw")
 
 ``` r
 as_igraph(result)
-#> IGRAPH 0f6b07e UNW- 17 102 -- 
+#> IGRAPH e57d1b4 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 0f6b07e (vertex names):
+#> + edges from e57d1b4 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      

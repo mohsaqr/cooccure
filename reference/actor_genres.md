@@ -33,8 +33,25 @@ A data frame with 2,502 rows and 2 variables:
 
 ``` r
 head(actor_genres)
-#> [1] actor genre
-#> <0 rows> (or 0-length row.names)
+#>            actor     genre
+#> 1    Phil Harris Adventure
+#> 2    Phil Harris Animation
+#> 3    Phil Harris    Comedy
+#> 4 Larry Clemmons Adventure
+#> 5 Larry Clemmons Animation
+#> 6 Larry Clemmons    Comedy
 cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")
-#> Error: No non-empty transactions found in the input data.
+#> # cooccurrence: 624 nodes, 172390 edges (20 transactions) | similarity: jaccard
+#>            from               to weight count
+#>      Adam Brown      Adnan Ghani      1     4
+#>      Adam Brown   Akimasa Ohmori      1     4
+#>     Adnan Ghani   Akimasa Ohmori      1     4
+#>     Adam Strick         Aleks Le      1     3
+#>       Akash Dev Anil K. Shivaram      1     5
+#>        Abhilash     Anson Antony      1     4
+#>        Abhilash  Antony Varghese      1     4
+#>    Anson Antony  Antony Varghese      1     4
+#>  Ashwani Chopra     Asif Ali Beg      1     5
+#>          Aamani         Banerjee      1     3
+#> # ... 172380 more edges
 ```
