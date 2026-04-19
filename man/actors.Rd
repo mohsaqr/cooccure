@@ -5,7 +5,7 @@
 \alias{actors}
 \title{IMDB actor-movie long table (1970-2024)}
 \format{
-A data frame with 25,636 rows and 7 variables:
+A data frame with 1,267 rows and 7 variables:
 \describe{
 \item{actor}{Actor name.}
 \item{tconst}{IMDB title identifier linking to \code{\link{movies}}.}
@@ -23,14 +23,14 @@ A data frame with 25,636 rows and 7 variables:
 actors
 }
 \description{
-Long-format bipartite table linking actors to the 1,000 movies in
-\code{\link{movies}}. Each row is one actor in one movie. Pass
-\code{field = "actor"} and \code{by = "tconst"} to
+Long-format bipartite table linking actors to movies in
+\code{\link{movies}}. Pre-filtered to the 624 actors who appear in at
+least two movies, so all similarity measures compute instantly.
+Pass \code{field = "actor"} and \code{by = "tconst"} to
 \code{\link{cooccurrence}} to build an actor co-appearance network.
 }
 \examples{
 head(actors)
-cooccurrence(actors, field = "actor", by = "tconst",
-             similarity = "cosine", min_occur = 3)
+cooccurrence(actors, field = "actor", by = "tconst", similarity = "jaccard")
 }
 \keyword{datasets}

@@ -25,12 +25,13 @@
 
 #' IMDB actor-movie long table (1970-2024)
 #'
-#' Long-format bipartite table linking actors to the 1,000 movies in
-#' \code{\link{movies}}. Each row is one actor in one movie. Pass
-#' \code{field = "actor"} and \code{by = "tconst"} to
+#' Long-format bipartite table linking actors to movies in
+#' \code{\link{movies}}. Pre-filtered to the 624 actors who appear in at
+#' least two movies, so all similarity measures compute instantly.
+#' Pass \code{field = "actor"} and \code{by = "tconst"} to
 #' \code{\link{cooccurrence}} to build an actor co-appearance network.
 #'
-#' @format A data frame with 25,636 rows and 7 variables:
+#' @format A data frame with 1,267 rows and 7 variables:
 #' \describe{
 #'   \item{actor}{Actor name.}
 #'   \item{tconst}{IMDB title identifier linking to \code{\link{movies}}.}
@@ -43,6 +44,25 @@
 #' @source \url{https://developer.imdb.com/non-commercial-datasets/}
 #' @examples
 #' head(actors)
-#' cooccurrence(actors, field = "actor", by = "tconst",
-#'              similarity = "cosine", min_occur = 3)
+#' cooccurrence(actors, field = "actor", by = "tconst", similarity = "jaccard")
 "actors"
+
+
+#' IMDB actor-genre long table (1970-2024)
+#'
+#' Long-format table mapping each of the 624 actors in \code{\link{actors}}
+#' to every genre of every movie they appeared in. Use this to build an
+#' actor co-occurrence network grouped by genre: which actors share the
+#' same genres? Pass \code{field = "actor"} and \code{by = "genre"} to
+#' \code{\link{cooccurrence}}.
+#'
+#' @format A data frame with 2,502 rows and 2 variables:
+#' \describe{
+#'   \item{actor}{Actor name.}
+#'   \item{genre}{Genre label (one row per actor-genre combination).}
+#' }
+#' @source \url{https://developer.imdb.com/non-commercial-datasets/}
+#' @examples
+#' head(actor_genres)
+#' cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")
+"actor_genres"

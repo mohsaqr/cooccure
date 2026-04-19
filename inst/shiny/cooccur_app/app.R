@@ -7,8 +7,9 @@ library(DT)
 # in the server block — otherwise nginx returns 413 before Shiny sees the request.
 options(shiny.maxRequestSize = 100 * 1024^2)
 
-data("movies", package = "cooccur", envir = environment())
-data("actors", package = "cooccur", envir = environment())
+data("movies",       package = "cooccur", envir = environment())
+data("actors",       package = "cooccur", envir = environment())
+data("actor_genres", package = "cooccur", envir = environment())
 
 # ---- helper: build filtered cograph object ----
 # Returns a list(status, value, message). status is one of:
@@ -135,9 +136,10 @@ ui <- fluidPage(
       # ---- Data ----
       div(class = "section-header", "Data"),
       radioButtons("data_source", label = NULL,
-                   choices = c("Upload CSV"        = "upload",
-                               "Built-in: movies"  = "movies",
-                               "Built-in: actors"  = "actors"),
+                   choices = c("Upload CSV"              = "upload",
+                               "Built-in: movies"        = "movies",
+                               "Built-in: actors"        = "actors",
+                               "Built-in: actor genres"  = "actor_genres"),
                    selected = "upload"),
 
       conditionalPanel(
@@ -373,8 +375,9 @@ server <- function(input, output, session) {
   # ---- reactive: loaded data ----
   data_loaded <- reactive({
     switch(input$data_source,
-      movies = movies,
-      actors = actors,
+      movies       = movies,
+      actors       = actors,
+      actor_genres = actor_genres,
       upload = {
         req(input$file)
         read.csv(input$file$datapath, stringsAsFactors = FALSE)
@@ -388,22 +391,25 @@ server <- function(input, output, session) {
     cols     <- colnames(d)
     cols_opt <- c("— none —" = "", cols)
 
-    default_field <- if (input$data_source == "movies") "genres" else
-                     if (input$data_source == "actors") "actor"  else cols[1]
-    updateSelectInput(session, "field_sel",    choices = cols,     selected = default_field)
+    default_field <- switch(input$data_source,
+      movies       = "genres",
+      actors       = "actor",
+      actor_genres = "actor",
+      cols[1]
+    )
+    updateSelectInput(session, "field_sel", choices = cols, selected = default_field)
 
     default_sep <- if (input$data_source == "movies") "," else ""
-    updateTextInput(session,   "sep_val",      value   = default_sep)
+    updateTextInput(session, "sep_val", value = default_sep)
 
-    default_by <- if (input$data_source == "actors") "tconst" else ""
+    default_by <- switch(input$data_source,
+      actors       = "tconst",
+      actor_genres = "genre",
+      ""
+    )
     updateSelectInput(session, "by_sel",       choices = cols_opt, selected = default_by)
-
     updateSelectInput(session, "split_by_sel", choices = cols_opt, selected = "")
-
-    # actors: 25k actors but ~25k appear in only 1 movie — min_occur=2 drops
-    # them to ~600 actors and makes any similarity measure instant to compute.
-    default_min_occur <- if (input$data_source == "actors") 2L else 1L
-    updateNumericInput(session, "min_occur", value = default_min_occur)
+    updateNumericInput(session, "min_occur", value = 1L)
   })
 
   # ---- dynamic column selectors ----
