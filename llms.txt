@@ -510,6 +510,8 @@ MIT
 
 ## All functions
 
+- [`actor_genres`](http://saqr.me/cooccur/reference/actor_genres.md) :
+  IMDB actor-genre long table (1970-2024)
 - [`actors`](http://saqr.me/cooccur/reference/actors.md) : IMDB
   actor-movie long table (1970-2024)
 - [`as_cograph()`](http://saqr.me/cooccur/reference/as_cograph.md) :

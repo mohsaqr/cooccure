@@ -1,9 +1,10 @@
 # IMDB actor-movie long table (1970-2024)
 
-Long-format bipartite table linking actors to the 1,000 movies in
-[`movies`](http://saqr.me/cooccur/reference/movies.md). Each row is one
-actor in one movie. Pass `field = "actor"` and `by = "tconst"` to
-[`cooccurrence`](http://saqr.me/cooccur/reference/cooccurrence.md) to
+Long-format bipartite table linking actors to movies in
+[`movies`](http://saqr.me/cooccur/reference/movies.md). Pre-filtered to
+the 624 actors who appear in at least two movies, so all similarity
+measures compute instantly. Pass `field = "actor"` and `by = "tconst"`
+to [`cooccurrence`](http://saqr.me/cooccur/reference/cooccurrence.md) to
 build an actor co-appearance network.
 
 ## Usage
@@ -14,7 +15,7 @@ actors
 
 ## Format
 
-A data frame with 25,636 rows and 7 variables:
+A data frame with 1,267 rows and 7 variables:
 
 - actor:
 
@@ -53,29 +54,32 @@ A data frame with 25,636 rows and 7 variables:
 
 ``` r
 head(actors)
-#>               actor    tconst primaryTitle startYear decade genres
-#> 1    Jean-Guy Lecat tt0062285      Oh, Sun      1970  1970s  Drama
-#> 2  Sarah Hardenberg tt0062285      Oh, Sun      1970  1970s  Drama
-#> 3      Juran Mladen tt0062285      Oh, Sun      1970  1970s  Drama
-#> 4 Roland Guillemard tt0062285      Oh, Sun      1970  1970s  Drama
-#> 5  Géraldine Baaron tt0062285      Oh, Sun      1970  1970s  Drama
-#> 6    Ambroise M'Bia tt0062285      Oh, Sun      1970  1970s  Drama
-#>   averageRating
-#> 1           7.4
-#> 2           7.4
-#> 3           7.4
-#> 4           7.4
-#> 5           7.4
-#> 6           7.4
-cooccurrence(actors, field = "actor", by = "tconst",
-             similarity = "cosine", min_occur = 3)
-#> # cooccurrence: 12 nodes, 7 edges (47 transactions) | similarity: cosine
-#>                from             to    weight count
-#>    Julia Bache-Wiig Robin Ottersen 1.0000000     3
-#>  Constantin Fleancu Liliana Mocanu 0.6666667     2
-#>         Dina Pathak   Harish Magon 0.3333333     1
-#>         Dina Pathak         Mukesh 0.3333333     1
-#>           Akash Dev         Rajesh 0.3333333     1
-#>         Joseph Izzo    Shiyoon Kim 0.3333333     1
-#>              Mukesh          Vinod 0.3333333     1
+#>                actor    tconst   primaryTitle startYear decade
+#> 24       Phil Harris tt0065421 The Aristocats      1970  1970s
+#> 25    Larry Clemmons tt0065421 The Aristocats      1970  1970s
+#> 26     Paul Winchell tt0065421 The Aristocats      1970  1970s
+#> 34 Sterling Holloway tt0065421 The Aristocats      1970  1970s
+#> 37  Scatman Crothers tt0065421 The Aristocats      1970  1970s
+#> 43       Vito Scotti tt0065421 The Aristocats      1970  1970s
+#>                        genres averageRating
+#> 24 Adventure,Animation,Comedy           7.1
+#> 25 Adventure,Animation,Comedy           7.1
+#> 26 Adventure,Animation,Comedy           7.1
+#> 34 Adventure,Animation,Comedy           7.1
+#> 37 Adventure,Animation,Comedy           7.1
+#> 43 Adventure,Animation,Comedy           7.1
+cooccurrence(actors, field = "actor", by = "tconst", similarity = "jaccard")
+#> # cooccurrence: 590 nodes, 4353 edges (401 transactions) | similarity: jaccard
+#>                  from                 to weight count
+#>          Anson Antony    Antony Varghese      1     2
+#>    Catalina Harabagiu Cerasela Iosifescu      1     2
+#>    Ben Hernandez Bray    Chris Ingersoll      1     2
+#>         Bruce Seifert      Chris Sanders      1     2
+#>  Christiant D'Alberto      Chuck Mathews      1     2
+#>  Christiant D'Alberto      Claire Koonce      1     2
+#>         Chuck Mathews      Claire Koonce      1     2
+#>      Akihiko Sugizaki        Daisuke Ryû      1     2
+#>       Alicia Aguilera      Dane Anderson      1     2
+#>            Adi Granov       David Marten      1     2
+#> # ... 4343 more edges
 ```
