@@ -162,7 +162,7 @@ ui <- fluidPage(
       selectInput("similarity", label = NULL,
                   choices = c("none", "jaccard", "cosine", "inclusion",
                               "association", "dice", "equivalence", "relative"),
-                  selected = "jaccard"),
+                  selected = "none"),
 
       div(class = "section-header", "Counting"),
       radioButtons("counting", label = NULL,
@@ -311,12 +311,12 @@ ui <- fluidPage(
             ),
             column(3,
               selectInput("net_layout", "Layout",
-                          choices = c("Fruchterman-Reingold" = "fr",
+                          choices = c("Gephi"                = "gephi",
+                                      "Fruchterman-Reingold" = "fr",
                                       "Kamada-Kawai"         = "kk",
-                                      "Gephi"                = "gephi",
                                       "Circle"               = "circle",
                                       "Nicely"               = "nicely"),
-                          selected = "fr", width = "100%")
+                          selected = "gephi", width = "100%")
             ),
             column(3,
               numericInput("label_size", "Label size", value = 0.8,
@@ -399,6 +399,11 @@ server <- function(input, output, session) {
     updateSelectInput(session, "by_sel",       choices = cols_opt, selected = default_by)
 
     updateSelectInput(session, "split_by_sel", choices = cols_opt, selected = "")
+
+    # actors: 25k actors but ~25k appear in only 1 movie — min_occur=2 drops
+    # them to ~600 actors and makes any similarity measure instant to compute.
+    default_min_occur <- if (input$data_source == "actors") 2L else 1L
+    updateNumericInput(session, "min_occur", value = default_min_occur)
   })
 
   # ---- dynamic column selectors ----
