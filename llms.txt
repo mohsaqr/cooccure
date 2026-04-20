@@ -15,7 +15,10 @@ also available as the short alias
 ## Installation
 
 ``` r
-# From GitHub
+# CRAN release
+install.packages("cooccur")
+
+# Development version
 remotes::install_github("mohsaqr/cooccur")
 ```
 
