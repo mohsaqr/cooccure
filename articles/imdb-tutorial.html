@@ -69,10 +69,13 @@ package using 1,000 highly-rated IMDB movies (rating
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>≥</mo><annotation encoding="application/x-tex">\geq</annotation></semantics></math>
 7.0,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>≥</mo><annotation encoding="application/x-tex">\geq</annotation></semantics></math>
-1,000 votes, 1970–2024). We build genre co-occurrence networks, actor
-collaboration networks, compare decades, apply different similarity
-measures and counting methods, and export to Gephi, igraph, and
-cograph.</p>
+1,000 votes, 1970–2024).</p>
+<p>Starting from raw tabular data, we build genre co-occurrence
+networks, construct actor collaboration networks, compare co-occurrence
+patterns across decades and rating bands, apply different similarity
+measures and counting methods, and export results to <code>Gephi</code>,
+<code>igraph</code>, and <code>cograph</code> for visualization and
+downstream analysis.</p>
 <div class="section level2">
 <h2 id="data">Data<a class="anchor" aria-label="anchor" href="#data"></a>
 </h2>
@@ -80,7 +83,7 @@ cograph.</p>
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://saqr.me/cooccur/" class="external-link">cooccur</a></span><span class="op">)</span></span></code></pre></div>
 <p>The dataset contains the title of the movie, the year and decade, the
 <code>genres</code> (comma-separated), the average rating, the number of
-votes, and the rating band</p>
+votes, and the rating band.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">movies</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       tconst                          primaryTitle startYear</span></span>
@@ -101,12 +104,11 @@ votes, and the rating band</p>
 <div class="section level2">
 <h2 id="genre-co-occurrence-delimited-field">1. Genre co-occurrence (delimited field)<a class="anchor" aria-label="anchor" href="#genre-co-occurrence-delimited-field"></a>
 </h2>
-<p>Each movie has a comma-delimited <code>genres</code> column. Genres
-that appear in the same movie are connected. To analyze their
+<p>Each movie has a comma-delimited <code>genres</code> column, where
+genres that appear in the same movie are connected. To analyze their
 co-occurrence we need to call <code>cooccurrence</code> and specify the
-<code>field</code> (column in the data) and the separator
-(<code>sep</code>) that separates the values that co-occur, within the
-same field.</p>
+<code>field</code> argument specifying the column and <code>sep</code>
+specifying the delimiter that separates values within that field.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 22 nodes, 129 edges (1000 transactions)</span></span>
@@ -122,8 +124,12 @@ same field.</p>
 <span><span class="co">#&gt;     Action   Adventure     44    44</span></span>
 <span><span class="co">#&gt;  Biography Documentary     44    44</span></span>
 <span><span class="co">#&gt; # ... 119 more edges</span></span></code></pre></div>
-<p>Drama dominates because it’s the most frequent genre. Normalize with
-Jaccard to control for popularity:</p>
+<p>The result shows 22 genre nodes and 129 edges. Drama dominates the
+top pairs because it is the most frequent genre in the dataset — its
+high raw count inflates co-occurrence with almost every other genre
+regardless of how strongly they are actually associated.</p>
+<p>Normalizing with Jaccard similarity controls for genre popularity, so
+the top edges reflect genuine affinity rather than just frequency:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sonsoles.me/cograph/" class="external-link">cograph</a></span><span class="op">)</span></span>
 <span></span>
@@ -133,13 +139,16 @@ Jaccard to control for popularity:</p>
 <span></span>
 <span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/degree_distribution.html" class="external-link">degree_distribution</a></span><span class="op">(</span><span class="va">Gr</span><span class="op">)</span></span></code></pre></div>
 <p><img src="imdb-tutorial_files/figure-html/genre-jaccard-1.png" class="r-plt" alt="" width="768"></p>
-<p>Now the top edges reflect genuine affinity rather than just
-frequency.</p>
 <div class="section level3">
 <h3 id="comparing-similarity-measures">Comparing similarity measures<a class="anchor" aria-label="anchor" href="#comparing-similarity-measures"></a>
 </h3>
-<p>Each measure surfaces different structure. Here are the top 3 pairs
-under each:</p>
+<p>Each similarity measure surfaces different structure in the data,
+prioritizing different aspects of co-occurrence. The examples below show
+the top 3 pairs under each measure using a movie genres dataset.</p>
+<p><code>similarity = "none"</code> — Raw counts favor the most frequent
+genre pairs. Drama dominates because it is the most common genre, so its
+co-occurrences with Comedy and Romance rank highest regardless of how
+strongly the genres are actually associated.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"none"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 4 nodes, 3 edges (1000 transactions)</span></span>
@@ -147,6 +156,11 @@ under each:</p>
 <span><span class="co">#&gt;  Comedy   Drama    159   159</span></span>
 <span><span class="co">#&gt;   Drama Romance    131   131</span></span>
 <span><span class="co">#&gt;   Crime   Drama     91    91</span></span></code></pre></div>
+<p><code>similarity = "jaccard"</code> — Normalizing by the union of
+occurrences brings less frequent but more tightly associated pairs to
+the top. Adventure–Animation emerges as the strongest pair, suggesting
+these genres appear together more consistently relative to how often
+either appears alone.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: jaccard</span></span>
@@ -154,6 +168,10 @@ under each:</p>
 <span><span class="co">#&gt;  Adventure Animation 0.2846715    39</span></span>
 <span><span class="co">#&gt;     Action     Crime 0.2369478    59</span></span>
 <span><span class="co">#&gt;     Comedy     Drama 0.2111554   159</span></span></code></pre></div>
+<p><code>similarity = "cosine"</code> — Similar to Jaccard but less
+strict, cosine also elevates Adventure–Animation while keeping
+Drama–Romance in the top 3, reflecting its more lenient treatment of
+frequency differences between genres.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"cosine"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: cosine</span></span>
@@ -161,6 +179,10 @@ under each:</p>
 <span><span class="co">#&gt;  Adventure Animation 0.4480983    39</span></span>
 <span><span class="co">#&gt;      Drama   Romance 0.4113075   131</span></span>
 <span><span class="co">#&gt;     Action     Crime 0.3831250    59</span></span></code></pre></div>
+<p><code>similarity = "inclusion"</code> — Dividing by the rarer item’s
+frequency surfaces near-perfect subset relationships. Documentary–News
+and History–News both score 1, meaning every News film is also tagged as
+Documentary or History.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"inclusion"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 3 edges (1000 transactions) | similarity: inclusion</span></span>
@@ -168,6 +190,11 @@ under each:</p>
 <span><span class="co">#&gt;  Documentary    News      1     1</span></span>
 <span><span class="co">#&gt;      History    News      1     1</span></span>
 <span><span class="co">#&gt;        Drama Western      1     1</span></span></code></pre></div>
+<p><code>similarity = "association"</code> — Discounting by the product
+of individual frequencies reveals pairs that co-occur far more than
+chance would predict. Rare genre combinations like History–News and
+Documentary–News top the list because their co-occurrence is
+disproportionately high relative to their individual frequencies.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"association"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 3 edges (1000 transactions) | similarity: association</span></span>
@@ -175,6 +202,10 @@ under each:</p>
 <span><span class="co">#&gt;      History   News 0.016129032     1</span></span>
 <span><span class="co">#&gt;       Horror Sci-Fi 0.011363636     2</span></span>
 <span><span class="co">#&gt;  Documentary   News 0.006578947     1</span></span></code></pre></div>
+<p><code>similarity = "dice"</code> — Results closely mirror Jaccard,
+with the same top pairs appearing in the same order but with slightly
+higher weights, reflecting Dice’s more lenient arithmetic mean
+normalization.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"dice"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: dice</span></span>
@@ -182,6 +213,10 @@ under each:</p>
 <span><span class="co">#&gt;  Adventure Animation 0.4431818    39</span></span>
 <span><span class="co">#&gt;     Action     Crime 0.3831169    59</span></span>
 <span><span class="co">#&gt;     Comedy     Drama 0.3486842   159</span></span></code></pre></div>
+<p><code>similarity = "equivalence"</code> — Squaring the cosine
+amplifies differences between strong and weak pairs, pushing weaker
+associations further down. The top pairs match cosine but the gap
+between them is more pronounced.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"equivalence"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: equivalence</span></span>
@@ -231,15 +266,18 @@ pushed closer to zero, retaining only the strongest associations.</li>
 <div class="section level2">
 <h2 id="counting-methods">2. Counting methods<a class="anchor" aria-label="anchor" href="#counting-methods"></a>
 </h2>
-<p>By default, each movie contributes equally: if a movie has genres A,
-B, and C, each pair adds 1. But movies with many genres inflate the
-network — a 5-genre movie creates 10 pairs, while a 2-genre movie
-creates 1.</p>
-<p><strong>Fractional counting</strong> weights each pair by
+<p>By default, each transaction contributes equally to co-occurrence
+counts: if a movie has genres A, B, and C, each pair adds 1. This means
+movies with many genres inflate the network — a 5-genre movie creates 10
+pairs, while a 2-genre movie creates only 1, giving multi-genre movies
+disproportionate influence.</p>
+<p><strong>Fractional counting</strong> addresses this by weighting each
+pair by
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/(n-1)</annotation></semantics></math>,
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>
-is the number of items.</p>
+is the number of items in the transaction, so every transaction
+contributes equally regardless of how many genres it contains.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions)</span></span>
@@ -258,14 +296,25 @@ is the number of items.</p>
 <span><span class="co">#&gt;   Crime   Drama   52.5    91</span></span>
 <span><span class="co">#&gt;  Action   Drama   38.5    71</span></span>
 <span><span class="co">#&gt;  Comedy Romance   38.5    63</span></span></code></pre></div>
-<p>Fractional counting is particularly important when some documents
-have many items while others have few.</p>
+<p>The top pairs remain the same under both methods, but the weights are
+lower under fractional counting. For example, Comedy–Drama drops from
+159 to 107.5, reflecting the downweighting of multi-genre movies that
+contributed to this pair. Fractional counting is particularly important
+when some transactions contain many items while others contain few, as
+it prevents high-cardinality transactions from dominating the
+network.</p>
 </div>
 <div class="section level2">
 <h2 id="scaling">3. Scaling<a class="anchor" aria-label="anchor" href="#scaling"></a>
 </h2>
-<p>Scaling compresses the distribution for visualization or downstream
-analysis.</p>
+<p>Scaling compresses or transforms the weight distribution after
+similarity normalization, making it easier to visualize or use in
+downstream analysis. Scaling can be applied on its own or combined with
+any similarity measure.</p>
+<p><code>scale = "log"</code> — Applies a natural log transformation,
+compressing the heavy tail of the distribution. The ranking of pairs is
+preserved but the gap between frequent and infrequent pairs is
+reduced.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"log"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: log</span></span>
@@ -275,6 +324,10 @@ analysis.</p>
 <span><span class="co">#&gt;   Crime   Drama 4.521789    91</span></span>
 <span><span class="co">#&gt;  Action   Drama 4.276666    71</span></span>
 <span><span class="co">#&gt;  Comedy Romance 4.158883    63</span></span></code></pre></div>
+<p><code>scale = "minmax"</code> — Rescales all weights to the range [0,
+1], where the strongest pair scores 1 and all others are expressed
+relative to it. Useful for comparing networks of different sizes or when
+absolute counts are not meaningful.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, scale <span class="op">=</span> <span class="st">"minmax"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 8 nodes, 5 edges (1000 transactions) | similarity: jaccard | scale: minmax</span></span>
@@ -284,6 +337,9 @@ analysis.</p>
 <span><span class="co">#&gt;     Comedy       Drama 0.7403121   159</span></span>
 <span><span class="co">#&gt;     Action   Adventure 0.7275665    44</span></span>
 <span><span class="co">#&gt;  Biography Documentary 0.7139898    44</span></span></code></pre></div>
+<p><code>scale = "binary"</code> — Converts all positive weights to 1,
+producing a presence/absence network. The top pairs are no longer ranked
+by strength but simply by whether they co-occur at all.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"binary"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 4 nodes, 5 edges (1000 transactions) | scale: binary</span></span>
@@ -293,6 +349,9 @@ analysis.</p>
 <span><span class="co">#&gt;  Adventure Animation      1    39</span></span>
 <span><span class="co">#&gt;     Action Biography      1     5</span></span>
 <span><span class="co">#&gt;  Adventure Biography      1     8</span></span></code></pre></div>
+<p><code>scale = "sqrt"</code> — Applies a square root transformation,
+providing a milder compression than log. The ranking is preserved and
+the distribution is slightly less skewed than the raw counts.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"sqrt"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: sqrt</span></span>
@@ -302,7 +361,10 @@ analysis.</p>
 <span><span class="co">#&gt;   Crime   Drama  9.539392    91</span></span>
 <span><span class="co">#&gt;  Action   Drama  8.426150    71</span></span>
 <span><span class="co">#&gt;  Comedy Romance  7.937254    63</span></span></code></pre></div>
-<p>Scaling can be combined with any similarity:</p>
+<p>Scaling can be combined with any similarity measure and with
+filtering arguments. The example below applies association strength
+followed by log scaling, retaining only genres appearing in at least 20
+movies:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"association"</span>, scale <span class="op">=</span> <span class="st">"log"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
@@ -317,10 +379,12 @@ analysis.</p>
 <div class="section level2">
 <h2 id="filtering">4. Filtering<a class="anchor" aria-label="anchor" href="#filtering"></a>
 </h2>
-<div class="section level3">
-<h3 id="minimum-frequency">Minimum frequency<a class="anchor" aria-label="anchor" href="#minimum-frequency"></a>
-</h3>
-<p>Drop genres appearing in fewer than 20 movies:</p>
+<p>Three filtering arguments control which edges appear in the result.
+They can be used independently or combined.</p>
+<p><code>min_occur</code> — Drops any genre appearing in fewer than the
+specified number of transactions before co-occurrences are computed,
+removing rare items that would otherwise inflate the edge count. Here
+only movies with co-occurrence of minimum 20 are kept.</p>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 17 nodes, 102 edges (998 transactions) | similarity: jaccard</span></span>
@@ -336,11 +400,9 @@ analysis.</p>
 <span><span class="co">#&gt;  Documentary       Music 0.1590909    28</span></span>
 <span><span class="co">#&gt;    Biography     History 0.1564626    23</span></span>
 <span><span class="co">#&gt; # ... 92 more edges</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="threshold">Threshold<a class="anchor" aria-label="anchor" href="#threshold"></a>
-</h3>
-<p>Keep only edges with Jaccard similarity above 0.15:</p>
+<p><code>threshold</code> — Retains only edges with a weight at or above
+the specified value, applied after similarity normalization and scaling.
+Here only pairs with a Jaccard similarity above 0.15 are kept.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, threshold <span class="op">=</span> <span class="fl">0.15</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 12 nodes, 10 edges (1000 transactions) | similarity: jaccard</span></span>
@@ -355,10 +417,8 @@ analysis.</p>
 <span><span class="co">#&gt;       Comedy     Romance 0.1680000    63</span></span>
 <span><span class="co">#&gt;  Documentary       Music 0.1590909    28</span></span>
 <span><span class="co">#&gt;    Biography     History 0.1564626    23</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="top-n">Top N<a class="anchor" aria-label="anchor" href="#top-n"></a>
-</h3>
+<p><code>top_n</code> — Keeps only the n strongest edges by weight,
+regardless of their absolute value.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, top_n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 12 nodes, 10 edges (1000 transactions) | similarity: jaccard</span></span>
@@ -373,10 +433,8 @@ analysis.</p>
 <span><span class="co">#&gt;       Comedy     Romance 0.1680000    63</span></span>
 <span><span class="co">#&gt;  Documentary       Music 0.1590909    28</span></span>
 <span><span class="co">#&gt;    Biography     History 0.1564626    23</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="combined">Combined<a class="anchor" aria-label="anchor" href="#combined"></a>
-</h3>
+<p>All three thersholds can be combined for fine-grained control over
+network size and density:</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"association"</span>, counting <span class="op">=</span> <span class="st">"fractional"</span>,</span>
@@ -395,13 +453,13 @@ analysis.</p>
 <span><span class="co">#&gt;       Family     Fantasy 0.001633987     4</span></span>
 <span><span class="co">#&gt; # ... 10 more edges</span></span></code></pre></div>
 </div>
-</div>
 <div class="section level2">
 <h2 id="actor-co-occurrence-longbipartite-format">5. Actor co-occurrence (long/bipartite format)<a class="anchor" aria-label="anchor" href="#actor-co-occurrence-longbipartite-format"></a>
 </h2>
-<p>Actors who share movies are connected. The data is one row per
-actor–movie pair. Use <code>field</code> for the entity and
-<code>by</code> for the grouping column.</p>
+<p>Actors who appear in the same movie are connected. The data has one
+row per actor–movie pair, making it a natural fit for the long/bipartite
+format. The <code>field</code> argument specifies the entity column and
+<code>by</code> specifies the grouping column.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">actors</span>, field <span class="op">=</span> <span class="st">"actor"</span>, by <span class="op">=</span> <span class="st">"tconst"</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">3</span>, threshold <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span>
@@ -414,7 +472,11 @@ actor–movie pair. Use <code>field</code> for the entity and
 <span><span class="co">#&gt;           Akash Dev         Rajesh    0.2     1</span></span>
 <span><span class="co">#&gt;         Joseph Izzo    Shiyoon Kim    0.2     1</span></span>
 <span><span class="co">#&gt;              Mukesh          Vinod    0.2     1</span></span></code></pre></div>
-<p>With fractional counting:</p>
+<p>Julia Bache-Wiig and Robin Ottersen score 1.0, meaning they appear
+together in every movie either of them appears in — a perfect Jaccard
+score. Applying fractional counting downweights pairs from movies with
+large casts, though in this case the results are unchanged because the
+dataset is small and cast sizes are similar across movies.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">actors</span>, field <span class="op">=</span> <span class="st">"actor"</span>, by <span class="op">=</span> <span class="st">"tconst"</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span>, counting <span class="op">=</span> <span class="st">"fractional"</span>,</span>
@@ -432,9 +494,12 @@ actor–movie pair. Use <code>field</code> for the entity and
 <div class="section level2">
 <h2 id="splitting-by-groups">6. Splitting by groups<a class="anchor" aria-label="anchor" href="#splitting-by-groups"></a>
 </h2>
-<div class="section level3">
-<h3 id="genre-networks-by-decade">Genre networks by decade<a class="anchor" aria-label="anchor" href="#genre-networks-by-decade"></a>
-</h3>
+<p>The split_by argument computes a separate co-occurrence network for
+each level of a grouping variable and returns all results in a single
+data frame with a group column.</p>
+<p><code>split_by = "decade"</code> — Each decade gets its own
+Jaccard-weighted genre network. The dominant pairs shift across decades,
+reflecting how genre combinations have changed over time.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   split_by <span class="op">=</span> <span class="st">"decade"</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>,</span>
@@ -452,7 +517,7 @@ actor–movie pair. Use <code>field</code> for the entity and
 <span><span class="co">#&gt;       Comedy     Drama 0.2043011    19 1980s</span></span>
 <span><span class="co">#&gt;        Crime     Drama 0.2027027    15 1980s</span></span>
 <span><span class="co">#&gt; # ... 20 more edges</span></span></code></pre></div>
-<p>Filter to a specific decade:</p>
+<p>Individual groups can be extracted by filtering the group column:</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">decades</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>              split_by <span class="op">=</span> <span class="st">"decade"</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>,</span>
@@ -466,10 +531,11 @@ actor–movie pair. Use <code>field</code> for the entity and
 <span><span class="co">#&gt;  Biography Documentary 0.2872340    27 2010s</span></span>
 <span><span class="co">#&gt;     Action   Adventure 0.1951220    16 2010s</span></span>
 <span><span class="co">#&gt;     Comedy       Drama 0.1911111    43 2010s</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="split-by-rating-band">Split by rating band<a class="anchor" aria-label="anchor" href="#split-by-rating-band"></a>
-</h3>
+<p><code>split_by = "rating_band"</code> — Splitting by rating band
+reveals whether highly rated movies have different genre co-occurrence
+patterns than average-rated ones. Documentary–Music is the strongest
+pair among top-rated movies, while Adventure–Animation leads among the
+7–7.9 band.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">movies</span><span class="op">$</span><span class="va">rating_band</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">movies</span><span class="op">$</span><span class="va">averageRating</span> <span class="op">&gt;=</span> <span class="fl">8</span>, <span class="st">"8+"</span>, <span class="st">"7-7.9"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
@@ -488,13 +554,13 @@ actor–movie pair. Use <code>field</code> for the entity and
 <span><span class="co">#&gt;       Comedy     Romance 0.1555556     7    8+</span></span>
 <span><span class="co">#&gt;        Drama     Romance 0.1547619    13    8+</span></span></code></pre></div>
 </div>
-</div>
 <div class="section level2">
 <h2 id="output-formats">7. Output formats<a class="anchor" aria-label="anchor" href="#output-formats"></a>
 </h2>
-<div class="section level3">
-<h3 id="default">Default<a class="anchor" aria-label="anchor" href="#default"></a>
-</h3>
+<p>The default output format returns a tidy data frame with
+<code>from</code>, <code>to</code>, <code>weight</code>, and
+<code>count</code> columns, ready for further analysis or
+visualization.</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions)</span></span>
@@ -504,10 +570,13 @@ actor–movie pair. Use <code>field</code> for the entity and
 <span><span class="co">#&gt;   Crime   Drama     91    91</span></span>
 <span><span class="co">#&gt;  Action   Drama     71    71</span></span>
 <span><span class="co">#&gt;  Comedy Romance     63    63</span></span></code></pre></div>
-</div>
 <div class="section level3">
 <h3 id="gephi">Gephi<a class="anchor" aria-label="anchor" href="#gephi"></a>
 </h3>
+<p>The Gephi output format returns a data frame formatted for direct
+import into Gephi, with <code>Source</code>, <code>Target</code>,
+<code>Weight</code>, <code>Type</code>, and <code>Count</code> columns.
+The result can be written straight to CSV.</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span>, output <span class="op">=</span> <span class="st">"gephi"</span>, top_n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
@@ -532,14 +601,20 @@ actor–movie pair. Use <code>field</code> for the entity and
 <div class="section level3">
 <h3 id="cograph-with-gephi-layout">cograph (with Gephi layout)<a class="anchor" aria-label="anchor" href="#cograph-with-gephi-layout"></a>
 </h3>
-<p>Convert to a cograph network and plot with <code><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot()</a></code> using
-the Gephi Fruchterman-Reingold layout:</p>
+<p>The cograph output format returns a <code>cograph_network</code>
+object that can be passed directly to <code><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot()</a></code> for
+visualization. The layout argument controls the node placement algorithm
+— <code>"fr"</code> uses Fruchterman-Reingold, and
+<code>scale_nodes_by = "degree"</code> sizes nodes by their degree
+centrality.</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>          similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, output <span class="op">=</span> <span class="st">"cograph"</span><span class="op">)</span></span>
 <span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot</a></span><span class="op">(</span><span class="va">net</span>, layout <span class="op">=</span> <span class="st">"fr"</span>, scale_nodes_by <span class="op">=</span> <span class="st">"degree"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="imdb-tutorial_files/figure-html/out-cograph-1.png" class="r-plt" alt="" width="768"></p>
-<p>With customized edge width and label size:</p>
+<p>Additional styling arguments control <code>edge_width_range</code>,
+<code>label_size</code>, <code>node_color</code>, and
+<code>node_border_width</code>:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot</a></span><span class="op">(</span><span class="va">net</span>, layout <span class="op">=</span> <span class="st">"gephi"</span>, label_size <span class="op">=</span> <span class="fl">.8</span>, label_fontface <span class="op">=</span> <span class="st">"bold"</span>,</span>
 <span>               node_fill <span class="op">=</span> <span class="st">"#F9C22E"</span>,  </span>
@@ -550,13 +625,15 @@ the Gephi Fruchterman-Reingold layout:</p>
 <div class="section level3">
 <h3 id="igraph">igraph<a class="anchor" aria-label="anchor" href="#igraph"></a>
 </h3>
+<p>The igraph output format returns an <code>igraph</code> object. All
+standard igraph functions work on the result without any conversion.</p>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>        similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, output <span class="op">=</span> <span class="st">"igraph"</span><span class="op">)</span></span>
 <span><span class="va">g</span></span>
-<span><span class="co">#&gt; IGRAPH e36fba0 UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH be01be2 UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from e36fba0 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from be01be2 (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>
@@ -566,6 +643,8 @@ the Gephi Fruchterman-Reingold layout:</p>
 <span><span class="co">#&gt; [19] Animation  --Fantasy     Adventure  --Comedy      Animation  --Family     </span></span>
 <span><span class="co">#&gt; [22] Biography  --Drama       Drama      --Thriller    Comedy     --Crime      </span></span>
 <span><span class="co">#&gt; + ... omitted several edges</span></span></code></pre></div>
+<p>Centrality measures can be computed directly on the
+<code>igraph</code> object:</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/degree.html" class="external-link">degree</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      Action   Adventure   Animation   Biography      Comedy       Crime </span></span>
@@ -585,6 +664,11 @@ the Gephi Fruchterman-Reingold layout:</p>
 <div class="section level3">
 <h3 id="matrix">Matrix<a class="anchor" aria-label="anchor" href="#matrix"></a>
 </h3>
+<p>The matrix output format returns a square co-occurrence matrix where
+rows and columns are items and each cell contains the similarity weight
+between the corresponding pair. This is useful for downstream analysis
+that expects a matrix input, such as clustering or heatmap
+visualization.</p>
 <div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>          similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span>
@@ -601,6 +685,13 @@ the Gephi Fruchterman-Reingold layout:</p>
 <div class="section level2">
 <h2 id="converters">8. Converters<a class="anchor" aria-label="anchor" href="#converters"></a>
 </h2>
+<p>Converters transform a <code>cooccurrence</code> result into other
+formats after the fact, without re-running the computation. This is
+useful when you want to start with the default tidy data frame and
+convert to a specific format only when needed.</p>
+<p><code><a href="../reference/as_matrix.html">as_matrix()</a></code> converts the result to a square similarity
+matrix, where each cell contains the Jaccard weight between the
+corresponding pair of genres:</p>
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>             similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
@@ -677,6 +768,9 @@ the Gephi Fruchterman-Reingold layout:</p>
 <span><span class="co">#&gt; Sport       0.000000000 0.000000000</span></span>
 <span><span class="co">#&gt; Thriller    0.000000000 0.007874016</span></span>
 <span><span class="co">#&gt; War         0.007874016 0.000000000</span></span></code></pre></div>
+<p><code>as_matrix(result, type = "raw")</code> returns the raw
+co-occurrence count matrix instead, with no similarity normalization
+applied:</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span>, type <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;             Action Adventure Animation Biography Comedy Crime Documentary Drama</span></span>
@@ -715,11 +809,14 @@ the Gephi Fruchterman-Reingold layout:</p>
 <span><span class="co">#&gt; Sport            0       0       0     0       0       4     0        0   0</span></span>
 <span><span class="co">#&gt; Thriller         1       0       3     0      15       5     0        0   1</span></span>
 <span><span class="co">#&gt; War              0       0       9     1       0       3     0        1   0</span></span></code></pre></div>
+<p><code><a href="../reference/as_igraph.html">as_igraph()</a></code> converts the result to an igraph object,
+giving access to the full igraph ecosystem for further network
+analysis:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co">#&gt; IGRAPH 0da5d4f UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH b5285b0 UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from 0da5d4f (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from b5285b0 (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>
@@ -733,16 +830,29 @@ the Gephi Fruchterman-Reingold layout:</p>
 <div class="section level2">
 <h2 id="six-input-formats-one-result">9. Six input formats, one result<a class="anchor" aria-label="anchor" href="#six-input-formats-one-result"></a>
 </h2>
-<p>The same data in four representations — all produce identical
-results.</p>
+<p>The same data can be provided in different formats —
+<code>cooccur</code> auto-detects the format and produces identical
+results regardless of which representation is used. The four examples
+below all compute the same genre co-occurrence network from the same
+underlying data.</p>
+<p><em>Delimited field</em> is the most common format. A single column
+contains all genres as a comma-separated string, one row per movie.</p>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span><span class="op">)</span></span></code></pre></div>
+<p><em>Long/bipartite</em> format uses one row per genre–movie pair. The
+data is first reshaped from wide to long, then passed to
+<code><a href="../reference/cooccurrence.html">co()</a></code> with <code>field</code> specifying the genre column
+and by specifying the movie identifier.</p>
 <div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">genre_long</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">movies</span><span class="op">)</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">gs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/trimws.html" class="external-link">trimws</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/strsplit.html" class="external-link">strsplit</a></span><span class="op">(</span><span class="va">movies</span><span class="op">$</span><span class="va">genres</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="st">","</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>movie_id <span class="op">=</span> <span class="va">movies</span><span class="op">$</span><span class="va">tconst</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, genre <span class="op">=</span> <span class="va">gs</span>, stringsAsFactors <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">res2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">genre_long</span>, field <span class="op">=</span> <span class="st">"genre"</span>, by <span class="op">=</span> <span class="st">"movie_id"</span><span class="op">)</span></span></code></pre></div>
+<p><em>Binary matrix</em> uses a document-term matrix where rows are
+movies, columns are genres, and values are 0 or 1. Auto-detected when
+all values are binary and no <code>field</code>, <code>by</code>, or
+<code>sep</code> arguments are provided.</p>
 <div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">all_genres</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">genre_long</span><span class="op">$</span><span class="va">genre</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bin</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0L</span>, nrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">movies</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">all_genres</span><span class="op">)</span>,</span>
@@ -752,8 +862,12 @@ results.</p>
 <span>  <span class="va">bin</span><span class="op">[</span><span class="va">row</span>, <span class="va">genre_long</span><span class="op">$</span><span class="va">genre</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">1L</span></span>
 <span><span class="op">}</span></span>
 <span><span class="va">res3</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">bin</span><span class="op">)</span></span></code></pre></div>
+<p><em>List of character vectors</em> is the most direct format, where
+each list element is a character vector of genres for one movie.</p>
 <div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">res4</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/strsplit.html" class="external-link">strsplit</a></span><span class="op">(</span><span class="va">movies</span><span class="op">$</span><span class="va">genres</span>, <span class="st">","</span><span class="op">)</span>, <span class="va">trimws</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>All four produce identical weights, confirming that the format choice
+is purely a matter of convenience:</p>
 <div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">res1</span><span class="op">$</span><span class="va">weight</span>, <span class="va">res2</span><span class="op">$</span><span class="va">weight</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
@@ -765,8 +879,12 @@ results.</p>
 <div class="section level2">
 <h2 id="complete-pipeline">10. Complete pipeline<a class="anchor" aria-label="anchor" href="#complete-pipeline"></a>
 </h2>
-<p>Everything in one call — similarity, fractional counting, scaling,
-filtering — piped straight to cograph for visualization:</p>
+<p>All steps can be combined in a single call and piped directly to
+<code><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot()</a></code> for visualization. The example below applies
+Jaccard similarity, fractional counting, min-max scaling, and filtering
+in one expression, converting the result to a
+<code>cograph_network</code> and rendering it without any intermediate
+objects.</p>
 <div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span>, counting <span class="op">=</span> <span class="st">"fractional"</span>,</span>
@@ -775,6 +893,14 @@ filtering — piped straight to cograph for visualization:</p>
 <span>  <span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot</a></span><span class="op">(</span>layout <span class="op">=</span> <span class="st">"gephi"</span>, edge_width <span class="op">=</span> <span class="fl">3</span>, label_size <span class="op">=</span> <span class="fl">0.9</span>,</span>
 <span>                 title <span class="op">=</span> <span class="st">"IMDB Genre Co-occurrence (Jaccard, fractional, min 15 movies)"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="imdb-tutorial_files/figure-html/pipeline-1.png" class="r-plt" alt="" width="768"></p>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>van Eck, N. J., &amp; Waltman, L. (2009). How to normalize
+cooccurrence data? An analysis of some well‐known similarity measures.
+<em>Journal of the American Society for Information Science and
+Technology</em>, <em>60</em>(8), 1635-1651.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
