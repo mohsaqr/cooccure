@@ -13,7 +13,6 @@ This is a first submission.
 
 ## References
 
-There are no published references. The package implements standard
-co-occurrence similarity measures (Jaccard, cosine, Dice, association
-strength, etc.) and the Perianes-Rodriguez et al. (2016) fractional
-counting method, which is cited inline in the function documentation.
+The DESCRIPTION references Saqr, Lopez-Pernas, Conde, and Hernandez-Garcia
+(2024) <doi:10.1007/978-3-031-54464-4_15>, which covers the network
+construction and analysis methods implemented in the package.

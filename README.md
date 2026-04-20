@@ -7,7 +7,10 @@ The main function `cooccurrence()` is also available as the short alias `co()`.
 ## Installation
 
 ```r
-# From GitHub
+# CRAN release
+install.packages("cooccur")
+
+# Development version
 remotes::install_github("mohsaqr/cooccur")
 ```
 
