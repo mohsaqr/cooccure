@@ -402,7 +402,7 @@ The computation is vectorized throughout - no loops in the hot path. `crossprod(
 
 Saqr, M., López-Pernas, S., Conde, M. Á., & Hernández-García, Á. (2023). Social Network Analysis: A Primer, a Guide and a Tutorial in R. In Saqr, M. & López-Pernas, S. (Eds.), *Learning Analytics Methods and Tutorials: A Practical Guide Using R*. Springer. <https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html>
 
-van Eck, N. J. V., & Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well‐known similarity measures. *Journal of the American Society for Information Science and Technology*, *60*(8), 1635-1651.
+van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well‐known similarity measures. *Journal of the American Society for Information Science and Technology*, *60*(8), 1635-1651.
 
 ## Authors
 
