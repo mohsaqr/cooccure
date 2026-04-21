@@ -1236,6 +1236,61 @@ test_that("vectorised parser matches per-row reference on realistic data", {
   expect_identical(r$count, n$count)
 })
 
+test_that("cooccurrence matches biblionetwork::biblio_cocitation (cosine)", {
+  ## Cross-validation against an independent, widely-used bibliometrics
+  ## package. `biblio_cocitation()` on long-format (source, ref) computes
+  ## cosine-weighted co-citation — which is exactly
+  ## cooccurrence(field = "ref", by = "source", similarity = "cosine").
+  ##
+  ## The raw count column (`nb_shared_citations`) and the normalised weight
+  ## column (`weight`) from biblionetwork must match our `count` and
+  ## `weight` columns bit-for-bit.
+  skip_if_not_installed("biblionetwork")
+  skip_if_not_installed("data.table")
+
+  set.seed(2026)
+  n_docs <- 300L
+  k_refs <- 500L
+  rows <- do.call(rbind, lapply(seq_len(n_docs), function(i) {
+    n <- sample(3:15, 1)
+    refs <- sprintf("R%04d", sample.int(k_refs, n))
+    data.frame(paper = sprintf("P%04d", i),
+               ref = refs, stringsAsFactors = FALSE)
+  }))
+  dt <- data.table::as.data.table(rows)
+
+  bn <- as.data.frame(
+    biblionetwork::biblio_cocitation(
+      dt, source = "paper", ref = "ref",
+      normalized_weight_only = FALSE,
+      weight_threshold = 1
+    )
+  )
+  co <- cooccurrence(as.data.frame(dt), field = "ref", by = "paper",
+                     similarity = "cosine", counting = "full")
+
+  expect_equal(nrow(co), nrow(bn))
+
+  canon <- function(a, b) paste(pmin(a, b), pmax(a, b), sep = "||")
+  key_bn <- canon(as.character(bn$from), as.character(bn$to))
+  key_co <- canon(co$from, co$to)
+
+  ## Exact set equality: no edges appear in one and not the other.
+  expect_setequal(key_bn, key_co)
+
+  ## Align by key and compare weights & counts element-wise.
+  w_bn <- stats::setNames(as.numeric(bn$weight), key_bn)
+  w_co <- stats::setNames(co$weight, key_co)
+  common <- key_bn  # key_bn == unique(key_co) after the set check
+  expect_equal(unname(w_bn[common]), unname(w_co[common]),
+               tolerance = 1e-10)
+
+  ## Raw co-citation count (biblionetwork: nb_shared_citations; us: count).
+  c_bn <- stats::setNames(as.integer(bn$nb_shared_citations), key_bn)
+  c_co <- stats::setNames(as.integer(co$count), key_co)
+  expect_identical(unname(c_bn[common]), unname(c_co[common]))
+})
+
 test_that("cooccurrence matches bibnets::conetwork on counting = 'full'", {
   ## Numerical cross-check against a separate sparse implementation. Keeps the
   ## two packages in sync and guards against drift in the counting formula.
