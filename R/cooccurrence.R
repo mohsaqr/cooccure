@@ -640,29 +640,74 @@ co <- cooccurrence
 
 # ---- Parsers ----
 
+#' Rebuild a list of per-row character vectors from a flat token vector.
+#'
+#' Splits `flat` (already trimmed and NA-cleaned) back into a list of length
+#' `n`, honouring the original row lengths via the accompanying `row_idx`.
+#' Rows whose tokens were all dropped appear as `character(0)`. Per-row
+#' deduplication is done globally via `duplicated()` on a two-column frame,
+#' which is faster than calling `unique()` once per row.
+#'
+#' @noRd
+.co_relist_unique <- function(flat, row_idx, n) {
+  if (length(flat) == 0L) return(rep(list(character(0)), n))
+
+  ## Global dedup: at most one (row, item) pair.
+  dup <- duplicated(data.frame(row_idx, flat, stringsAsFactors = FALSE))
+  flat <- flat[!dup]
+  row_idx <- row_idx[!dup]
+
+  ## split() by a factor with the full level range preserves empty rows.
+  out <- split(flat, factor(row_idx, levels = seq_len(n)))
+  names(out) <- NULL
+  out
+}
+
 #' @noRd
 .co_parse_delimited <- function(data, field, sep) {
   stopifnot(is.data.frame(data), length(field) == 1L, field %in% names(data))
   vals <- as.character(data[[field]])
-  lapply(strsplit(vals, sep, fixed = TRUE), function(items) {
-    items <- trimws(items)
-    items <- items[nzchar(items) & !is.na(items)]
-    unique(items)
-  })
+  n <- length(vals)
+
+  ## strsplit returns a list; flatten once so `trimws` and filtering run as
+  ## vectorised C loops over the full token population rather than 166k
+  ## per-row R calls (that per-row path was ~48% of total runtime).
+  splits <- strsplit(vals, sep, fixed = TRUE)
+  lens <- lengths(splits)
+  if (sum(lens) == 0L) return(rep(list(character(0)), n))
+
+  flat <- trimws(unlist(splits, use.names = FALSE))
+  row_idx <- rep.int(seq_len(n), lens)
+  keep <- !is.na(flat) & nzchar(flat)
+  flat <- flat[keep]; row_idx <- row_idx[keep]
+
+  .co_relist_unique(flat, row_idx, n)
 }
 
 #' @noRd
 .co_parse_multi_delimited <- function(data, field, sep) {
   stopifnot(is.data.frame(data), all(field %in% names(data)))
   n <- nrow(data)
-  lapply(seq_len(n), function(i) {
-    items <- unlist(lapply(field, function(f) {
-      strsplit(as.character(data[[f]][i]), sep, fixed = TRUE)[[1L]]
-    }))
-    items <- trimws(items)
-    items <- items[nzchar(items) & !is.na(items)]
-    unique(items)
+
+  ## Split each column independently, concatenate with aligned row indices,
+  ## then run the same flat trim + dedup as `.co_parse_delimited`.
+  parts <- lapply(field, function(f) {
+    splits <- strsplit(as.character(data[[f]]), sep, fixed = TRUE)
+    lens <- lengths(splits)
+    list(
+      row_idx = rep.int(seq_len(n), lens),
+      flat    = unlist(splits, use.names = FALSE)
+    )
   })
+  row_idx <- unlist(lapply(parts, `[[`, "row_idx"), use.names = FALSE)
+  flat    <- unlist(lapply(parts, `[[`, "flat"),    use.names = FALSE)
+  if (length(flat) == 0L) return(rep(list(character(0)), n))
+
+  flat <- trimws(flat)
+  keep <- !is.na(flat) & nzchar(flat)
+  flat <- flat[keep]; row_idx <- row_idx[keep]
+
+  .co_relist_unique(flat, row_idx, n)
 }
 
 #' @noRd
