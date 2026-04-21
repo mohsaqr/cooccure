@@ -269,7 +269,7 @@ attr(result, "n_transactions")  # Number of transactions
 attr(result, "n_items")         # Number of unique items
 ```
 
-The `cooccurrence` object can be also printed, summarized, and ploted directly:
+The `cooccurrence` object can be also printed, summarized, and ploted directly as a co-occurrence network (Saqr et al., 2023):
 
 ```r
 # Summary statistics
