@@ -1,5 +1,24 @@
 # Changelog
 
+## cooccur 0.1.1
+
+- Internal engine rewritten on top of
+  [`Matrix::sparseMatrix`](https://rdrr.io/pkg/Matrix/man/sparseMatrix.html)
+  /
+  [`Matrix::crossprod`](https://rdrr.io/pkg/Matrix/man/matmult-methods.html).
+  Previously
+  [`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md)
+  allocated dense `n x k` and `k x k` matrices, which hit R’s vector
+  memory limit on corpora with many documents and items (e.g. citation
+  networks \> ~100k unique references). The sparse rewrite stays in
+  triplet form end-to-end and scales linearly with the number of
+  non-zero co-occurrences.
+- `attr(x, "matrix")` and `attr(x, "raw_matrix")` are now sparse Matrix
+  objects.
+  [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md)
+  densifies them on demand so existing downstream code keeps working.
+- Added `Matrix` to `Imports`.
+
 ## cooccur 0.1.0
 
 - Initial release.

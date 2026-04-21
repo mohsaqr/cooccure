@@ -1,7 +1,7 @@
 # Convert to Nestimate netobject
 
 Creates a `netobject` from a `cooccurrence` edge list, compatible with
-[`Nestimate::centrality()`](https://rdrr.io/pkg/Nestimate/man/centrality.html),
+`Nestimate::centrality()`,
 [`Nestimate::bootstrap_network()`](https://rdrr.io/pkg/Nestimate/man/bootstrap_network.html),
 etc.
 

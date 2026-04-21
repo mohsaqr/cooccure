@@ -623,9 +623,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH d2dbe62 UNW- 17 102 -- 
+#> IGRAPH dea47ad UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from d2dbe62 (vertex names):
+#> + edges from dea47ad (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -815,9 +815,9 @@ ecosystem for further network analysis:
 
 ``` r
 as_igraph(result)
-#> IGRAPH 72d415a UNW- 17 102 -- 
+#> IGRAPH cb17ce1 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 72d415a (vertex names):
+#> + edges from cb17ce1 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
