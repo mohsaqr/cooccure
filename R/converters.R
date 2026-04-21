@@ -21,17 +21,28 @@ as_matrix <- function(x, ...) UseMethod("as_matrix")
 as_matrix.cooccurrence <- function(x, type = c("normalized", "raw"), ...) {
   type <- match.arg(type)
   mat <- if (type == "raw") attr(x, "raw_matrix") else attr(x, "matrix")
-  if (!is.null(mat)) return(mat)
+  if (!is.null(mat)) {
+    ## Attributes are stored as sparse Matrix objects in the current engine.
+    ## Densify on demand so downstream code gets a regular base matrix. For
+    ## very large networks, the caller should avoid as_matrix() and work with
+    ## the edge list directly.
+    if (inherits(mat, "Matrix")) return(as.matrix(mat))
+    return(mat)
+  }
 
-  # Rebuild from edges if attribute was lost
+  ## Fallback: rebuild from the edge list (used only if attribute is missing).
   items <- sort(unique(c(x$from, x$to)))
   k <- length(items)
-  M <- matrix(0, k, k, dimnames = list(items, items))
   col <- if (type == "raw") "count" else "weight"
-  for (r in seq_len(nrow(x))) {
-    M[x$from[r], x$to[r]] <- x[[col]][r]
-    M[x$to[r], x$from[r]] <- x[[col]][r]
+  if (nrow(x) == 0L) {
+    return(matrix(0, k, k, dimnames = list(items, items)))
   }
+  i <- match(x$from, items)
+  j <- match(x$to, items)
+  vals <- x[[col]]
+  M <- matrix(0, k, k, dimnames = list(items, items))
+  M[cbind(i, j)] <- vals
+  M[cbind(j, i)] <- vals
   M
 }
 

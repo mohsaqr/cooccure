@@ -1,6 +1,6 @@
 Package: cooccur
 Title: Co-Occurrence Networks from Any Data Format
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: c(
     person("Mohammed", "Saqr", email = "saqr@saqr.me",
            role = c("aut", "cre", "cph")),
@@ -19,6 +19,10 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Imports:
+    Matrix,
+    methods,
+    stats
 Suggests:
     igraph,
     cograph,

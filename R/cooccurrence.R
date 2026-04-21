@@ -269,52 +269,166 @@ co <- cooccurrence
       stop("No transactions remain after min_occur filtering.", call. = FALSE)
   }
 
-  # Build binary transaction matrix
-  B <- .co_transactions_to_matrix(transactions)
-  n_trans <- nrow(B)
+  # Build sparse bipartite matrix (works x items) with counting weights baked in
+  sp <- .co_build_sparse(transactions, counting)
+  n_trans <- sp$n
+  n_items <- sp$k
+  items <- sp$items
 
-  # Apply counting method (weights rows of B before crossprod)
-  B_weighted <- .co_apply_counting(B, counting)
+  # Counting-weighted co-occurrence (sparse k x k)
+  C <- Matrix::crossprod(sp$B)
+  # Raw binary co-occurrence (sparse k x k) for the count column and frequencies
+  C_raw <- Matrix::crossprod(sp$B_bin)
+  freq <- as.numeric(Matrix::colSums(sp$B_bin))
+  names(freq) <- items
 
-  # Co-occurrence matrices
-  C <- .co_compute_matrix(B_weighted)        # counting-weighted
-  C_raw <- .co_compute_matrix(B)             # always full (for count column)
+  # Zero diagonals (self co-occurrence is not an edge)
+  Matrix::diag(C) <- 0
+  Matrix::diag(C_raw) <- 0
+  C <- Matrix::drop0(C)
+  C_raw <- Matrix::drop0(C_raw)
 
-  # Item frequencies (always from the binary matrix, not weighted)
-  freq <- colSums(B)
-
-  # Zero diagonals
-  diag(C) <- 0
-  diag(C_raw) <- 0
-
-  .co_finalize(C, C_raw, freq, n_trans, ncol(B),
+  .co_finalize(C, C_raw, freq, n_trans, n_items, items,
                similarity, scale_method, threshold, min_occur, top_n)
 }
 
 
 # ---- Shared finalization: normalize -> scale -> threshold -> edges -> stamp ----
 
+#' Finalize edges from sparse co-occurrence matrices.
+#'
+#' Operates on triplets throughout — never materialises a dense k x k matrix.
+#' For symmetric similarities, the attribute `matrix` is stored as a symmetric
+#' sparse `dsCMatrix`; for `similarity = "relative"` it is a general
+#' `dgCMatrix` holding both triangles.
+#'
+#' @param C Sparse counting-weighted co-occurrence matrix (k x k, diag = 0).
+#' @param C_raw Sparse raw (binary) co-occurrence matrix (k x k, diag = 0).
+#' @param freq Named numeric vector of item frequencies.
+#' @param items Character vector of item names (k).
 #' @noRd
-.co_finalize <- function(C, C_raw, freq, n_trans, n_items,
+.co_finalize <- function(C, C_raw, freq, n_trans, n_items, items,
                          similarity, scale_method, threshold, min_occur, top_n) {
-  W <- .co_normalize(C, freq, similarity)
-  if (scale_method != "none") W <- .co_scale(W, scale_method)
-  if (threshold > 0) W[W < threshold] <- 0
+  ## Upper-triangle triplets of C (counting-weighted) — these carry x values.
+  C_upper_T <- methods::as(Matrix::triu(C, k = 1L), "TsparseMatrix")
+  i <- C_upper_T@i + 1L
+  j <- C_upper_T@j + 1L
+  c_vals <- C_upper_T@x
 
-  edges <- .co_matrix_to_edges(W, C_raw)
-  edges <- edges[order(-edges$weight), ]
+  if (length(i) == 0L) {
+    edges <- data.frame(from = character(0), to = character(0),
+                        weight = numeric(0), count = integer(0),
+                        stringsAsFactors = FALSE)
+    W_sparse <- Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(n_items, n_items), symmetric = TRUE,
+      dimnames = list(items, items)
+    )
+  } else {
+    ## Raw counts at the same positions. Non-zero pattern of C and C_raw is
+    ## identical (both are crossprods of binaries with the same support), so
+    ## [cbind(i, j)] indexing returns counts aligned with c_vals.
+    raw_vals <- as.integer(C_raw[cbind(i, j)])
 
-  if (!is.null(top_n)) {
-    stopifnot(is.numeric(top_n), top_n > 0)
-    top_n <- as.integer(top_n)
-    if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
+    ## Similarity normalisation on triplets.
+    if (similarity == "none") {
+      W_x <- c_vals
+      W_sparse <- Matrix::sparseMatrix(
+        i = i, j = j, x = W_x,
+        dims = c(n_items, n_items), symmetric = TRUE,
+        dimnames = list(items, items)
+      )
+    } else if (similarity == "relative") {
+      ## Asymmetric: W[i,j] = C[i,j] / rowSums(C)[i]. Needs both triangles.
+      ## C is a symmetric dsCMatrix whose TsparseMatrix form stores only the
+      ## upper triangle, so we mirror (i, j, c_vals) to build the full matrix
+      ## explicitly rather than relying on the symmetric packing.
+      rs <- as.numeric(Matrix::rowSums(C))
+      rs[rs == 0] <- 1
+      W_x <- c_vals / rs[i]
+
+      ii <- c(i, j)
+      jj <- c(j, i)
+      xx <- c(c_vals, c_vals)
+      W_full_x <- xx / rs[ii]
+    } else {
+      denom <- switch(similarity,
+        jaccard     = freq[i] + freq[j] - c_vals,
+        cosine      = sqrt(freq[i] * freq[j]),
+        inclusion   = pmin(freq[i], freq[j]),
+        association = freq[i] * freq[j],
+        dice        = freq[i] + freq[j],
+        equivalence = freq[i] * freq[j]
+      )
+      denom[denom == 0] <- 1
+      numer <- switch(similarity,
+        dice        = 2 * c_vals,
+        equivalence = c_vals^2,
+        c_vals
+      )
+      W_x <- as.numeric(numer / denom)
+      W_sparse <- Matrix::sparseMatrix(
+        i = i, j = j, x = W_x,
+        dims = c(n_items, n_items), symmetric = TRUE,
+        dimnames = list(items, items)
+      )
+    }
+
+    ## Scaling operates on the full non-zero population of the stored matrix.
+    ## For symmetric W, that population is c(W_x, W_x); for relative W, it is
+    ## the asymmetric entries in both triangles.
+    if (scale_method != "none") {
+      if (similarity == "relative") {
+        population <- W_full_x
+        W_full_x <- .co_scale_values(W_full_x, population, scale_method)
+        W_x <- .co_scale_values(W_x, population, scale_method)
+      } else {
+        population <- c(W_x, W_x)
+        W_x <- .co_scale_values(W_x, population, scale_method)
+        W_sparse <- Matrix::sparseMatrix(
+          i = i, j = j, x = W_x,
+          dims = c(n_items, n_items), symmetric = TRUE,
+          dimnames = list(items, items)
+        )
+      }
+    }
+
+    ## Build the asymmetric W_sparse for 'relative' (post-scaling).
+    if (similarity == "relative") {
+      W_sparse <- Matrix::sparseMatrix(
+        i = ii, j = jj, x = W_full_x,
+        dims = c(n_items, n_items),
+        dimnames = list(items, items)
+      )
+    }
+
+    ## Threshold filter on edge weights (before name lookup is cheap).
+    if (threshold > 0) {
+      keep <- W_x >= threshold
+      W_x <- W_x[keep]; i <- i[keep]; j <- j[keep]; raw_vals <- raw_vals[keep]
+    }
+
+    edges <- data.frame(
+      from   = items[i],
+      to     = items[j],
+      weight = W_x,
+      count  = raw_vals,
+      stringsAsFactors = FALSE
+    )
+    edges <- edges[order(-edges$weight), ]
+
+    if (!is.null(top_n)) {
+      stopifnot(is.numeric(top_n), top_n > 0)
+      top_n <- as.integer(top_n)
+      if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
+    }
   }
 
   rownames(edges) <- NULL
   class(edges) <- c("cooccurrence", "data.frame")
-  attr(edges, "matrix")         <- W
+  attr(edges, "matrix")         <- W_sparse
   attr(edges, "raw_matrix")     <- C_raw
-  attr(edges, "items")          <- colnames(W)
+  attr(edges, "items")          <- items
   attr(edges, "frequencies")    <- freq
   attr(edges, "similarity")     <- similarity
   attr(edges, "scale")          <- scale_method
@@ -337,107 +451,123 @@ co <- cooccurrence
     field %in% names(data), by %in% names(data), weight_by %in% names(data)
   )
 
-  # Build weighted matrix W: rows = transactions, cols = items
-  W <- tapply(as.numeric(data[[weight_by]]),
-              list(as.character(data[[by]]), as.character(data[[field]])),
-              FUN = sum)
-  W[is.na(W)] <- 0
-  storage.mode(W) <- "double"
+  docs      <- as.character(data[[by]])
+  items_col <- as.character(data[[field]])
+  weights   <- as.numeric(data[[weight_by]])
 
-  # min_occur: filter by number of transactions with non-zero weight
+  ## Drop NA / zero-weight rows up front.
+  keep <- !is.na(docs) & !is.na(items_col) & !is.na(weights) & weights != 0
+  docs <- docs[keep]
+  items_col <- items_col[keep]
+  weights <- weights[keep]
+
+  all_docs  <- unique(docs)
+  all_items <- sort(unique(items_col))
+  doc_idx   <- match(docs, all_docs)
+  item_idx  <- match(items_col, all_items)
+
+  ## Sparse weighted matrix: docs x items. Duplicate (doc, item) rows sum.
+  W <- Matrix::sparseMatrix(
+    i = doc_idx, j = item_idx, x = weights,
+    dims = c(length(all_docs), length(all_items)),
+    dimnames = list(NULL, all_items)
+  )
+
   if (min_occur > 1L) {
-    n_docs <- colSums(W > 0)
-    keep <- colnames(W)[n_docs >= min_occur]
-    W <- W[, keep, drop = FALSE]
+    ## Count distinct docs per item via sparse triplets.
+    n_docs_per_item <- tabulate(item_idx, nbins = length(all_items))
+    keep_items <- n_docs_per_item >= min_occur
+    W <- W[, keep_items, drop = FALSE]
+    all_items <- all_items[keep_items]
   }
 
   if (ncol(W) == 0L)
     stop("No items remain after min_occur filtering.", call. = FALSE)
 
   n_trans <- nrow(W)
+  n_items <- ncol(W)
+  freq <- as.numeric(Matrix::colSums(W))
+  names(freq) <- all_items
 
-  # Frequencies: total weight per item across all transactions
-  freq <- colSums(W)
+  ## Binary companion for raw counts.
+  B_bin <- Matrix::sparseMatrix(
+    i = doc_idx, j = item_idx, x = 1,
+    dims = c(length(all_docs), length(all_items)),
+    dimnames = list(NULL, colnames(W))
+  )
+  ## If min_occur filtered columns, realign B_bin to W.
+  if (ncol(B_bin) != ncol(W)) {
+    B_bin <- B_bin[, colnames(W), drop = FALSE]
+  }
+  ## sparseMatrix sums duplicates — clip to {0, 1} for the binary matrix.
+  B_bin <- Matrix::drop0(sign(B_bin))
 
-  # Raw counts: number of transactions containing both items (binary)
-  B <- (W > 0) * 1L
-  C_raw <- as.matrix(crossprod(B))
-  storage.mode(C_raw) <- "double"
-  diag(C_raw) <- 0
+  C_raw <- Matrix::crossprod(B_bin)
+  C     <- Matrix::crossprod(W)
+  Matrix::diag(C) <- 0
+  Matrix::diag(C_raw) <- 0
+  C     <- Matrix::drop0(C)
+  C_raw <- Matrix::drop0(C_raw)
 
-  # Weighted co-occurrence: sum of products of weights
-  C <- as.matrix(crossprod(W))
-  storage.mode(C) <- "double"
-  diag(C) <- 0
-
-  .co_finalize(C, C_raw, freq, n_trans, ncol(W),
+  .co_finalize(C, C_raw, freq, n_trans, n_items, all_items,
                similarity, scale_method, threshold, min_occur, top_n)
 }
 
 
-# ---- Extract edges from matrix ----
+# ---- Scaling (triplet-based) ----
 
+#' Apply a post-normalisation scaling to edge weights.
+#'
+#' @param vals Numeric vector to scale (the edge weights returned to the user).
+#' @param population Numeric vector of all non-zero values that would appear in
+#'   the conceptual full k x k matrix. Used to compute statistics (min/max,
+#'   mean/sd, sum) so results match the original dense implementation.
+#' @param method Scaling method.
 #' @noRd
-.co_matrix_to_edges <- function(W, C) {
-  idx <- which(upper.tri(W) & W != 0, arr.ind = TRUE)
-  if (nrow(idx) == 0L) {
-    return(data.frame(from = character(0), to = character(0),
-                      weight = numeric(0), count = integer(0),
-                      stringsAsFactors = FALSE))
-  }
-  nms <- rownames(W)
-  data.frame(
-    from = nms[idx[, 1]],
-    to = nms[idx[, 2]],
-    weight = W[idx],
-    count = as.integer(C[idx]),
-    stringsAsFactors = FALSE
-  )
-}
+.co_scale_values <- function(vals, population, method) {
+  nz <- population[population != 0]
+  if (length(nz) == 0L) return(vals)
 
-
-# ---- Scaling ----
-
-#' @noRd
-.co_scale <- function(W, method) {
-  vals <- W[W != 0]
-  if (length(vals) == 0L) return(W)
+  nonzero <- vals != 0
 
   switch(method,
     minmax = {
-      mn <- min(vals); mx <- max(vals)
-      if (mx > mn) {
-        W[W != 0] <- (W[W != 0] - mn) / (mx - mn)
-      } else {
-        W[W != 0] <- 1
-      }
-      W
+      mn <- min(nz); mx <- max(nz)
+      out <- vals
+      out[nonzero] <- if (mx > mn) (vals[nonzero] - mn) / (mx - mn) else 1
+      out
     },
     log = {
-      W[W != 0] <- log(1 + W[W != 0])
-      W
+      out <- vals
+      out[nonzero] <- log(1 + vals[nonzero])
+      out
     },
     log10 = {
-      W[W != 0] <- log10(1 + W[W != 0])
-      W
+      out <- vals
+      out[nonzero] <- log10(1 + vals[nonzero])
+      out
     },
     binary = {
-      W[W != 0] <- 1
-      W
+      out <- vals
+      out[nonzero] <- 1
+      out
     },
     zscore = {
-      mu <- mean(vals); s <- stats::sd(vals)
-      if (s > 0) W[W != 0] <- (W[W != 0] - mu) / s
-      W
+      mu <- mean(nz); s <- stats::sd(nz)
+      out <- vals
+      if (s > 0) out[nonzero] <- (vals[nonzero] - mu) / s
+      out
     },
     sqrt = {
-      W[W != 0] <- sqrt(W[W != 0])
-      W
+      out <- vals
+      out[nonzero] <- sqrt(vals[nonzero])
+      out
     },
     proportion = {
-      s <- sum(vals)
-      if (s > 0) W[W != 0] <- W[W != 0] / s
-      W
+      s <- sum(nz)
+      out <- vals
+      if (s > 0) out[nonzero] <- vals[nonzero] / s
+      out
     }
   )
 }
@@ -585,88 +715,47 @@ co <- cooccurrence
 }
 
 
-# ---- Counting ----
+# ---- Sparse bipartite matrix builder ----
 
-#' Apply counting weights to the binary transaction matrix
-#' @param B Logical matrix (rows = transactions, cols = items).
-#' @param counting "full" or "fractional".
-#' @return Numeric matrix with row weights applied.
+#' Build sparse works-by-items incidence matrices from a list of transactions.
+#'
+#' Returns both the counting-weighted matrix `B` (used for the weighted
+#' crossprod) and the binary matrix `B_bin` (used for item frequencies and
+#' raw counts). Staying in sparse representation is what lets the pipeline
+#' scale to hundreds of thousands of items.
+#'
+#' Counting method `"fractional"` (Perianes-Rodriguez et al., 2016) bakes
+#' `sqrt(1/(n_r - 1))` into each row's non-zero entries, so that
+#' `crossprod(B)[i, j] = sum over rows with both i and j of 1/(n_r - 1)`.
+#'
 #' @noRd
-.co_apply_counting <- function(B, counting) {
-  if (counting == "full") return(B)
-
-  n_per_row <- rowSums(B)
-  n_per_row[n_per_row == 0] <- 1
-
-  # Perianes-Rodriguez: each pair contributes 1/(n-1) per transaction
-  w <- ifelse(n_per_row > 1, 1 / (n_per_row - 1), 1)
-
-  # Multiply each row by sqrt(w) so crossprod gives weighted counts
-  B_num <- B * 1.0
-  B_num * sqrt(w)
-}
-
-
-# ---- Core computation ----
-
-#' @noRd
-.co_transactions_to_matrix <- function(transactions) {
-  all_items <- sort(unique(unlist(transactions)))
+.co_build_sparse <- function(transactions, counting) {
+  all_items <- sort(unique(unlist(transactions, use.names = FALSE)))
   n <- length(transactions)
   k <- length(all_items)
-  B <- matrix(FALSE, nrow = n, ncol = k,
-              dimnames = list(NULL, all_items))
   lens <- vapply(transactions, length, integer(1))
   row_idx <- rep.int(seq_len(n), lens)
   col_idx <- match(unlist(transactions, use.names = FALSE), all_items)
-  B[cbind(row_idx, col_idx)] <- TRUE
-  B
-}
 
-#' @noRd
-.co_compute_matrix <- function(B) {
-  C <- as.matrix(crossprod(B))
-  storage.mode(C) <- "double"
-  C
-}
-
-#' @noRd
-.co_normalize <- function(C, freq, method) {
-  if (method == "none") return(C)
-
-  W <- C
-
-  if (method == "jaccard") {
-    denom <- outer(freq, freq, "+") - C
-    denom[denom == 0] <- 1
-    W <- C / denom
-  } else if (method == "cosine") {
-    denom <- outer(sqrt(freq), sqrt(freq), "*")
-    denom[denom == 0] <- 1
-    W <- C / denom
-  } else if (method == "inclusion") {
-    denom <- outer(freq, freq, pmin)
-    denom[denom == 0] <- 1
-    W <- C / denom
-  } else if (method == "association") {
-    denom <- outer(freq, freq, "*")
-    denom[denom == 0] <- 1
-    W <- C / denom
-  } else if (method == "dice") {
-    denom <- outer(freq, freq, "+")
-    denom[denom == 0] <- 1
-    W <- 2 * C / denom
-  } else if (method == "equivalence") {
-    denom <- outer(freq, freq, "*")
-    denom[denom == 0] <- 1
-    W <- C^2 / denom
-  } else if (method == "relative") {
-    rs <- rowSums(C)
-    rs[rs == 0] <- 1
-    W <- C / rs
+  if (counting == "fractional") {
+    row_weight <- ifelse(lens > 1L, 1 / (lens - 1L), 1)
+    x <- sqrt(row_weight[row_idx])
+  } else {
+    x <- rep(1.0, length(row_idx))
   }
 
-  W
+  B <- Matrix::sparseMatrix(
+    i = row_idx, j = col_idx, x = x,
+    dims = c(n, k),
+    dimnames = list(NULL, all_items)
+  )
+  B_bin <- Matrix::sparseMatrix(
+    i = row_idx, j = col_idx, x = rep(1.0, length(row_idx)),
+    dims = c(n, k),
+    dimnames = list(NULL, all_items)
+  )
+
+  list(B = B, B_bin = B_bin, items = all_items, n = n, k = k)
 }
 
 

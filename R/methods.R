@@ -108,10 +108,8 @@ plot.cooccurrence <- function(x, type = c("heatmap", "network"), ...) {
     g <- as_igraph(x)
     plot(g, ...)
   } else {
-    mat <- attr(x, "matrix")
-    if (is.null(mat)) {
-      mat <- as_matrix(x)
-    }
+    ## Go through as_matrix() so sparse attributes get densified consistently.
+    mat <- as_matrix(x)
     n <- nrow(mat)
     graphics::image(
       seq_len(n), seq_len(n), t(mat[n:1, ]),

@@ -939,7 +939,9 @@ test_that("as_matrix dimnames are sorted unique items", {
 
 test_that("as_matrix rebuilt normalized matches stored matrix", {
   res <- cooccurrence(.test_list, similarity = "jaccard")
-  stored <- attr(res, "matrix")
+  ## Stored attribute is a sparse Matrix in the current engine; densify for
+  ## comparison against the dense fallback rebuilt from the edge list.
+  stored <- as.matrix(attr(res, "matrix"))
   attr(res, "matrix") <- NULL
   rebuilt <- as_matrix(res)
   # Diagonal is lost when rebuilding from edges (no self-edges), so compare off-diagonal
@@ -1121,4 +1123,82 @@ test_that("as_cograph edges$from and edges$to are integer", {
   net <- as_cograph(res)
   expect_type(net$edges$from, "integer")
   expect_type(net$edges$to, "integer")
+})
+
+# ========================================
+# 14. Large-dataset scalability
+# ========================================
+
+test_that("cooccurrence scales to wide sparse inputs without densifying", {
+  ## Regression guard: the engine must stay in sparse representation.
+  ## The dense predecessor allocated n * k logicals plus a k * k weight matrix;
+  ## at these sizes that would be ~60 GB and fail with `vector memory limit`.
+  skip_on_cran()
+  n_docs  <- 20000L
+  k_items <- 20000L
+  items_per_doc <- 20L  # typical citation count
+
+  set.seed(42)
+  transactions <- lapply(seq_len(n_docs), function(i) {
+    paste0("R", sample.int(k_items, items_per_doc))
+  })
+
+  ## Run both counting methods; just assert we return an edge list without
+  ## blowing up memory or time.
+  t0 <- Sys.time()
+  res_full <- cooccurrence(transactions, counting = "full")
+  res_frac <- cooccurrence(transactions, counting = "fractional")
+  elapsed <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+
+  expect_s3_class(res_full, "cooccurrence")
+  expect_s3_class(res_frac, "cooccurrence")
+  expect_gt(nrow(res_full), 0L)
+  expect_gt(nrow(res_frac), 0L)
+
+  ## The stored matrix attribute must be sparse, not a dense k x k base matrix.
+  expect_true(inherits(attr(res_full, "matrix"), "Matrix"))
+  expect_true(inherits(attr(res_frac, "matrix"), "Matrix"))
+
+  ## Sanity ceiling on wall time — catches accidental dense regressions that
+  ## would take minutes instead of seconds.
+  expect_lt(elapsed, 120)
+})
+
+test_that("cooccurrence matches bibnets::conetwork on counting = 'full'", {
+  ## Numerical cross-check against a separate sparse implementation. Keeps the
+  ## two packages in sync and guards against drift in the counting formula.
+  skip_if_not_installed("bibnets")
+
+  set.seed(7)
+  n_docs <- 200L
+  k_items <- 80L
+  ids <- seq_len(n_docs)
+  refs <- vapply(ids, function(i) {
+    paste(paste0("R", sample.int(k_items, sample(2:8, 1))), collapse = "; ")
+  }, character(1))
+  df <- data.frame(id = ids, citation = refs, stringsAsFactors = FALSE)
+
+  co_res <- cooccurrence(df, field = "citation", sep = ";",
+                         counting = "full", similarity = "none")
+  bn_res <- bibnets::conetwork(df, "citation", sep = ";",
+                                counting = "full", similarity = "none")
+
+  ## Compare edge weights at matching (from, to) pairs. Both packages
+  ## upper-case labels; bibnets already does so, cooccur preserves input case
+  ## so we upper-case the cooccur output for comparison.
+  norm_pair <- function(a, b) {
+    lo <- pmin(a, b); hi <- pmax(a, b)
+    paste(lo, hi, sep = "__")
+  }
+  co_key <- norm_pair(toupper(co_res$from), toupper(co_res$to))
+  bn_key <- norm_pair(bn_res$from, bn_res$to)
+
+  common <- intersect(co_key, bn_key)
+  expect_gt(length(common), 0L)
+  expect_equal(length(co_key), length(bn_key))
+
+  co_map <- stats::setNames(co_res$weight, co_key)
+  bn_map <- stats::setNames(bn_res$weight, bn_key)
+  expect_equal(unname(co_map[common]), unname(bn_map[common]),
+               tolerance = 1e-10)
 })
