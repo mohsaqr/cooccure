@@ -18,6 +18,12 @@
   [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md)
   densifies them on demand so existing downstream code keeps working.
 - Added `Matrix` to `Imports`.
+- Delimited parsers (`.co_parse_delimited`, `.co_parse_multi_delimited`)
+  vectorised: [`trimws()`](https://rdrr.io/r/base/trimws.html), NA/empty
+  filtering, and per-row deduplication now run as single C-level calls
+  over the flattened token vector rather than as 166k+ per-row R calls.
+  Cuts overall runtime on a 166k-row x 20-items-per-row citation corpus
+  from ~6.2 s to ~3.4 s (1.8x faster).
 
 ## cooccur 0.1.0
 
