@@ -1164,6 +1164,78 @@ test_that("cooccurrence scales to wide sparse inputs without densifying", {
   expect_lt(elapsed, 120)
 })
 
+test_that("vectorised parser matches per-row reference on realistic data", {
+  ## Regression guard for the delimited-parser vectorisation.
+  ##
+  ## `.co_parse_delimited` used to call `trimws()` per row inside an `lapply`.
+  ## It now flattens once, runs a single vectorised `trimws()` pass, and
+  ## reconstructs the list via `split()` with a preserved level range. This
+  ## test rebuilds the old per-row behaviour inline and asserts that both
+  ## paths produce bit-identical edges on a realistic mix of padded tokens,
+  ## duplicates, blanks, and NA rows.
+  skip_on_cran()
+
+  set.seed(1234)
+  n_docs  <- 2000L
+  k_items <- 1500L
+
+  ## Realistic citation-like rows: varying length, with whitespace padding,
+  ## intentional blank tokens, and a few NA rows.
+  refs <- vapply(seq_len(n_docs), function(i) {
+    n <- sample(3:25, 1)
+    toks <- paste0("R", sample.int(k_items, n))
+    ## Sprinkle extra whitespace and empty tokens to exercise trim + filter.
+    toks <- paste0(" ", toks, " ")
+    if (runif(1) < 0.15) toks <- c(toks, "")        # blank token
+    if (runif(1) < 0.05) toks <- c(toks, toks[1])   # duplicate within row
+    paste(toks, collapse = ";")
+  }, character(1))
+  refs[sample.int(n_docs, 20)] <- NA_character_
+  df <- data.frame(id = seq_len(n_docs), refs = refs, stringsAsFactors = FALSE)
+
+  ## Reference: the pre-vectorisation per-row path.
+  reference_parser <- function(vals, sep) {
+    lapply(strsplit(as.character(vals), sep, fixed = TRUE), function(items) {
+      items <- trimws(items)
+      items <- items[nzchar(items) & !is.na(items)]
+      unique(items)
+    })
+  }
+  ref_trans <- reference_parser(df$refs, ";")
+  new_trans <- cooccur:::.co_parse_delimited(df, "refs", ";")
+
+  ## Per-row equality as sets (within-row order is allowed to differ).
+  expect_equal(length(ref_trans), length(new_trans))
+  same_set <- vapply(seq_along(ref_trans), function(i) {
+    setequal(ref_trans[[i]], new_trans[[i]])
+  }, logical(1))
+  expect_true(all(same_set))
+
+  ## End-to-end: cooccurrence() must match a run against the reference-parsed
+  ## transactions (which exercise the list input path, completely independent
+  ## from the delimited path).
+  ref_edges <- cooccurrence(ref_trans, similarity = "cosine",
+                             counting = "fractional")
+  new_edges <- cooccurrence(df, field = "refs", sep = ";",
+                             similarity = "cosine",
+                             counting = "fractional")
+
+  canon <- function(df) {
+    a <- pmin(df$from, df$to); b <- pmax(df$from, df$to)
+    ord <- order(a, b)
+    data.frame(from = a[ord], to = b[ord],
+               weight = df$weight[ord], count = df$count[ord],
+               stringsAsFactors = FALSE)
+  }
+  r <- canon(ref_edges); n <- canon(new_edges)
+
+  expect_equal(nrow(r), nrow(n))
+  expect_identical(r$from, n$from)
+  expect_identical(r$to, n$to)
+  expect_equal(r$weight, n$weight, tolerance = 1e-12)
+  expect_identical(r$count, n$count)
+})
+
 test_that("cooccurrence matches bibnets::conetwork on counting = 'full'", {
   ## Numerical cross-check against a separate sparse implementation. Keeps the
   ## two packages in sync and guards against drift in the counting formula.
