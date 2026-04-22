@@ -12,9 +12,10 @@ Description: Constructs co-occurrence networks from several types of input
     matrices, or wide sequences. Returns tidy edge data frames and
     supports optional scaling, splitting into several networks,
     thresholding, and subsetting. Provides eight similarity measures,
-    including Jaccard, cosine, and association strength. Network
-    construction and analysis methods follow Saqr, Lopez-Pernas, Conde,
-    and Hernandez-Garcia (2024, <doi:10.1007/978-3-031-54464-4_15>).
+    including Jaccard, cosine, and association strength. Supports export
+    to several network and file formats. Network construction and
+    analysis methods follow Saqr, Lopez-Pernas, Conde, and
+    Hernandez-Garcia (2024, <doi:10.1007/978-3-031-54464-4_15>).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US
