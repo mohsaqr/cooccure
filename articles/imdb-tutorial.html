@@ -124,12 +124,15 @@ specifying the delimiter that separates values within that field.</p>
 <span><span class="co">#&gt;     Action   Adventure     44    44</span></span>
 <span><span class="co">#&gt;  Biography Documentary     44    44</span></span>
 <span><span class="co">#&gt; # ... 119 more edges</span></span></code></pre></div>
-<p>The result shows 22 genre nodes and 129 edges. Drama dominates the
-top pairs because it is the most frequent genre in the dataset — its
-high raw count inflates co-occurrence with almost every other genre
-regardless of how strongly they are actually associated.</p>
-<p>Normalizing with Jaccard similarity controls for genre popularity, so
-the top edges reflect genuine affinity rather than just frequency:</p>
+<p>The result shows 22 genre nodes and 129 edges. <em>Drama</em>
+dominates the top pairs simply because it is the most frequent genre,
+inflating co-occurrence with nearly every other genre regardless of
+actual association strength. Jaccard similarity normalizes for this, so
+the strongest edges reflect true affinity rather than frequency. A
+directed co-occurrence graph is then built and its degree distribution
+plotted as a bar chart, showing how many nodes share each degree value
+and whether connectivity is concentrated or evenly spread across
+genres.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sonsoles.me/cograph/" class="external-link">cograph</a></span><span class="op">)</span></span>
 <span></span>
@@ -146,9 +149,10 @@ the top edges reflect genuine affinity rather than just frequency:</p>
 prioritizing different aspects of co-occurrence. The examples below show
 the top 3 pairs under each measure using a movie genres dataset.</p>
 <p><code>similarity = "none"</code> — Raw counts favor the most frequent
-genre pairs. Drama dominates because it is the most common genre, so its
-co-occurrences with Comedy and Romance rank highest regardless of how
-strongly the genres are actually associated.</p>
+genre pairs. <em>Drama</em> dominates because it is the most common
+genre, so its co-occurrences with <em>Comedy</em> and <em>Romance</em>
+rank highest regardless of how strongly the genres are actually
+associated.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"none"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 4 nodes, 3 edges (1000 transactions)</span></span>
@@ -158,9 +162,9 @@ strongly the genres are actually associated.</p>
 <span><span class="co">#&gt;   Crime   Drama     91    91</span></span></code></pre></div>
 <p><code>similarity = "jaccard"</code> — Normalizing by the union of
 occurrences brings less frequent but more tightly associated pairs to
-the top. Adventure–Animation emerges as the strongest pair, suggesting
-these genres appear together more consistently relative to how often
-either appears alone.</p>
+the top. <em>Adventure</em>–<em>Animation</em> emerges as the strongest
+pair, suggesting these genres appear together more consistently relative
+to how often either appears alone.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: jaccard</span></span>
@@ -169,9 +173,9 @@ either appears alone.</p>
 <span><span class="co">#&gt;     Action     Crime 0.2369478    59</span></span>
 <span><span class="co">#&gt;     Comedy     Drama 0.2111554   159</span></span></code></pre></div>
 <p><code>similarity = "cosine"</code> — Similar to Jaccard but less
-strict, cosine also elevates Adventure–Animation while keeping
-Drama–Romance in the top 3, reflecting its more lenient treatment of
-frequency differences between genres.</p>
+strict, cosine also elevates <em>Adventure</em>–<em>Animation</em> while
+keeping <em>Drama</em>–<em>Romance</em> in the top 3, reflecting its
+more lenient treatment of frequency differences between genres.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"cosine"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: cosine</span></span>
@@ -179,10 +183,12 @@ frequency differences between genres.</p>
 <span><span class="co">#&gt;  Adventure Animation 0.4480983    39</span></span>
 <span><span class="co">#&gt;      Drama   Romance 0.4113075   131</span></span>
 <span><span class="co">#&gt;     Action     Crime 0.3831250    59</span></span></code></pre></div>
-<p><code>similarity = "inclusion"</code> — Dividing by the rarer item’s
-frequency surfaces near-perfect subset relationships. Documentary–News
-and History–News both score 1, meaning every News film is also tagged as
-Documentary or History.</p>
+<p><code>similarity = "inclusion"</code> — — Dividing by the less common
+genre’s frequency surfaces subset relationships.
+<em>Documentary</em>–<em>News</em> and <em>History</em>–<em>News</em>
+both score 1, meaning <em>News</em> movies are always also tagged as
+<em>Documentary</em> or <em>History</em>—<em>News</em> is a niche genre
+that only appears alongside broader ones.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"inclusion"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 3 edges (1000 transactions) | similarity: inclusion</span></span>
@@ -204,8 +210,13 @@ disproportionately high relative to their individual frequencies.</p>
 <span><span class="co">#&gt;  Documentary   News 0.006578947     1</span></span></code></pre></div>
 <p><code>similarity = "dice"</code> — Results closely mirror Jaccard,
 with the same top pairs appearing in the same order but with slightly
-higher weights, reflecting Dice’s more lenient arithmetic mean
-normalization.</p>
+higher weights — reflecting Dice’s more lenient arithmetic mean
+normalization. <em>Adventure</em>-<em>Animation</em>,
+<em>Action</em>-<em>Crime</em>, and <em>Comedy</em>-<em>Drama</em>
+remain the strongest genre affinities, with
+<em>Comedy</em>-<em>Drama</em> recording the highest raw co-occurrence
+count at 159 despite its comparatively lower weight, indicating that
+both genres are individually common but not exclusively paired.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"dice"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: dice</span></span>
@@ -215,8 +226,13 @@ normalization.</p>
 <span><span class="co">#&gt;     Comedy     Drama 0.3486842   159</span></span></code></pre></div>
 <p><code>similarity = "equivalence"</code> — Squaring the cosine
 amplifies differences between strong and weak pairs, pushing weaker
-associations further down. The top pairs match cosine but the gap
-between them is more pronounced.</p>
+associations further down the rankings.
+<em>Adventure</em>-<em>Animation</em> retains the top spot, but
+<em>Drama</em>–<em>Romance</em> displaces <em>Action</em>-<em>Crime</em>
+into third place, suggesting that while <em>Action</em>-<em>Crime</em>
+has a higher raw count, <em>Drama</em>–<em>Romance</em> represents a
+tighter and more exclusive pairing once the penalty for common genres is
+compounded.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"equivalence"</span>, top_n <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: equivalence</span></span>
@@ -297,12 +313,12 @@ contributes equally regardless of how many genres it contains.</p>
 <span><span class="co">#&gt;  Action   Drama   38.5    71</span></span>
 <span><span class="co">#&gt;  Comedy Romance   38.5    63</span></span></code></pre></div>
 <p>The top pairs remain the same under both methods, but the weights are
-lower under fractional counting. For example, Comedy–Drama drops from
-159 to 107.5, reflecting the downweighting of multi-genre movies that
-contributed to this pair. Fractional counting is particularly important
-when some transactions contain many items while others contain few, as
-it prevents high-cardinality transactions from dominating the
-network.</p>
+lower under fractional counting. For example,
+<em>Comedy</em>-<em>Drama</em> drops from 159 to 107.5, reflecting the
+downweighting of multi-genre movies that contributed to this pair.
+Fractional counting is particularly important when some transactions
+contain many items while others contain few, as it prevents
+high-cardinality transactions from dominating the network.</p>
 </div>
 <div class="section level2">
 <h2 id="scaling">3. Scaling<a class="anchor" aria-label="anchor" href="#scaling"></a>
@@ -313,8 +329,10 @@ downstream analysis. Scaling can be applied on its own or combined with
 any similarity measure.</p>
 <p><code>scale = "log"</code> — Applies a natural log transformation,
 compressing the heavy tail of the distribution. The ranking of pairs is
-preserved but the gap between frequent and infrequent pairs is
-reduced.</p>
+preserved but the gap between frequent and infrequent pairs is reduced.
+<em>Comedy</em>-<em>Drama</em> and Drama<em>-</em>Romance* remain at the
+top, but their weights are now much closer together than raw counts
+would suggest.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"log"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: log</span></span>
@@ -327,7 +345,13 @@ reduced.</p>
 <p><code>scale = "minmax"</code> — Rescales all weights to the range [0,
 1], where the strongest pair scores 1 and all others are expressed
 relative to it. Useful for comparing networks of different sizes or when
-absolute counts are not meaningful.</p>
+absolute counts are not meaningful.
+<em>Adventure</em>-<em>Animation</em> scores a perfect 1 as the
+strongest Jaccard pair in the network.
+<em>Biography</em>-<em>Documentary</em> reaches the top 5 with a raw
+count of only 44, indicating that when these genres appear together they
+do so with high exclusivity relative to how often either appears
+alone.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, scale <span class="op">=</span> <span class="st">"minmax"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 8 nodes, 5 edges (1000 transactions) | similarity: jaccard | scale: minmax</span></span>
@@ -339,7 +363,9 @@ absolute counts are not meaningful.</p>
 <span><span class="co">#&gt;  Biography Documentary 0.7139898    44</span></span></code></pre></div>
 <p><code>scale = "binary"</code> — Converts all positive weights to 1,
 producing a presence/absence network. The top pairs are no longer ranked
-by strength but simply by whether they co-occur at all.</p>
+by strength but simply by whether they co-occur at all.
+<em>Action</em>-<em>Adventure</em> dominate simply because they appear
+together across a wide range of combinations.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"binary"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 4 nodes, 5 edges (1000 transactions) | scale: binary</span></span>
@@ -351,7 +377,10 @@ by strength but simply by whether they co-occur at all.</p>
 <span><span class="co">#&gt;  Adventure Biography      1     8</span></span></code></pre></div>
 <p><code>scale = "sqrt"</code> — Applies a square root transformation,
 providing a milder compression than log. The ranking is preserved and
-the distribution is slightly less skewed than the raw counts.</p>
+the distribution is slightly less skewed than the raw counts.
+<em>Comedy</em>-<em>Drama</em> leads with a weight of 12.6 compared to
+<em>Comedy</em>-<em>Romance</em> at 7.9, a smaller proportional gap than
+the raw count difference of 159 versus 63 would imply.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>, scale <span class="op">=</span> <span class="st">"sqrt"</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: sqrt</span></span>
@@ -364,7 +393,12 @@ the distribution is slightly less skewed than the raw counts.</p>
 <p>Scaling can be combined with any similarity measure and with
 filtering arguments. The example below applies association strength
 followed by log scaling, retaining only genres appearing in at least 20
-movies:</p>
+movies. <em>Drama</em>-heavy pairs drop out entirely once popularity is
+penalized, and niche but tightly linked pairs like
+<em>Adventure</em>-<em>Animation</em>, <em>History</em>-<em>War</em>,
+and <em>Mystery</em>-<em>Thriller</em> rise to the top, reflecting
+genres that genuinely cluster together rather than simply co-occurring
+by volume.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>   similarity <span class="op">=</span> <span class="st">"association"</span>, scale <span class="op">=</span> <span class="st">"log"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, top_n <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
@@ -533,9 +567,9 @@ reflecting how genre combinations have changed over time.</p>
 <span><span class="co">#&gt;     Comedy       Drama 0.1911111    43 2010s</span></span></code></pre></div>
 <p><code>split_by = "rating_band"</code> — Splitting by rating band
 reveals whether highly rated movies have different genre co-occurrence
-patterns than average-rated ones. Documentary–Music is the strongest
-pair among top-rated movies, while Adventure–Animation leads among the
-7–7.9 band.</p>
+patterns than average-rated ones. <em>Documentary</em>–<em>Music</em> is
+the strongest pair among top-rated movies, while
+<em>Adventure</em>–<em>Animation</em> leads among the 7–7.9 band.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">movies</span><span class="op">$</span><span class="va">rating_band</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">movies</span><span class="op">$</span><span class="va">averageRating</span> <span class="op">&gt;=</span> <span class="fl">8</span>, <span class="st">"8+"</span>, <span class="st">"7-7.9"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
@@ -631,9 +665,9 @@ standard igraph functions work on the result without any conversion.</p>
 <code class="sourceCode R"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>        similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, output <span class="op">=</span> <span class="st">"igraph"</span><span class="op">)</span></span>
 <span><span class="va">g</span></span>
-<span><span class="co">#&gt; IGRAPH 50a2c8d UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH 732931f UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from 50a2c8d (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from 732931f (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>
@@ -814,9 +848,9 @@ giving access to the full igraph ecosystem for further network
 analysis:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co">#&gt; IGRAPH 515ce47 UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH 4809acb UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from 515ce47 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from 4809acb (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>

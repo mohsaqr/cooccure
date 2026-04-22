@@ -63,13 +63,14 @@ cooccurrence(movies, field = "genres", sep = ",")
 #> # ... 119 more edges
 ```
 
-The result shows 22 genre nodes and 129 edges. Drama dominates the top
-pairs because it is the most frequent genre in the dataset — its high
-raw count inflates co-occurrence with almost every other genre
-regardless of how strongly they are actually associated.
-
-Normalizing with Jaccard similarity controls for genre popularity, so
-the top edges reflect genuine affinity rather than just frequency:
+The result shows 22 genre nodes and 129 edges. *Drama* dominates the top
+pairs simply because it is the most frequent genre, inflating
+co-occurrence with nearly every other genre regardless of actual
+association strength. Jaccard similarity normalizes for this, so the
+strongest edges reflect true affinity rather than frequency. A directed
+co-occurrence graph is then built and its degree distribution plotted as
+a bar chart, showing how many nodes share each degree value and whether
+connectivity is concentrated or evenly spread across genres.
 
 ``` r
 library(cograph)
@@ -90,9 +91,9 @@ prioritizing different aspects of co-occurrence. The examples below show
 the top 3 pairs under each measure using a movie genres dataset.
 
 `similarity = "none"` — Raw counts favor the most frequent genre pairs.
-Drama dominates because it is the most common genre, so its
-co-occurrences with Comedy and Romance rank highest regardless of how
-strongly the genres are actually associated.
+*Drama* dominates because it is the most common genre, so its
+co-occurrences with *Comedy* and *Romance* rank highest regardless of
+how strongly the genres are actually associated.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
@@ -105,7 +106,7 @@ co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
 
 `similarity = "jaccard"` — Normalizing by the union of occurrences
 brings less frequent but more tightly associated pairs to the top.
-Adventure–Animation emerges as the strongest pair, suggesting these
+*Adventure*–*Animation* emerges as the strongest pair, suggesting these
 genres appear together more consistently relative to how often either
 appears alone.
 
@@ -119,9 +120,9 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 3)
 ```
 
 `similarity = "cosine"` — Similar to Jaccard but less strict, cosine
-also elevates Adventure–Animation while keeping Drama–Romance in the top
-3, reflecting its more lenient treatment of frequency differences
-between genres.
+also elevates *Adventure*–*Animation* while keeping *Drama*–*Romance* in
+the top 3, reflecting its more lenient treatment of frequency
+differences between genres.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
@@ -132,10 +133,11 @@ co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
 #>     Action     Crime 0.3831250    59
 ```
 
-`similarity = "inclusion"` — Dividing by the rarer item’s frequency
-surfaces near-perfect subset relationships. Documentary–News and
-History–News both score 1, meaning every News film is also tagged as
-Documentary or History.
+`similarity = "inclusion"` — — Dividing by the less common genre’s
+frequency surfaces subset relationships. *Documentary*–*News* and
+*History*–*News* both score 1, meaning *News* movies are always also
+tagged as *Documentary* or *History*—*News* is a niche genre that only
+appears alongside broader ones.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
@@ -162,8 +164,13 @@ co(movies, field = "genres", sep = ",", similarity = "association", top_n = 3)
 ```
 
 `similarity = "dice"` — Results closely mirror Jaccard, with the same
-top pairs appearing in the same order but with slightly higher weights,
+top pairs appearing in the same order but with slightly higher weights —
 reflecting Dice’s more lenient arithmetic mean normalization.
+*Adventure*-*Animation*, *Action*-*Crime*, and *Comedy*-*Drama* remain
+the strongest genre affinities, with *Comedy*-*Drama* recording the
+highest raw co-occurrence count at 159 despite its comparatively lower
+weight, indicating that both genres are individually common but not
+exclusively paired.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
@@ -175,8 +182,12 @@ co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
 ```
 
 `similarity = "equivalence"` — Squaring the cosine amplifies differences
-between strong and weak pairs, pushing weaker associations further down.
-The top pairs match cosine but the gap between them is more pronounced.
+between strong and weak pairs, pushing weaker associations further down
+the rankings. *Adventure*-*Animation* retains the top spot, but
+*Drama*–*Romance* displaces *Action*-*Crime* into third place,
+suggesting that while *Action*-*Crime* has a higher raw count,
+*Drama*–*Romance* represents a tighter and more exclusive pairing once
+the penalty for common genres is compounded.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "equivalence", top_n = 3)
@@ -248,11 +259,12 @@ co(movies, field = "genres", sep = ",", counting = "fractional", top_n = 5)
 ```
 
 The top pairs remain the same under both methods, but the weights are
-lower under fractional counting. For example, Comedy–Drama drops from
-159 to 107.5, reflecting the downweighting of multi-genre movies that
-contributed to this pair. Fractional counting is particularly important
-when some transactions contain many items while others contain few, as
-it prevents high-cardinality transactions from dominating the network.
+lower under fractional counting. For example, *Comedy*-*Drama* drops
+from 159 to 107.5, reflecting the downweighting of multi-genre movies
+that contributed to this pair. Fractional counting is particularly
+important when some transactions contain many items while others contain
+few, as it prevents high-cardinality transactions from dominating the
+network.
 
 ## 3. Scaling
 
@@ -264,6 +276,8 @@ any similarity measure.
 `scale = "log"` — Applies a natural log transformation, compressing the
 heavy tail of the distribution. The ranking of pairs is preserved but
 the gap between frequent and infrequent pairs is reduced.
+*Comedy*-*Drama* and Drama*-*Romance\* remain at the top, but their
+weights are now much closer together than raw counts would suggest.
 
 ``` r
 co(movies, field = "genres", sep = ",", scale = "log", top_n = 5)
@@ -279,7 +293,11 @@ co(movies, field = "genres", sep = ",", scale = "log", top_n = 5)
 `scale = "minmax"` — Rescales all weights to the range \[0, 1\], where
 the strongest pair scores 1 and all others are expressed relative to it.
 Useful for comparing networks of different sizes or when absolute counts
-are not meaningful.
+are not meaningful. *Adventure*-*Animation* scores a perfect 1 as the
+strongest Jaccard pair in the network. *Biography*-*Documentary* reaches
+the top 5 with a raw count of only 44, indicating that when these genres
+appear together they do so with high exclusivity relative to how often
+either appears alone.
 
 ``` r
 co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax", top_n = 5)
@@ -294,7 +312,9 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax"
 
 `scale = "binary"` — Converts all positive weights to 1, producing a
 presence/absence network. The top pairs are no longer ranked by strength
-but simply by whether they co-occur at all.
+but simply by whether they co-occur at all. *Action*-*Adventure*
+dominate simply because they appear together across a wide range of
+combinations.
 
 ``` r
 co(movies, field = "genres", sep = ",", scale = "binary", top_n = 5)
@@ -310,6 +330,9 @@ co(movies, field = "genres", sep = ",", scale = "binary", top_n = 5)
 `scale = "sqrt"` — Applies a square root transformation, providing a
 milder compression than log. The ranking is preserved and the
 distribution is slightly less skewed than the raw counts.
+*Comedy*-*Drama* leads with a weight of 12.6 compared to
+*Comedy*-*Romance* at 7.9, a smaller proportional gap than the raw count
+difference of 159 versus 63 would imply.
 
 ``` r
 co(movies, field = "genres", sep = ",", scale = "sqrt", top_n = 5)
@@ -324,7 +347,12 @@ co(movies, field = "genres", sep = ",", scale = "sqrt", top_n = 5)
 
 Scaling can be combined with any similarity measure and with filtering
 arguments. The example below applies association strength followed by
-log scaling, retaining only genres appearing in at least 20 movies:
+log scaling, retaining only genres appearing in at least 20 movies.
+*Drama*-heavy pairs drop out entirely once popularity is penalized, and
+niche but tightly linked pairs like *Adventure*-*Animation*,
+*History*-*War*, and *Mystery*-*Thriller* rise to the top, reflecting
+genres that genuinely cluster together rather than simply co-occurring
+by volume.
 
 ``` r
 co(movies, field = "genres", sep = ",",
@@ -516,8 +544,9 @@ decades[decades$group == "2010s", ]
 
 `split_by = "rating_band"` — Splitting by rating band reveals whether
 highly rated movies have different genre co-occurrence patterns than
-average-rated ones. Documentary–Music is the strongest pair among
-top-rated movies, while Adventure–Animation leads among the 7–7.9 band.
+average-rated ones. *Documentary*–*Music* is the strongest pair among
+top-rated movies, while *Adventure*–*Animation* leads among the 7–7.9
+band.
 
 ``` r
 movies$rating_band <- ifelse(movies$averageRating >= 8, "8+", "7-7.9")
@@ -623,9 +652,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 50a2c8d UNW- 17 102 -- 
+#> IGRAPH 732931f UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 50a2c8d (vertex names):
+#> + edges from 732931f (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -815,9 +844,9 @@ ecosystem for further network analysis:
 
 ``` r
 as_igraph(result)
-#> IGRAPH 515ce47 UNW- 17 102 -- 
+#> IGRAPH 4809acb UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 515ce47 (vertex names):
+#> + edges from 4809acb (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
