@@ -1236,6 +1236,80 @@ test_that("vectorised parser matches per-row reference on realistic data", {
   expect_identical(r$count, n$count)
 })
 
+biblionetworkcocitation <- function(dt, source, ref, normalized_weight_only = TRUE, weight_threshold = 1,
+                                    output_in_character = TRUE) {
+  dt <- as.data.frame(dt)
+  names(dt)[names(dt) == source] <- "id_art"
+  names(dt)[names(dt) == ref]    <- "id_ref"
+  dt <- dt[, c("id_art", "id_ref")]
+  dt <- unique(dt)
+  dt <- dt[dt$id_art != dt$id_ref, ]
+
+  # Count how many papers cite each reference
+  id_nb_cit <- as.data.frame(table(dt$id_ref), stringsAsFactors = FALSE)
+  names(id_nb_cit) <- c("id_ref", "nb_cit")
+  id_nb_cit$nb_cit <- as.integer(id_nb_cit$nb_cit)
+
+  # Keep only papers with > 1 reference
+  art_counts <- table(dt$id_art)
+  keep <- names(art_counts)[art_counts > 1]
+  dt <- dt[dt$id_art %in% keep, ]
+
+  # Generate all pairs of references per paper, deduplicate within each paper,
+  # then count how many papers share each pair.
+  pairs <- do.call(rbind, lapply(split(dt$id_ref, dt$id_art), function(refs) {
+    if (length(refs) < 2) return(NULL)
+    idx <- combn(length(refs), 2)
+    p <- data.frame(Source = refs[idx[1, ]], Target = refs[idx[2, ]],
+                    stringsAsFactors = FALSE)
+    # Normalize so Source < Target
+    swap <- p$Source > p$Target
+    tmp <- p$Source[swap]
+    p$Source[swap] <- p$Target[swap]
+    p$Target[swap] <- tmp
+    unique(p)
+  }))
+
+  # Count co-occurrences across papers
+  pair_key <- paste(pairs$Source, pairs$Target, sep = "\x01")
+  counts <- table(pair_key)
+  parts <- strsplit(names(counts), "\x01", fixed = TRUE)
+  bib_cocit <- data.frame(
+    Source = vapply(parts, `[`, character(1), 1),
+    Target = vapply(parts, `[`, character(1), 2),
+    nb_shared_citations = as.integer(counts),
+    stringsAsFactors = FALSE
+  )
+
+  bib_cocit <- bib_cocit[bib_cocit$nb_shared_citations >= weight_threshold, ]
+
+  # Merge citation counts
+  bib_cocit <- merge(bib_cocit, id_nb_cit, by.x = "Target", by.y = "id_ref")
+  names(bib_cocit)[names(bib_cocit) == "nb_cit"] <- "nb_cit_Target"
+  bib_cocit <- merge(bib_cocit, id_nb_cit, by.x = "Source", by.y = "id_ref")
+  names(bib_cocit)[names(bib_cocit) == "nb_cit"] <- "nb_cit_Source"
+
+  # Compute cosine weight
+  bib_cocit$weight <- bib_cocit$nb_shared_citations /
+    sqrt(bib_cocit$nb_cit_Target * bib_cocit$nb_cit_Source)
+
+  if (output_in_character) {
+    bib_cocit$from <- as.character(bib_cocit$Source)
+    bib_cocit$to   <- as.character(bib_cocit$Target)
+    if (normalized_weight_only) {
+      bib_cocit[, c("from", "to", "weight", "Source", "Target")]
+    } else {
+      bib_cocit[, c("from", "to", "weight", "nb_shared_citations", "Source", "Target")]
+    }
+  } else {
+    if (normalized_weight_only) {
+      bib_cocit[, c("Source", "Target", "weight")]
+    } else {
+      bib_cocit[, c("Source", "Target", "weight", "nb_shared_citations")]
+    }
+  }
+}
+
 test_that("cooccurrence matches biblionetwork::biblio_cocitation (cosine)", {
   ## Cross-validation against an independent, widely-used bibliometrics
   ## package. `biblio_cocitation()` on long-format (source, ref) computes
@@ -1245,8 +1319,6 @@ test_that("cooccurrence matches biblionetwork::biblio_cocitation (cosine)", {
   ## The raw count column (`nb_shared_citations`) and the normalised weight
   ## column (`weight`) from biblionetwork must match our `count` and
   ## `weight` columns bit-for-bit.
-  skip_if_not_installed("biblionetwork")
-  skip_if_not_installed("data.table")
 
   set.seed(2026)
   n_docs <- 300L
@@ -1257,16 +1329,15 @@ test_that("cooccurrence matches biblionetwork::biblio_cocitation (cosine)", {
     data.frame(paper = sprintf("P%04d", i),
                ref = refs, stringsAsFactors = FALSE)
   }))
-  dt <- data.table::as.data.table(rows)
 
   bn <- as.data.frame(
-    biblionetwork::biblio_cocitation(
-      dt, source = "paper", ref = "ref",
+    biblionetworkcocitation(
+      rows, source = "paper", ref = "ref",
       normalized_weight_only = FALSE,
       weight_threshold = 1
     )
   )
-  co <- cooccurrence(as.data.frame(dt), field = "ref", by = "paper",
+  co <- cooccurrence(rows, field = "ref", by = "paper",
                      similarity = "cosine", counting = "full")
 
   expect_equal(nrow(co), nrow(bn))
