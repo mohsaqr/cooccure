@@ -14,11 +14,11 @@ Source:
 [`DESCRIPTION`](https://github.com/mohsaqr/cooccure/blob/main/DESCRIPTION)
 
 Saqr M, López-Pernas S, Misiejuk K (2026). *cooccure: Co-Occurrence
-Networks from Any Data Format*. R package version 0.1.1,
+Network Construction and Manipulation*. R package version 0.1.1,
 <https://github.com/mohsaqr/cooccure>.
 
     @Manual{,
-      title = {cooccure: Co-Occurrence Networks from Any Data Format},
+      title = {cooccure: Co-Occurrence Network Construction and Manipulation},
       author = {Mohammed Saqr and Sonsoles López-Pernas and Kamila Misiejuk},
       year = {2026},
       note = {R package version 0.1.1},
