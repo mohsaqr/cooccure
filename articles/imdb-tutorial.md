@@ -432,7 +432,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 10)
 #>    Biography     History 0.1564626    23
 ```
 
-All three thersholds can be combined for fine-grained control over
+All three thresholds can be combined for fine-grained control over
 network size and density:
 
 ``` r
@@ -654,9 +654,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH cfd7959 UNW- 17 102 -- 
+#> IGRAPH 7e92bdc UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from cfd7959 (vertex names):
+#> + edges from 7e92bdc (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -846,9 +846,9 @@ igraph ecosystem for further network analysis:
 
 ``` r
 as_igraph(result)
-#> IGRAPH 512c791 UNW- 17 102 -- 
+#> IGRAPH 86a8c20 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 512c791 (vertex names):
+#> + edges from 86a8c20 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
