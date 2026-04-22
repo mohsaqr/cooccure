@@ -5,10 +5,13 @@ with code in this repository.
 
 ## Package Overview
 
-`cooccur` is an R package (v0.1.0) for building co-occurrence networks
+`cooccure` is an R package (v0.1.1) for building co-occurrence networks
 from arbitrary input formats. It returns tidy edge data frames with
 eight similarity measures, optional weight scaling, and converters to
-igraph, cograph, Nestimate, and tidygraph.
+igraph, cograph, Nestimate, and tidygraph. (The package was developed on
+GitHub as `cooccur` and renamed to `cooccure` for CRAN submission
+because an unrelated archived CRAN package already holds the `cooccur`
+name.)
 
 ## Common Commands
 
@@ -36,15 +39,15 @@ Rscript -e 'rmarkdown::render("vignettes/imdb-tutorial.Rmd", output_dir = "tmp/"
 
 ### Source files (`R/`)
 
-| File             | Role                                                                                                                                                                                                   |
-|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `cooccurrence.R` | Public API: [`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md) / [`co()`](http://saqr.me/cooccur/reference/cooccurrence.md) alias, `split_by` dispatch, all `.co_*` internal helpers |
-| `converters.R`   | S3 generics + methods: `as_matrix`, `as_igraph`, `as_tidygraph`, `as_cograph`, `as_netobject`                                                                                                          |
-| `methods.R`      | S3 methods: `print.cooccurrence`, `summary.cooccurrence`, `plot.cooccurrence`                                                                                                                          |
+| File             | Role                                                                                                                                                                                                       |
+|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `cooccurrence.R` | Public API: [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md) / [`co()`](https://saqr.me/cooccure/reference/cooccurrence.md) alias, `split_by` dispatch, all `.co_*` internal helpers |
+| `converters.R`   | S3 generics + methods: `as_matrix`, `as_igraph`, `as_tidygraph`, `as_cograph`, `as_netobject`                                                                                                              |
+| `methods.R`      | S3 methods: `print.cooccurrence`, `summary.cooccurrence`, `plot.cooccurrence`                                                                                                                              |
 
 ### Core pipeline
 
-[`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md) →
+[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md) →
 (if `split_by`) split + lapply → `.co_core()` per group → combine
 
 `.co_core()` calls in sequence: 1. `.co_detect_format()` — auto-detects
@@ -73,7 +76,7 @@ stored).
 ### Output format dispatch
 
 `output =` argument in
-[`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md)
+[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
 short-circuits via `.co_format_output()`: - `"gephi"` — renames columns
 in-place, preserves `cooccurrence` class and attributes - `"igraph"` /
 `"cograph"` / `"matrix"` — delegates to the corresponding `as_*`

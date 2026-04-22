@@ -1,7 +1,7 @@
-# Launch the cooccur Shiny explorer
+# Launch the cooccure Shiny explorer
 
 Opens an interactive Shiny application for building and exploring
-co-occurrence networks. Requires the shiny, DT, and visNetwork packages.
+co-occurrence networks. Requires the shiny and DT packages.
 
 ## Usage
 
@@ -18,12 +18,12 @@ launch_app(...)
 
 ## Value
 
-Called for its side effect (launches the app).
+Called for its side effect (launches the app). No return value.
 
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-launch_app()
-} # }
+if (interactive()) {
+  launch_app()
+}
 ```

@@ -1,11 +1,11 @@
 # IMDB actor-movie long table (1970-2024)
 
 Long-format bipartite table linking actors to movies in
-[`movies`](http://saqr.me/cooccur/reference/movies.md). Pre-filtered to
-the 624 actors who appear in at least two movies, so all similarity
+[`movies`](https://saqr.me/cooccure/reference/movies.md). Pre-filtered
+to the 624 actors who appear in at least two movies, so all similarity
 measures compute instantly. Pass `field = "actor"` and `by = "tconst"`
-to [`cooccurrence`](http://saqr.me/cooccur/reference/cooccurrence.md) to
-build an actor co-appearance network.
+to [`cooccurrence`](https://saqr.me/cooccure/reference/cooccurrence.md)
+to build an actor co-appearance network.
 
 ## Usage
 
@@ -24,7 +24,7 @@ A data frame with 1,267 rows and 7 variables:
 - tconst:
 
   IMDB title identifier linking to
-  [`movies`](http://saqr.me/cooccur/reference/movies.md).
+  [`movies`](https://saqr.me/cooccure/reference/movies.md).
 
 - primaryTitle:
 

@@ -5,7 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Co-occurrence Networks with IMDB Movie Data • cooccur</title>
+<title>Co-occurrence Networks with IMDB Movie Data • cooccure</title>
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
@@ -18,7 +23,7 @@
 
     <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
 
-    <a class="navbar-brand me-2" href="../index.html">cooccur</a>
+    <a class="navbar-brand me-2" href="../index.html">cooccure</a>
 
     <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
@@ -42,7 +47,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/mohsaqr/cooccur/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/mohsaqr/cooccure/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -58,13 +63,13 @@
       <img src="../logo.png" class="logo" alt=""><h1>Co-occurrence Networks with IMDB Movie Data</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/mohsaqr/cooccur/blob/main/vignettes/imdb-tutorial.Rmd" class="external-link"><code>vignettes/imdb-tutorial.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/mohsaqr/cooccure/blob/main/vignettes/imdb-tutorial.Rmd" class="external-link"><code>vignettes/imdb-tutorial.Rmd</code></a></small>
       <div class="d-none name"><code>imdb-tutorial.Rmd</code></div>
     </div>
 
     
     
-<p>This tutorial demonstrates every feature of the <code>cooccur</code>
+<p>This tutorial demonstrates every feature of the <code>cooccure</code>
 package using 1,000 highly-rated IMDB movies (rating
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mo>≥</mo><annotation encoding="application/x-tex">\geq</annotation></semantics></math>
 7.0,
@@ -80,7 +85,7 @@ downstream analysis.</p>
 <h2 id="data">Data<a class="anchor" aria-label="anchor" href="#data"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://saqr.me/cooccur/" class="external-link">cooccur</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/mohsaqr/cooccure" class="external-link">cooccure</a></span><span class="op">)</span></span></code></pre></div>
 <p>The dataset contains the title of the movie, the year and decade, the
 <code>genres</code> (comma-separated), the average rating, the number of
 votes, and the rating band.</p>
@@ -717,9 +722,9 @@ standard igraph functions work on the result without any conversion.</p>
 <code class="sourceCode R"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
 <span>        similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span>, output <span class="op">=</span> <span class="st">"igraph"</span><span class="op">)</span></span>
 <span><span class="va">g</span></span>
-<span><span class="co">#&gt; IGRAPH 1081ef2 UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH e1aa962 UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from 1081ef2 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from e1aa962 (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>
@@ -900,9 +905,9 @@ giving access to the full igraph ecosystem for further network
 analysis:</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co">#&gt; IGRAPH 8b13a87 UNW- 17 102 -- </span></span>
+<span><span class="co">#&gt; IGRAPH b8d5439 UNW- 17 102 -- </span></span>
 <span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span>
-<span><span class="co">#&gt; + edges from 8b13a87 (vertex names):</span></span>
+<span><span class="co">#&gt; + edges from b8d5439 (vertex names):</span></span>
 <span><span class="co">#&gt;  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      </span></span>
 <span><span class="co">#&gt;  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    </span></span>
 <span><span class="co">#&gt;  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      </span></span>
@@ -917,7 +922,7 @@ analysis:</p>
 <h2 id="six-input-formats-one-result">9. Six input formats, one result<a class="anchor" aria-label="anchor" href="#six-input-formats-one-result"></a>
 </h2>
 <p>The same data can be provided in different formats —
-<code>cooccur</code> auto-detects the format and produces identical
+<code>cooccure</code> auto-detects the format and produces identical
 results regardless of which representation is used. The four examples
 below all compute the same genre co-occurrence network from the same
 underlying data.</p>

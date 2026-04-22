@@ -1,6 +1,6 @@
-# cooccur
+# cooccure
 
-The **cooccur** R package enables building co-occurrence networks from
+The **cooccure** R package enables building co-occurrence networks from
 multiple data formats. It accepts six input formats and supports
 multiple similarity measures, scaling methods, fractional counting,
 group-level splitting, and flexible filtering. Results are returned as a
@@ -8,23 +8,23 @@ tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to
 **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects.
 
 The main function
-[`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md) is
-also available as the short alias
-[`co()`](http://saqr.me/cooccur/reference/cooccurrence.md).
+[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+is also available as the short alias
+[`co()`](https://saqr.me/cooccure/reference/cooccurrence.md).
 
 ## Installation
 
 ``` r
 # CRAN release
-install.packages("cooccur")
+install.packages("cooccure")
 
 # Development version
-remotes::install_github("mohsaqr/cooccur")
+remotes::install_github("mohsaqr/cooccure")
 ```
 
 ## Input formats
 
-**cooccur** auto-detects the input format from the arguments provided.
+**cooccure** auto-detects the input format from the arguments provided.
 Six formats are supported (delimited field, multi-column delimited,
 long/bipartite, binary matrix, wide sequence, and list of character
 vectors), covering the most common shapes data comes in.
@@ -337,7 +337,7 @@ co(papers, field = "keywords", sep = ";", split_by = "year",
 
 ## Output
 
-[`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md)
+[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
 returns a tidy data frame of class `cooccurrence` that can be piped,
 filtered, and joined like any standard data frame. The raw co-occurrence
 count is always preserved in the `count` column regardless of similarity

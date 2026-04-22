@@ -3,7 +3,7 @@
 A sample of 1,000 highly-rated IMDB movies (rating \>= 7.0, \>= 1,000
 votes) released between 1970 and 2024. The `genres` column is
 comma-delimited and suitable for use as the `field` argument to
-[`cooccurrence`](http://saqr.me/cooccur/reference/cooccurrence.md).
+[`cooccurrence`](https://saqr.me/cooccure/reference/cooccurrence.md).
 
 ## Usage
 

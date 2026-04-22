@@ -3,4 +3,4 @@
 ### All vignettes
 
 - [Co-occurrence Networks with IMDB Movie
-  Data](http://saqr.me/cooccur/articles/imdb-tutorial.md):
+  Data](https://saqr.me/cooccure/articles/imdb-tutorial.md):

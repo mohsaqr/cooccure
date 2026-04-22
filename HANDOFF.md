@@ -3,11 +3,11 @@
 ## Completed
 
 - **Sparse engine rewrite** (`56bee35`):
-  [`cooccurrence()`](http://saqr.me/cooccur/reference/cooccurrence.md) /
-  [`co()`](http://saqr.me/cooccur/reference/cooccurrence.md) now stay in
-  sparse representation end-to-end. Previously allocated dense `n x k`
-  and `k x k` matrices, which hit R’s 16 GB vector memory limit on
-  realistic citation corpora (\> ~100k unique refs). New pipeline:
+  [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+  / [`co()`](https://saqr.me/cooccure/reference/cooccurrence.md) now
+  stay in sparse representation end-to-end. Previously allocated dense
+  `n x k` and `k x k` matrices, which hit R’s 16 GB vector memory limit
+  on realistic citation corpora (\> ~100k unique refs). New pipeline:
   [`Matrix::sparseMatrix`](https://rdrr.io/pkg/Matrix/man/sparseMatrix.html)
   for incidence,
   [`Matrix::crossprod`](https://rdrr.io/pkg/Matrix/man/matmult-methods.html)
@@ -15,7 +15,7 @@
   [`Matrix::triu`](https://rdrr.io/pkg/Matrix/man/band-methods.html) for
   upper-triangle edge extraction. `attr(x, "matrix")` and
   `attr(x, "raw_matrix")` are now sparse `Matrix` objects;
-  [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md)
+  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md)
   densifies on demand. Added `Matrix` + `methods` to `Imports`.
 
 - **Vectorised delimited parser** (`e9b2b89`): `.co_parse_delimited` and
@@ -38,7 +38,7 @@
 
 - **Downstream adjustments**: `as_matrix.cooccurrence` handles sparse
   attributes; `plot.cooccurrence` routes through
-  [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md) for
+  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md) for
   consistent densification. `.co_core_weighted` (long format with
   `weight_by`) rewritten to use `sparseMatrix` builders.
 
@@ -77,10 +77,10 @@ all 6.2M edges.
 - **Sparse attributes exposed, not hidden** — `attr(x, "matrix")` is now
   a `dsCMatrix`/`dgCMatrix` rather than a dense `matrix`. Power users
   can avoid
-  [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md) on huge
-  networks; casual users who call
-  [`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md) get the
-  same base-matrix behaviour as before.
+  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md) on
+  huge networks; casual users who call
+  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md) get
+  the same base-matrix behaviour as before.
 - **`"relative"` similarity keeps both triangles explicit** — it’s the
   only asymmetric measure, so the `matrix` attribute stores a full
   `dgCMatrix`. Avoids the `dsCMatrix` → `TsparseMatrix` trap where only
@@ -103,16 +103,21 @@ all 6.2M edges.
     new `similarity = "attention"` or `counting = "attention"` branch
     following the pattern used in `tna-dev`.
 3.  Resolve the `actor_genres` Shiny Network-tab edge count issue.
-4.  Redeploy Shiny production server:
-    `cd /srv/shiny-server/cooccur && sudo git pull && sudo systemctl restart shiny-server`.
+4.  Redeploy Shiny production server. The server directory still sits at
+    `/srv/shiny-server/cooccur`; rename it to `cooccure` to match the
+    package rename, then run:
+    `cd /srv/shiny-server/cooccure && sudo git pull && sudo systemctl restart shiny-server`.
 
 ## Context
 
-- Package: `cooccur` v0.1.1, GitHub at `mohsaqr/cooccur`, main branch.
-  Head `65ade5c`.
+- Package: `cooccure` v0.1.1, GitHub at `mohsaqr/cooccure`, main branch.
+  (Renamed from `cooccur` on 2026-04-22 to avoid a CRAN name collision
+  with an unrelated archived package.)
 - Authors: Mohammed Saqr, Sonsoles López-Pernas, Kamila Misiejuk.
-- Shiny production host: `/srv/shiny-server/cooccur`.
-- r-universe: `mohsaqr.r-universe.dev/cooccur`.
+- Shiny production host: `/srv/shiny-server/cooccure` (server directory
+  still needs to be renamed — workflow points at the new name).
+- r-universe: `mohsaqr.r-universe.dev/cooccure` (registry updated
+  2026-04-22 in commit `e69d6bc` on `mohsaqr/mohsaqr.r-universe.dev`).
 - Key equivalence-verification dataset:
   `/Users/mohammedsaqr/Downloads/datassss/testdata0421.csv` (166,017
   rows of scholarly citations, semicolon-delimited).

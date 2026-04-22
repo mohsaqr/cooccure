@@ -1,6 +1,6 @@
 # Co-occurrence Networks with IMDB Movie Data
 
-This tutorial demonstrates every feature of the `cooccur` package using
+This tutorial demonstrates every feature of the `cooccure` package using
 1,000 highly-rated IMDB movies (rating $\geq$ 7.0, $\geq$ 1,000 votes,
 1970–2024).
 
@@ -13,7 +13,7 @@ for visualization and downstream analysis.
 ## Data
 
 ``` r
-library(cooccur)
+library(cooccure)
 ```
 
 The dataset contains the title of the movie, the year and decade, the
@@ -654,9 +654,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 1081ef2 UNW- 17 102 -- 
+#> IGRAPH e1aa962 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 1081ef2 (vertex names):
+#> + edges from e1aa962 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -715,9 +715,9 @@ the fact, without re-running the computation. This is useful when you
 want to start with the default tidy data frame and convert to a specific
 format only when needed.
 
-[`as_matrix()`](http://saqr.me/cooccur/reference/as_matrix.md) converts
-the result to a square similarity matrix, where each cell contains the
-Jaccard weight between the corresponding pair of genres:
+[`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md)
+converts the result to a square similarity matrix, where each cell
+contains the Jaccard weight between the corresponding pair of genres:
 
 ``` r
 result <- co(movies, field = "genres", sep = ",",
@@ -840,15 +840,15 @@ as_matrix(result, type = "raw")
 #> War              0       0       9     1       0       3     0        1   0
 ```
 
-[`as_igraph()`](http://saqr.me/cooccur/reference/as_igraph.md) converts
-the result to an igraph object, giving access to the full igraph
-ecosystem for further network analysis:
+[`as_igraph()`](https://saqr.me/cooccure/reference/as_igraph.md)
+converts the result to an igraph object, giving access to the full
+igraph ecosystem for further network analysis:
 
 ``` r
 as_igraph(result)
-#> IGRAPH 8b13a87 UNW- 17 102 -- 
+#> IGRAPH b8d5439 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 8b13a87 (vertex names):
+#> + edges from b8d5439 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -862,7 +862,7 @@ as_igraph(result)
 
 ## 9. Six input formats, one result
 
-The same data can be provided in different formats — `cooccur`
+The same data can be provided in different formats — `cooccure`
 auto-detects the format and produces identical results regardless of
 which representation is used. The four examples below all compute the
 same genre co-occurrence network from the same underlying data.
@@ -876,8 +876,9 @@ res1 <- co(movies, field = "genres", sep = ",")
 
 *Long/bipartite* format uses one row per genre–movie pair. The data is
 first reshaped from wide to long, then passed to
-[`co()`](http://saqr.me/cooccur/reference/cooccurrence.md) with `field`
-specifying the genre column and by specifying the movie identifier.
+[`co()`](https://saqr.me/cooccure/reference/cooccurrence.md) with
+`field` specifying the genre column and by specifying the movie
+identifier.
 
 ``` r
 genre_long <- do.call(rbind, lapply(seq_len(nrow(movies)), function(i) {
