@@ -11,3 +11,7 @@ tmp/
 docs
 tests/testthat/Rplots.pdf
 .DS_Store
+CLAUDE.md
+HANDOFF.md
+CHANGES.md
+LEARNINGS.md
