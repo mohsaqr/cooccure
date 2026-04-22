@@ -179,7 +179,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", threshold = 0.15
 co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 10)
 ```
 
-All three thersholds can be combined for fine-grained control over network size and density:
+All three thresholds can be combined for fine-grained control over network size and density:
 
 ```{r combined-filter}
 co(movies, field = "genres", sep = ",",
