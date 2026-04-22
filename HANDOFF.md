@@ -88,16 +88,21 @@ diff = 0.000e+00** across all 6.2M edges.
    new `similarity = "attention"` or `counting = "attention"` branch
    following the pattern used in `tna-dev`.
 3. Resolve the `actor_genres` Shiny Network-tab edge count issue.
-4. Redeploy Shiny production server:
-   `cd /srv/shiny-server/cooccur && sudo git pull && sudo systemctl restart shiny-server`.
+4. Redeploy Shiny production server. The server directory still sits at
+   `/srv/shiny-server/cooccur`; rename it to `cooccure` to match the
+   package rename, then run:
+   `cd /srv/shiny-server/cooccure && sudo git pull && sudo systemctl restart shiny-server`.
 
 ## Context
 
-- Package: `cooccur` v0.1.1, GitHub at `mohsaqr/cooccur`, main branch.
-  Head `65ade5c`.
+- Package: `cooccure` v0.1.1, GitHub at `mohsaqr/cooccure`, main branch.
+  (Renamed from `cooccur` on 2026-04-22 to avoid a CRAN name collision
+  with an unrelated archived package.)
 - Authors: Mohammed Saqr, Sonsoles López-Pernas, Kamila Misiejuk.
-- Shiny production host: `/srv/shiny-server/cooccur`.
-- r-universe: `mohsaqr.r-universe.dev/cooccur`.
+- Shiny production host: `/srv/shiny-server/cooccure` (server directory
+  still needs to be renamed — workflow points at the new name).
+- r-universe: `mohsaqr.r-universe.dev/cooccure` (registry updated
+  2026-04-22 in commit `e69d6bc` on `mohsaqr/mohsaqr.r-universe.dev`).
 - Key equivalence-verification dataset:
   `/Users/mohammedsaqr/Downloads/datassss/testdata0421.csv` (166,017 rows
   of scholarly citations, semicolon-delimited).

@@ -1,6 +1,6 @@
-# cooccur <img src="man/figures/logo.png" align="right" height="200"  alt="" />
+# cooccure <img src="man/figures/logo.png" align="right" height="200"  alt="" />
 
-The **cooccur** R package enables building co-occurrence networks from multiple data formats. It accepts six input formats and supports multiple similarity measures, scaling methods, fractional counting, group-level splitting, and flexible filtering. Results are returned as a tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects. 
+The **cooccure** R package enables building co-occurrence networks from multiple data formats. It accepts six input formats and supports multiple similarity measures, scaling methods, fractional counting, group-level splitting, and flexible filtering. Results are returned as a tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects.
 
 The main function `cooccurrence()` is also available as the short alias `co()`.
 
@@ -8,15 +8,15 @@ The main function `cooccurrence()` is also available as the short alias `co()`.
 
 ```r
 # CRAN release
-install.packages("cooccur")
+install.packages("cooccure")
 
 # Development version
-remotes::install_github("mohsaqr/cooccur")
+remotes::install_github("mohsaqr/cooccure")
 ```
 
 ## Input formats
 
-**cooccur** auto-detects the input format from the arguments provided. Six formats are supported (delimited field, multi-column delimited, long/bipartite, binary matrix, wide sequence, and list of character vectors), covering the most common shapes data comes in.
+**cooccure** auto-detects the input format from the arguments provided. Six formats are supported (delimited field, multi-column delimited, long/bipartite, binary matrix, wide sequence, and list of character vectors), covering the most common shapes data comes in.
 
 ### 1. Delimited field
 

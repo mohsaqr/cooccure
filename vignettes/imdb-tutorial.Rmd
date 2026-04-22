@@ -14,14 +14,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-This tutorial demonstrates every feature of the `cooccur` package using 1,000 highly-rated IMDB movies (rating $\geq$ 7.0, $\geq$ 1,000 votes, 1970--2024). 
+This tutorial demonstrates every feature of the `cooccure` package using 1,000 highly-rated IMDB movies (rating $\geq$ 7.0, $\geq$ 1,000 votes, 1970--2024).
 
 Starting from raw tabular data, we build genre co-occurrence networks, construct actor collaboration networks, compare co-occurrence patterns across decades and rating bands, apply different similarity measures and counting methods, and export results to `Gephi`, `igraph`, and `cograph` for visualization and downstream analysis.
 
 ## Data
 
 ```{r load-data}
-library(cooccur)
+library(cooccure)
 ```
 
 The dataset contains the title of the movie, the year and decade, the `genres` (comma-separated), the average rating, the number of votes, and the rating band.
@@ -331,7 +331,7 @@ as_igraph(result)
 
 ## 9. Six input formats, one result
 
-The same data can be provided in different formats — `cooccur` auto-detects the format and produces identical results regardless of which representation is used. The four examples below all compute the same genre co-occurrence network from the same underlying data.
+The same data can be provided in different formats — `cooccure` auto-detects the format and produces identical results regardless of which representation is used. The four examples below all compute the same genre co-occurrence network from the same underlying data.
 
 *Delimited field* is the most common format. A single column contains all genres as a comma-separated string, one row per movie.
 

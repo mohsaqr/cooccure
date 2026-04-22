@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Package Overview
 
-`cooccur` is an R package (v0.1.0) for building co-occurrence networks from arbitrary input formats. It returns tidy edge data frames with eight similarity measures, optional weight scaling, and converters to igraph, cograph, Nestimate, and tidygraph.
+`cooccure` is an R package (v0.1.1) for building co-occurrence networks from arbitrary input formats. It returns tidy edge data frames with eight similarity measures, optional weight scaling, and converters to igraph, cograph, Nestimate, and tidygraph. (The package was developed on GitHub as `cooccur` and renamed to `cooccure` for CRAN submission because an unrelated archived CRAN package already holds the `cooccur` name.)
 
 ## Common Commands
 

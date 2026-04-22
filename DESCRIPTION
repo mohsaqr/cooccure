@@ -1,4 +1,4 @@
-Package: cooccur
+Package: cooccure
 Title: Co-Occurrence Networks from Any Data Format
 Version: 0.1.1
 Authors@R: c(
@@ -20,9 +20,11 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 Imports:
+    graphics,
     Matrix,
     methods,
-    stats
+    stats,
+    utils
 Suggests:
     igraph,
     cograph,
@@ -36,5 +38,5 @@ Suggests:
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 Depends: R (>= 3.5.0)
-URL: https://saqr.me/cooccur/, https://github.com/mohsaqr/cooccur
-BugReports: https://github.com/mohsaqr/cooccur/issues
+URL: https://github.com/mohsaqr/cooccure
+BugReports: https://github.com/mohsaqr/cooccure/issues

@@ -1,4 +1,4 @@
 library(testthat)
-library(cooccur)
+library(cooccure)
 
-test_check("cooccur")
+test_check("cooccure")

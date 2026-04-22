@@ -8,14 +8,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy cooccur Shiny app
+      - name: Deploy cooccure Shiny app
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 192.168.50.39
           username: saqr
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            cd /srv/shiny-server/cooccur
+            cd /srv/shiny-server/cooccure
             sudo git pull
             sudo Rscript -e "install.packages('.', repos=NULL, type='source', lib='/usr/local/lib/R/site-library')"
             sudo systemctl restart shiny-server

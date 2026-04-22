@@ -1,5 +1,5 @@
 library(shiny)
-library(cooccur)
+library(cooccure)
 library(DT)
 
 # Allow uploads up to 100 MB (default is 5 MB).
@@ -7,10 +7,10 @@ library(DT)
 # in the server block — otherwise nginx returns 413 before Shiny sees the request.
 options(shiny.maxRequestSize = 100 * 1024^2)
 
-data("movies",       package = "cooccur", envir = environment())
-data("actors",       package = "cooccur", envir = environment())
-data("actor_genres", package = "cooccur", envir = environment())
-data("demo",         package = "cooccur", envir = environment())
+data("movies",       package = "cooccure", envir = environment())
+data("actors",       package = "cooccure", envir = environment())
+data("actor_genres", package = "cooccure", envir = environment())
+data("demo",         package = "cooccure", envir = environment())
 
 # ---- helper: build filtered cograph object ----
 # Returns a list(status, value, message). status is one of:
@@ -125,7 +125,7 @@ ui <- fluidPage(
   "))),
 
   tags$div(class = "app-title",
-    tags$span(class = "app-title-main", "cooccur"),
+    tags$span(class = "app-title-main", "cooccure"),
     tags$span(class = "app-title-sub", "Co-occurrence Network Explorer")
   ),
 

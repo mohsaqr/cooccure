@@ -165,7 +165,7 @@ as_cograph.cooccurrence <- function(x, ...) {
       directed = FALSE,
       n_nodes = length(items),
       n_edges = nrow(edges_df),
-      meta = list(source = "cooccur", layout = NULL)
+      meta = list(source = "cooccure", layout = NULL)
     ),
     class = "cograph_network"
   )
@@ -236,7 +236,7 @@ as_netobject.cooccurrence <- function(x, ...) {
       n_nodes = length(items),
       n_edges = nrow(edges_df),
       level = NULL,
-      meta = list(source = "cooccur", layout = NULL,
+      meta = list(source = "cooccure", layout = NULL,
                   tna = list(method = "cooccurrence")),
       node_groups = NULL
     ),

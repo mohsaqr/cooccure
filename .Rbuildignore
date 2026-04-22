@@ -12,3 +12,6 @@
 ^LEARNINGS\.md$
 ^tmp$
 ^cran-comments\.md$
+^tests/testthat/Rplots\.pdf$
+^cooccure?_.*\.tar\.gz$
+^cooccure?\.Rcheck$

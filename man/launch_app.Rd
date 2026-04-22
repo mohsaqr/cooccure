@@ -2,7 +2,7 @@
 % Please edit documentation in R/launch_app.R
 \name{launch_app}
 \alias{launch_app}
-\title{Launch the cooccur Shiny explorer}
+\title{Launch the cooccure Shiny explorer}
 \usage{
 launch_app(...)
 }
@@ -11,15 +11,14 @@ launch_app(...)
 \code{launch.browser}).}
 }
 \value{
-Called for its side effect (launches the app).
+Called for its side effect (launches the app). No return value.
 }
 \description{
 Opens an interactive Shiny application for building and exploring
-co-occurrence networks. Requires the \pkg{shiny}, \pkg{DT}, and
-\pkg{visNetwork} packages.
+co-occurrence networks. Requires the \pkg{shiny} and \pkg{DT} packages.
 }
 \examples{
-\dontrun{
-launch_app()
+if (interactive()) {
+  launch_app()
 }
 }

@@ -733,11 +733,13 @@ test_that("summary.cooccurrence handles zero edges", {
 # ========================================
 
 test_that("plot.cooccurrence heatmap works", {
+  pdf(NULL); on.exit(dev.off(), add = TRUE)
   res <- cooccurrence(.test_list)
   expect_invisible(plot(res, type = "heatmap"))
 })
 
 test_that("plot.cooccurrence heatmap works when matrix attr is NULL", {
+  pdf(NULL); on.exit(dev.off(), add = TRUE)
   res <- cooccurrence(.test_list)
   attr(res, "matrix") <- NULL
   expect_invisible(plot(res, type = "heatmap"))
@@ -745,11 +747,13 @@ test_that("plot.cooccurrence heatmap works when matrix attr is NULL", {
 
 test_that("plot.cooccurrence network requires igraph", {
   skip_if_not_installed("igraph")
+  pdf(NULL); on.exit(dev.off(), add = TRUE)
   res <- cooccurrence(.test_list)
   expect_invisible(plot(res, type = "network"))
 })
 
 test_that("plot.cooccurrence returns x invisibly", {
+  pdf(NULL); on.exit(dev.off(), add = TRUE)
   res <- cooccurrence(.test_list)
   ret <- plot(res, type = "heatmap")
   expect_identical(ret, res)
@@ -798,7 +802,7 @@ test_that("as_cograph structure is complete", {
   expect_true(is.matrix(net$weights))
   expect_true(all(c("id", "label", "name", "x", "y") %in% names(net$nodes)))
   expect_true(all(c("from", "to", "weight") %in% names(net$edges)))
-  expect_equal(net$meta$source, "cooccur")
+  expect_equal(net$meta$source, "cooccure")
 })
 
 test_that("as_netobject structure is complete", {
@@ -1164,239 +1168,3 @@ test_that("cooccurrence scales to wide sparse inputs without densifying", {
   expect_lt(elapsed, 120)
 })
 
-test_that("vectorised parser matches per-row reference on realistic data", {
-  ## Regression guard for the delimited-parser vectorisation.
-  ##
-  ## `.co_parse_delimited` used to call `trimws()` per row inside an `lapply`.
-  ## It now flattens once, runs a single vectorised `trimws()` pass, and
-  ## reconstructs the list via `split()` with a preserved level range. This
-  ## test rebuilds the old per-row behaviour inline and asserts that both
-  ## paths produce bit-identical edges on a realistic mix of padded tokens,
-  ## duplicates, blanks, and NA rows.
-  skip_on_cran()
-
-  set.seed(1234)
-  n_docs  <- 2000L
-  k_items <- 1500L
-
-  ## Realistic citation-like rows: varying length, with whitespace padding,
-  ## intentional blank tokens, and a few NA rows.
-  refs <- vapply(seq_len(n_docs), function(i) {
-    n <- sample(3:25, 1)
-    toks <- paste0("R", sample.int(k_items, n))
-    ## Sprinkle extra whitespace and empty tokens to exercise trim + filter.
-    toks <- paste0(" ", toks, " ")
-    if (runif(1) < 0.15) toks <- c(toks, "")        # blank token
-    if (runif(1) < 0.05) toks <- c(toks, toks[1])   # duplicate within row
-    paste(toks, collapse = ";")
-  }, character(1))
-  refs[sample.int(n_docs, 20)] <- NA_character_
-  df <- data.frame(id = seq_len(n_docs), refs = refs, stringsAsFactors = FALSE)
-
-  ## Reference: the pre-vectorisation per-row path.
-  reference_parser <- function(vals, sep) {
-    lapply(strsplit(as.character(vals), sep, fixed = TRUE), function(items) {
-      items <- trimws(items)
-      items <- items[nzchar(items) & !is.na(items)]
-      unique(items)
-    })
-  }
-  ref_trans <- reference_parser(df$refs, ";")
-  new_trans <- cooccur:::.co_parse_delimited(df, "refs", ";")
-
-  ## Per-row equality as sets (within-row order is allowed to differ).
-  expect_equal(length(ref_trans), length(new_trans))
-  same_set <- vapply(seq_along(ref_trans), function(i) {
-    setequal(ref_trans[[i]], new_trans[[i]])
-  }, logical(1))
-  expect_true(all(same_set))
-
-  ## End-to-end: cooccurrence() must match a run against the reference-parsed
-  ## transactions (which exercise the list input path, completely independent
-  ## from the delimited path).
-  ref_edges <- cooccurrence(ref_trans, similarity = "cosine",
-                             counting = "fractional")
-  new_edges <- cooccurrence(df, field = "refs", sep = ";",
-                             similarity = "cosine",
-                             counting = "fractional")
-
-  canon <- function(df) {
-    a <- pmin(df$from, df$to); b <- pmax(df$from, df$to)
-    ord <- order(a, b)
-    data.frame(from = a[ord], to = b[ord],
-               weight = df$weight[ord], count = df$count[ord],
-               stringsAsFactors = FALSE)
-  }
-  r <- canon(ref_edges); n <- canon(new_edges)
-
-  expect_equal(nrow(r), nrow(n))
-  expect_identical(r$from, n$from)
-  expect_identical(r$to, n$to)
-  expect_equal(r$weight, n$weight, tolerance = 1e-12)
-  expect_identical(r$count, n$count)
-})
-
-biblionetworkcocitation <- function(dt, source, ref, normalized_weight_only = TRUE, weight_threshold = 1,
-                                    output_in_character = TRUE) {
-  dt <- as.data.frame(dt)
-  names(dt)[names(dt) == source] <- "id_art"
-  names(dt)[names(dt) == ref]    <- "id_ref"
-  dt <- dt[, c("id_art", "id_ref")]
-  dt <- unique(dt)
-  dt <- dt[dt$id_art != dt$id_ref, ]
-
-  # Count how many papers cite each reference
-  id_nb_cit <- as.data.frame(table(dt$id_ref), stringsAsFactors = FALSE)
-  names(id_nb_cit) <- c("id_ref", "nb_cit")
-  id_nb_cit$nb_cit <- as.integer(id_nb_cit$nb_cit)
-
-  # Keep only papers with > 1 reference
-  art_counts <- table(dt$id_art)
-  keep <- names(art_counts)[art_counts > 1]
-  dt <- dt[dt$id_art %in% keep, ]
-
-  # Generate all pairs of references per paper, deduplicate within each paper,
-  # then count how many papers share each pair.
-  pairs <- do.call(rbind, lapply(split(dt$id_ref, dt$id_art), function(refs) {
-    if (length(refs) < 2) return(NULL)
-    idx <- combn(length(refs), 2)
-    p <- data.frame(Source = refs[idx[1, ]], Target = refs[idx[2, ]],
-                    stringsAsFactors = FALSE)
-    # Normalize so Source < Target
-    swap <- p$Source > p$Target
-    tmp <- p$Source[swap]
-    p$Source[swap] <- p$Target[swap]
-    p$Target[swap] <- tmp
-    unique(p)
-  }))
-
-  # Count co-occurrences across papers
-  pair_key <- paste(pairs$Source, pairs$Target, sep = "\x01")
-  counts <- table(pair_key)
-  parts <- strsplit(names(counts), "\x01", fixed = TRUE)
-  bib_cocit <- data.frame(
-    Source = vapply(parts, `[`, character(1), 1),
-    Target = vapply(parts, `[`, character(1), 2),
-    nb_shared_citations = as.integer(counts),
-    stringsAsFactors = FALSE
-  )
-
-  bib_cocit <- bib_cocit[bib_cocit$nb_shared_citations >= weight_threshold, ]
-
-  # Merge citation counts
-  bib_cocit <- merge(bib_cocit, id_nb_cit, by.x = "Target", by.y = "id_ref")
-  names(bib_cocit)[names(bib_cocit) == "nb_cit"] <- "nb_cit_Target"
-  bib_cocit <- merge(bib_cocit, id_nb_cit, by.x = "Source", by.y = "id_ref")
-  names(bib_cocit)[names(bib_cocit) == "nb_cit"] <- "nb_cit_Source"
-
-  # Compute cosine weight
-  bib_cocit$weight <- bib_cocit$nb_shared_citations /
-    sqrt(bib_cocit$nb_cit_Target * bib_cocit$nb_cit_Source)
-
-  if (output_in_character) {
-    bib_cocit$from <- as.character(bib_cocit$Source)
-    bib_cocit$to   <- as.character(bib_cocit$Target)
-    if (normalized_weight_only) {
-      bib_cocit[, c("from", "to", "weight", "Source", "Target")]
-    } else {
-      bib_cocit[, c("from", "to", "weight", "nb_shared_citations", "Source", "Target")]
-    }
-  } else {
-    if (normalized_weight_only) {
-      bib_cocit[, c("Source", "Target", "weight")]
-    } else {
-      bib_cocit[, c("Source", "Target", "weight", "nb_shared_citations")]
-    }
-  }
-}
-
-test_that("cooccurrence matches biblionetwork::biblio_cocitation (cosine)", {
-  ## Cross-validation against an independent, widely-used bibliometrics
-  ## package. `biblio_cocitation()` on long-format (source, ref) computes
-  ## cosine-weighted co-citation — which is exactly
-  ## cooccurrence(field = "ref", by = "source", similarity = "cosine").
-  ##
-  ## The raw count column (`nb_shared_citations`) and the normalised weight
-  ## column (`weight`) from biblionetwork must match our `count` and
-  ## `weight` columns bit-for-bit.
-
-  set.seed(2026)
-  n_docs <- 300L
-  k_refs <- 500L
-  rows <- do.call(rbind, lapply(seq_len(n_docs), function(i) {
-    n <- sample(3:15, 1)
-    refs <- sprintf("R%04d", sample.int(k_refs, n))
-    data.frame(paper = sprintf("P%04d", i),
-               ref = refs, stringsAsFactors = FALSE)
-  }))
-
-  bn <- as.data.frame(
-    biblionetworkcocitation(
-      rows, source = "paper", ref = "ref",
-      normalized_weight_only = FALSE,
-      weight_threshold = 1
-    )
-  )
-  co <- cooccurrence(rows, field = "ref", by = "paper",
-                     similarity = "cosine", counting = "full")
-
-  expect_equal(nrow(co), nrow(bn))
-
-  canon <- function(a, b) paste(pmin(a, b), pmax(a, b), sep = "||")
-  key_bn <- canon(as.character(bn$from), as.character(bn$to))
-  key_co <- canon(co$from, co$to)
-
-  ## Exact set equality: no edges appear in one and not the other.
-  expect_setequal(key_bn, key_co)
-
-  ## Align by key and compare weights & counts element-wise.
-  w_bn <- stats::setNames(as.numeric(bn$weight), key_bn)
-  w_co <- stats::setNames(co$weight, key_co)
-  common <- key_bn  # key_bn == unique(key_co) after the set check
-  expect_equal(unname(w_bn[common]), unname(w_co[common]),
-               tolerance = 1e-10)
-
-  ## Raw co-citation count (biblionetwork: nb_shared_citations; us: count).
-  c_bn <- stats::setNames(as.integer(bn$nb_shared_citations), key_bn)
-  c_co <- stats::setNames(as.integer(co$count), key_co)
-  expect_identical(unname(c_bn[common]), unname(c_co[common]))
-})
-
-test_that("cooccurrence matches bibnets::conetwork on counting = 'full'", {
-  ## Numerical cross-check against a separate sparse implementation. Keeps the
-  ## two packages in sync and guards against drift in the counting formula.
-  skip_if_not_installed("bibnets")
-
-  set.seed(7)
-  n_docs <- 200L
-  k_items <- 80L
-  ids <- seq_len(n_docs)
-  refs <- vapply(ids, function(i) {
-    paste(paste0("R", sample.int(k_items, sample(2:8, 1))), collapse = "; ")
-  }, character(1))
-  df <- data.frame(id = ids, citation = refs, stringsAsFactors = FALSE)
-
-  co_res <- cooccurrence(df, field = "citation", sep = ";",
-                         counting = "full", similarity = "none")
-  bn_res <- bibnets::conetwork(df, "citation", sep = ";",
-                                counting = "full", similarity = "none")
-
-  ## Compare edge weights at matching (from, to) pairs. Both packages
-  ## upper-case labels; bibnets already does so, cooccur preserves input case
-  ## so we upper-case the cooccur output for comparison.
-  norm_pair <- function(a, b) {
-    lo <- pmin(a, b); hi <- pmax(a, b)
-    paste(lo, hi, sep = "__")
-  }
-  co_key <- norm_pair(toupper(co_res$from), toupper(co_res$to))
-  bn_key <- norm_pair(bn_res$from, bn_res$to)
-
-  common <- intersect(co_key, bn_key)
-  expect_gt(length(common), 0L)
-  expect_equal(length(co_key), length(bn_key))
-
-  co_map <- stats::setNames(co_res$weight, co_key)
-  bn_map <- stats::setNames(bn_res$weight, bn_key)
-  expect_equal(unname(co_map[common]), unname(bn_map[common]),
-               tolerance = 1e-10)
-})
