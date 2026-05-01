@@ -17,7 +17,8 @@ cooccurrence(
   window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional"),
+  counting = c("full", "fractional", "attention"),
+  lambda = 1,
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -38,7 +39,8 @@ co(
   window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional"),
+  counting = c("full", "fractional", "attention"),
+  lambda = 1,
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -132,7 +134,18 @@ transaction size. Default.}
 where \eqn{n_i} is the number of items in transaction \eqn{i}.
 Transactions with many items contribute less per pair
 (Perianes-Rodriguez et al., 2016).}
+\item{\code{"attention"}}{Each pair within a transaction
+contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)} — closer
+positions give a stronger edge, distant pairs decay. Requires
+ordered transactions (list / wide / delimited / windowed
+input). The decay rate \eqn{\lambda} is controlled by the
+\code{lambda} argument.}
 }}
+
+\item{lambda}{Numeric. Decay rate for \code{counting = "attention"}.
+Higher \code{lambda} → slower decay → distant pairs still
+contribute. Default \code{1.0}, matching the \pkg{tna} package.
+Ignored for other counting methods.}
 
 \item{scale}{Character or \code{NULL}. Optional scaling applied to weights
 after similarity normalization:

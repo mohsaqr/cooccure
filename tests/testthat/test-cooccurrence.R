@@ -1275,6 +1275,90 @@ test_that("window is rejected for non-sequence formats", {
   )
 })
 
+test_that("counting = 'attention' gives closer pairs higher weight (gap-decay)", {
+  ## One transaction with 4 ordered items at positions 1..4, lambda = 1.
+  ## Pair contribution = exp(-(j - i) / lambda).
+  ##   gap 1 → exp(-1) ≈ 0.368
+  ##   gap 2 → exp(-2) ≈ 0.135
+  ##   gap 3 → exp(-3) ≈ 0.050
+  papers <- list(c("A", "B", "C", "D"))
+  r <- cooccurrence(papers, counting = "attention",
+                    similarity = "none")
+  pull <- function(r, i, j) {
+    rows <- (r$from == i & r$to == j) | (r$from == j & r$to == i)
+    r[rows, "weight"]
+  }
+  expect_equal(pull(r, "A", "B"), exp(-1))
+  expect_equal(pull(r, "B", "C"), exp(-1))
+  expect_equal(pull(r, "C", "D"), exp(-1))
+  expect_equal(pull(r, "A", "C"), exp(-2))
+  expect_equal(pull(r, "B", "D"), exp(-2))
+  expect_equal(pull(r, "A", "D"), exp(-3))
+
+  ## Closer pairs strictly heavier than distant pairs.
+  expect_gt(pull(r, "A", "B"), pull(r, "A", "C"))
+  expect_gt(pull(r, "A", "C"), pull(r, "A", "D"))
+})
+
+test_that("attention pair weights depend ONLY on gap, not absolute position", {
+  ## Pairs at the same gap get the same weight regardless of where they
+  ## sit in the sequence — this is what distinguishes real attention
+  ## from positional emphasis schemes.
+  papers <- list(c("A", "B", "C", "D", "E"))
+  r <- cooccurrence(papers, counting = "attention", similarity = "none")
+  pull <- function(r, i, j) {
+    rows <- (r$from == i & r$to == j) | (r$from == j & r$to == i)
+    r[rows, "weight"]
+  }
+  ## Pairs at gap 1: (A,B), (B,C), (C,D), (D,E) — all equal.
+  gap1 <- c(pull(r, "A", "B"), pull(r, "B", "C"),
+            pull(r, "C", "D"), pull(r, "D", "E"))
+  expect_true(all(gap1 == gap1[1]))
+  ## Pairs at gap 2: (A,C), (B,D), (C,E) — all equal.
+  gap2 <- c(pull(r, "A", "C"), pull(r, "B", "D"), pull(r, "C", "E"))
+  expect_true(all(gap2 == gap2[1]))
+})
+
+test_that("attention lambda controls the decay rate", {
+  papers <- list(c("A", "B", "C", "D"))
+  r_fast  <- cooccurrence(papers, counting = "attention",
+                          lambda = 0.5, similarity = "none")
+  r_slow  <- cooccurrence(papers, counting = "attention",
+                          lambda = 5.0, similarity = "none")
+  pull <- function(r, i, j) {
+    rows <- (r$from == i & r$to == j) | (r$from == j & r$to == i)
+    r[rows, "weight"]
+  }
+  ## Fast decay: gap-3 pair very small.
+  expect_equal(pull(r_fast, "A", "D"), exp(-3 / 0.5))
+  ## Slow decay: gap-3 pair still substantial.
+  expect_equal(pull(r_slow, "A", "D"), exp(-3 / 5.0))
+  expect_lt(pull(r_fast, "A", "D"), pull(r_slow, "A", "D"))
+})
+
+test_that("attention aggregates pair contributions across transactions", {
+  ## Two papers, A-B at gap 1 in both → final weight = 2 * exp(-1).
+  papers <- list(c("A", "B", "C"), c("A", "B"))
+  r <- cooccurrence(papers, counting = "attention",
+                    similarity = "none")
+  pull <- function(r, i, j) {
+    rows <- (r$from == i & r$to == j) | (r$from == j & r$to == i)
+    r[rows, "weight"]
+  }
+  expect_equal(pull(r, "A", "B"), 2 * exp(-1))
+})
+
+test_that("attention rejects non-positive lambda", {
+  expect_error(
+    cooccurrence(list(c("A", "B")), counting = "attention", lambda = 0),
+    "lambda > 0"
+  )
+  expect_error(
+    cooccurrence(list(c("A", "B")), counting = "attention", lambda = -1),
+    "lambda > 0"
+  )
+})
+
 test_that("aggregate_by sums per-group counts equals global count (similarity = none)", {
   df <- data.frame(
     journal  = c("J1", "J1", "J2", "J2", "J3"),

@@ -74,7 +74,17 @@
 #'       where \eqn{n_i} is the number of items in transaction \eqn{i}.
 #'       Transactions with many items contribute less per pair
 #'       (Perianes-Rodriguez et al., 2016).}
+#'     \item{\code{"attention"}}{Each pair within a transaction
+#'       contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)} — closer
+#'       positions give a stronger edge, distant pairs decay. Requires
+#'       ordered transactions (list / wide / delimited / windowed
+#'       input). The decay rate \eqn{\lambda} is controlled by the
+#'       \code{lambda} argument.}
 #'   }
+#' @param lambda Numeric. Decay rate for \code{counting = "attention"}.
+#'   Higher \code{lambda} → slower decay → distant pairs still
+#'   contribute. Default \code{1.0}, matching the \pkg{tna} package.
+#'   Ignored for other counting methods.
 #' @param threshold Numeric. Minimum edge weight to retain. Applied after
 #'   similarity and scaling. Default 0.
 #' @param min_occur Integer. Minimum entity frequency. Entities appearing in
@@ -182,7 +192,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
                                         "dice", "equivalence", "relative"),
-                         counting = c("full", "fractional"),
+                         counting = c("full", "fractional", "attention"),
+                         lambda = 1.0,
                          scale = NULL,
                          threshold = 0, min_occur = 1L,
                          top_n = NULL,
@@ -201,6 +212,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
   }
   if (!is.null(aggregate_by) && !is.null(split_by))
     stop("`aggregate_by` and `split_by` cannot be combined.", call. = FALSE)
+  stopifnot(is.numeric(lambda), length(lambda) == 1L, lambda > 0)
 
   if (is.null(scale) || identical(scale, "none")) {
     scale_method <- "none"
@@ -224,7 +236,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                  similarity = similarity, counting = counting,
                  scale_method = scale_method,
                  threshold = threshold, min_occur = min_occur,
-                 top_n = top_n, window = window),
+                 top_n = top_n, window = window, lambda = lambda),
         error = function(e) NULL
       )
       if (is.null(edges) || nrow(edges) == 0L) return(NULL)
@@ -262,7 +274,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                  similarity = similarity, counting = counting,
                  scale_method = scale_method,
                  threshold = 0, min_occur = min_occur,
-                 top_n = NULL, window = window),
+                 top_n = NULL, window = window, lambda = lambda),
         error = function(e) NULL
       )
     })
@@ -304,7 +316,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                      similarity = similarity, counting = counting,
                      scale_method = scale_method,
                      threshold = threshold, min_occur = min_occur,
-                     top_n = top_n, window = window)
+                     top_n = top_n, window = window, lambda = lambda)
 
   .co_format_output(result, output)
 }
@@ -320,7 +332,7 @@ co <- cooccurrence
 #' @noRd
 .co_core <- function(data, field, by, sep, weight_by = NULL, similarity,
                      counting, scale_method, threshold, min_occur, top_n,
-                     window = NULL) {
+                     window = NULL, lambda = 1.0) {
   # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
 
@@ -373,13 +385,16 @@ co <- cooccurrence
   }
 
   # Build sparse bipartite matrix (works x items) with counting weights baked in
-  sp <- .co_build_sparse(transactions, counting)
+  sp <- .co_build_sparse(transactions, counting, lambda = lambda)
   n_trans <- sp$n
   n_items <- sp$k
   items <- sp$items
 
-  # Counting-weighted co-occurrence (sparse k x k)
-  C <- Matrix::crossprod(sp$B)
+  # Counting-weighted co-occurrence (sparse k x k). For "attention" the
+  # pair contribution depends on the positional GAP, not on a per-item
+  # weight, so we cannot factor it through B + crossprod — `.co_build_sparse`
+  # builds C directly in that case.
+  C <- if (counting == "attention") sp$C else Matrix::crossprod(sp$B)
   # Raw binary co-occurrence (sparse k x k) for the count column and frequencies
   C_raw <- Matrix::crossprod(sp$B_bin)
   freq <- as.numeric(Matrix::colSums(sp$B_bin))
@@ -911,13 +926,31 @@ co <- cooccurrence
 #' `crossprod(B)[i, j] = sum over rows with both i and j of 1/(n_r - 1)`.
 #'
 #' @noRd
-.co_build_sparse <- function(transactions, counting) {
+.co_build_sparse <- function(transactions, counting, lambda = 1.0) {
   all_items <- sort(unique(unlist(transactions, use.names = FALSE)))
   n <- length(transactions)
   k <- length(all_items)
   lens <- vapply(transactions, length, integer(1))
   row_idx <- rep.int(seq_len(n), lens)
   col_idx <- match(unlist(transactions, use.names = FALSE), all_items)
+
+  ## Binary bipartite matrix — needed for raw counts and item frequencies
+  ## in every counting mode.
+  B_bin <- Matrix::sparseMatrix(
+    i = row_idx, j = col_idx, x = rep(1.0, length(row_idx)),
+    dims = c(n, k),
+    dimnames = list(NULL, all_items)
+  )
+
+  ## "attention" can't be expressed as a per-row weighted bipartite + crossprod:
+  ## the pair contribution is exp(-|pos_i - pos_j| / lambda), a function of
+  ## positional GAP, not a product of per-item weights. So we build the
+  ## symmetric pair matrix C directly and skip B.
+  if (counting == "attention") {
+    C <- .co_attention_pairs(transactions, all_items, lambda = lambda)
+    return(list(B = NULL, B_bin = B_bin, C = C,
+                items = all_items, n = n, k = k))
+  }
 
   if (counting == "fractional") {
     row_weight <- ifelse(lens > 1L, 1 / (lens - 1L), 1)
@@ -931,13 +964,65 @@ co <- cooccurrence
     dims = c(n, k),
     dimnames = list(NULL, all_items)
   )
-  B_bin <- Matrix::sparseMatrix(
-    i = row_idx, j = col_idx, x = rep(1.0, length(row_idx)),
-    dims = c(n, k),
-    dimnames = list(NULL, all_items)
-  )
 
   list(B = B, B_bin = B_bin, items = all_items, n = n, k = k)
+}
+
+
+# ---- Attention pair-decay matrix ----
+
+#' Build the symmetric pair matrix for `counting = "attention"`.
+#'
+#' For every transaction with n >= 2 items, generate all pair triplets
+#' (item_i, item_j, weight) where weight = exp(-|pos_i - pos_j| / lambda).
+#' Triplets are concatenated across transactions and fed to
+#' `Matrix::sparseMatrix(symmetric = TRUE)`, which sums duplicate (i, j)
+#' entries to give the aggregated pair weights.
+#'
+#' Closer positions → larger weight; distant positions → exponential
+#' decay. Matches the `tna::build_model(type = "attention")` semantics
+#' but is undirected (we always sum the contribution into the
+#' upper-triangle entry; cooccure networks are symmetric by
+#' construction).
+#'
+#' @noRd
+.co_attention_pairs <- function(transactions, items, lambda = 1.0) {
+  n_items <- length(items)
+
+  triplets_list <- lapply(transactions, function(t) {
+    n <- length(t)
+    if (n < 2L) return(NULL)
+    combs <- utils::combn(n, 2L)               # 2 x C(n, 2)
+    gaps <- combs[2L, ] - combs[1L, ]
+    weights <- exp(-gaps / lambda)
+    ii <- match(t[combs[1L, ]], items)
+    jj <- match(t[combs[2L, ]], items)
+    swap <- ii > jj
+    if (any(swap)) {
+      tmp <- ii[swap]; ii[swap] <- jj[swap]; jj[swap] <- tmp
+    }
+    cbind(i = ii, j = jj, w = weights)
+  })
+  triplets_list <- triplets_list[!vapply(triplets_list, is.null, logical(1))]
+
+  if (length(triplets_list) == 0L) {
+    return(Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(n_items, n_items),
+      symmetric = TRUE,
+      dimnames = list(items, items)
+    ))
+  }
+
+  trip <- do.call(rbind, triplets_list)
+  Matrix::sparseMatrix(
+    i = as.integer(trip[, "i"]),
+    j = as.integer(trip[, "j"]),
+    x = as.numeric(trip[, "w"]),
+    dims = c(n_items, n_items),
+    symmetric = TRUE,
+    dimnames = list(items, items)
+  )
 }
 
 
