@@ -893,7 +893,7 @@ co <- cooccurrence
   if (length(seq) < window) return(list())
   ## embed() returns rows of consecutive windows (most-recent first per
   ## row); within-window order is irrelevant since we dedup.
-  W <- embed(seq, window)
+  W <- stats::embed(seq, window)
   lapply(seq_len(nrow(W)), function(r) unique(W[r, ]))
 }
 

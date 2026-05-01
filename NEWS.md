@@ -1,3 +1,30 @@
+# cooccure 0.1.2
+
+* `cooccurrence()` gains a `window =` parameter for sliding-window
+  co-occurrence on ordered sequence input (lists of vectors and wide
+  TraMineR-style data frames via `field = "all"`). Each window of
+  `w` consecutive positions becomes one transaction; states inside
+  the same window co-occur. `window = sequence_length` reduces to
+  the existing bag-of-states behaviour. TraMineR void markers (`NA`,
+  `""`, `"%"`, `"*"`, `"NaN"`) are dropped before windowing. Pure
+  base R via `embed()`.
+* `cooccurrence()` gains `aggregate_by =` and `aggregate =`
+  parameters. `aggregate_by` groups the data by a column (e.g.
+  journal id), computes the per-group co-occurrence network with
+  whatever `similarity` / `counting` / `scale` / `window` was
+  chosen, then combines the per-group edge weights into ONE final
+  network. `aggregate = c("sum", "mean", "min", "max")` controls
+  the combiner; `count` is always summed. Differs from `split_by`,
+  which keeps groups separate. Cannot be combined with `split_by`.
+  `threshold` and `top_n` apply after aggregation.
+* `counting = "attention"` adds positional gap-decay weighting:
+  each pair within an ordered transaction contributes
+  `exp(-|pos_i - pos_j| / lambda)` to the edge. Closer positions
+  give a stronger edge, distant pairs decay. Matches the
+  `tna::build_model(type = "attention")` semantics, undirected.
+  The new `lambda =` parameter (default `1.0`) controls the decay
+  rate.
+
 # cooccure 0.1.1
 
 * First CRAN release. Package renamed from `cooccur` (GitHub-only
