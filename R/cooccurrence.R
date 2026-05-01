@@ -82,6 +82,27 @@
 #' @param top_n Integer or \code{NULL}. Keep only the top \code{top_n} edges
 #'   by weight. When \code{split_by} is used, applied per group.
 #'   Default \code{NULL} (all edges).
+#' @param aggregate_by Character or \code{NULL}. Column name to group
+#'   the data by before computing co-occurrence. For each unique value,
+#'   the per-group network is computed (with the chosen
+#'   \code{similarity}, \code{counting}, \code{scale}, \code{window});
+#'   the per-group edge weights are then combined across groups via
+#'   \code{aggregate} into ONE final network. Differs from
+#'   \code{split_by}, which keeps groups separate. Cannot be combined
+#'   with \code{split_by}. Only applies to data frame inputs.
+#' @param aggregate Character. How to combine edge weights across
+#'   groups when \code{aggregate_by} is used: \code{"sum"} (default),
+#'   \code{"mean"}, \code{"min"}, or \code{"max"}. The \code{count}
+#'   column is always summed. \code{threshold} and \code{top_n} are
+#'   applied AFTER aggregation.
+#' @param window Integer or \code{NULL}. Sliding-window size for
+#'   categorical time-series / ordered-sequence input. When set to an
+#'   integer \eqn{w \ge 2}, every window of \code{w} consecutive
+#'   positions in a sequence becomes a mini-transaction; states inside
+#'   the same window co-occur. Sequences shorter than \code{w}
+#'   contribute no transactions. Only applies to ordered formats:
+#'   wide (\code{field = "all"}) and \code{list}. Default \code{NULL}
+#'   (whole sequence treated as one transaction --- bag of states).
 #' @param output Character. Column naming convention for the output:
 #'   \describe{
 #'     \item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
@@ -134,6 +155,15 @@
 #' # Short alias
 #' co(df, field = "keywords", sep = ";", similarity = "cosine")
 #'
+#' # Windowed co-occurrence on a categorical time series. With
+#' # window = 2 only adjacent states co-occur; window = 3 also pairs
+#' # states two positions apart, etc.
+#' seqs <- list(
+#'   c("focus", "focus", "distract", "focus", "confused"),
+#'   c("focus", "distract", "distract", "focus")
+#' )
+#' cooccurrence(seqs, window = 2)
+#'
 #' # Weighted long format (e.g. LDA topic-document probabilities)
 #' theta <- data.frame(
 #'   doc   = c("d1","d1","d1","d2","d2","d3","d3"),
@@ -146,6 +176,9 @@
 cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                          weight_by = NULL,
                          split_by = NULL,
+                         aggregate_by = NULL,
+                         aggregate = c("sum", "mean", "min", "max"),
+                         window = NULL,
                          similarity = c("none", "jaccard", "cosine",
                                         "inclusion", "association",
                                         "dice", "equivalence", "relative"),
@@ -158,9 +191,16 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
   similarity <- match.arg(similarity)
   counting <- match.arg(counting)
   output <- match.arg(output)
+  aggregate <- match.arg(aggregate)
   threshold <- as.numeric(threshold)
   min_occur <- as.integer(min_occur)
   stopifnot(threshold >= 0, min_occur >= 1L)
+  if (!is.null(window)) {
+    stopifnot(is.numeric(window), length(window) == 1L, window >= 2L)
+    window <- as.integer(window)
+  }
+  if (!is.null(aggregate_by) && !is.null(split_by))
+    stop("`aggregate_by` and `split_by` cannot be combined.", call. = FALSE)
 
   if (is.null(scale) || identical(scale, "none")) {
     scale_method <- "none"
@@ -184,7 +224,7 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                  similarity = similarity, counting = counting,
                  scale_method = scale_method,
                  threshold = threshold, min_occur = min_occur,
-                 top_n = top_n),
+                 top_n = top_n, window = window),
         error = function(e) NULL
       )
       if (is.null(edges) || nrow(edges) == 0L) return(NULL)
@@ -207,13 +247,64 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
     return(.co_format_output(edges, output))
   }
 
+  # ---- aggregate_by: per-group compute, then combine into one network ----
+  if (!is.null(aggregate_by)) {
+    stopifnot(is.data.frame(data), aggregate_by %in% names(data))
+    groups <- split(data, data[[aggregate_by]])
+    parts <- lapply(names(groups), function(g) {
+      sub <- groups[[g]]
+      sub[[aggregate_by]] <- NULL
+      tryCatch(
+        ## Defer threshold/top_n to after aggregation; per-group
+        ## filtering would distort the global combine.
+        .co_core(sub, field = field, by = by, sep = sep,
+                 weight_by = weight_by,
+                 similarity = similarity, counting = counting,
+                 scale_method = scale_method,
+                 threshold = 0, min_occur = min_occur,
+                 top_n = NULL, window = window),
+        error = function(e) NULL
+      )
+    })
+    parts <- parts[!vapply(parts, is.null, logical(1))]
+    if (length(parts) == 0L)
+      stop("No groups produced any edges.", call. = FALSE)
+
+    edges <- .co_aggregate_parts(parts, aggregate, threshold, top_n)
+
+    items <- sort(unique(c(edges$from, edges$to)))
+    n_items <- length(items)
+    M <- .co_edges_to_sparse(edges, items)
+
+    n_trans <- sum(vapply(parts, function(p) {
+      v <- attr(p, "n_transactions")
+      if (is.null(v) || is.na(v)) 0L else as.integer(v)
+    }, integer(1)))
+
+    class(edges) <- c("cooccurrence", "data.frame")
+    attr(edges, "matrix")         <- M
+    attr(edges, "raw_matrix")     <- M
+    attr(edges, "items")          <- items
+    attr(edges, "frequencies")    <- NULL
+    attr(edges, "similarity")     <- similarity
+    attr(edges, "scale")          <- scale_method
+    attr(edges, "threshold")      <- threshold
+    attr(edges, "min_occur")      <- min_occur
+    attr(edges, "n_transactions") <- n_trans
+    attr(edges, "n_items")        <- n_items
+    attr(edges, "aggregate_by")   <- aggregate_by
+    attr(edges, "aggregate")      <- aggregate
+    attr(edges, "groups")         <- names(groups)
+    return(.co_format_output(edges, output))
+  }
+
   # ---- Single-group path ----
   result <- .co_core(data, field = field, by = by, sep = sep,
                      weight_by = weight_by,
                      similarity = similarity, counting = counting,
                      scale_method = scale_method,
                      threshold = threshold, min_occur = min_occur,
-                     top_n = top_n)
+                     top_n = top_n, window = window)
 
   .co_format_output(result, output)
 }
@@ -228,12 +319,15 @@ co <- cooccurrence
 
 #' @noRd
 .co_core <- function(data, field, by, sep, weight_by = NULL, similarity,
-                     counting, scale_method, threshold, min_occur, top_n) {
+                     counting, scale_method, threshold, min_occur, top_n,
+                     window = NULL) {
   # Parse input
   fmt <- .co_detect_format(data, field, by, sep)
 
   # Weighted path — long format only
   if (!is.null(weight_by)) {
+    if (!is.null(window))
+      stop("`window` is not compatible with `weight_by`.", call. = FALSE)
     if (fmt != "long")
       stop("`weight_by` is only supported for long format (field + by).",
            call. = FALSE)
@@ -241,18 +335,27 @@ co <- cooccurrence
                              scale_method, threshold, min_occur, top_n))
   }
 
-  if (fmt == "field_only")
-    .co_warn_missing_sep(data, field)
+  if (!is.null(window)) {
+    if (!fmt %in% c("wide", "list"))
+      stop("`window` only applies to ordered sequence formats: a list of ",
+           "vectors, or a wide data frame with field = \"all\".",
+           call. = FALSE)
+    transactions <- if (fmt == "wide") .co_parse_wide_windowed(data, window)
+                    else              .co_parse_list_windowed(data, window)
+  } else {
+    if (fmt == "field_only")
+      .co_warn_missing_sep(data, field)
 
-  transactions <- switch(fmt,
-    delimited       = .co_parse_delimited(data, field, sep),
-    multi_delimited = .co_parse_multi_delimited(data, field, sep),
-    field_only      = .co_parse_field_only(data, field),
-    long            = .co_parse_long(data, field, by),
-    binary          = .co_parse_binary(data),
-    wide            = .co_parse_wide(data),
-    list            = .co_parse_list(data)
-  )
+    transactions <- switch(fmt,
+      delimited       = .co_parse_delimited(data, field, sep),
+      multi_delimited = .co_parse_multi_delimited(data, field, sep),
+      field_only      = .co_parse_field_only(data, field),
+      long            = .co_parse_long(data, field, by),
+      binary          = .co_parse_binary(data),
+      wide            = .co_parse_wide(data),
+      list            = .co_parse_list(data)
+    )
+  }
 
   # Drop empty transactions
   transactions <- transactions[vapply(transactions, length, integer(1)) > 0L]
@@ -760,6 +863,40 @@ co <- cooccurrence
 }
 
 
+# ---- Windowed parsers (ordered sequences) ----
+
+#' Sliding-window transactions for one ordered sequence.
+#'
+#' Drops void markers (NA, "", "%", "*", "NaN") before windowing — voids
+#' are not real states. Returns one transaction per window of length
+#' \code{window}, deduped within each window. Empty list when the
+#' cleaned sequence is shorter than \code{window}.
+#' @noRd
+.co_window_one <- function(seq, window) {
+  seq <- as.character(seq)
+  seq <- seq[!is.na(seq) & nzchar(seq) & !(seq %in% .void_markers)]
+  if (length(seq) < window) return(list())
+  ## embed() returns rows of consecutive windows (most-recent first per
+  ## row); within-window order is irrelevant since we dedup.
+  W <- embed(seq, window)
+  lapply(seq_len(nrow(W)), function(r) unique(W[r, ]))
+}
+
+#' @noRd
+.co_parse_wide_windowed <- function(data, window) {
+  mat <- if (is.data.frame(data)) as.matrix(data) else data
+  per_row <- lapply(seq_len(nrow(mat)),
+                    function(i) .co_window_one(mat[i, ], window))
+  do.call(c, per_row)
+}
+
+#' @noRd
+.co_parse_list_windowed <- function(data, window) {
+  per_seq <- lapply(data, .co_window_one, window = window)
+  do.call(c, per_seq)
+}
+
+
 # ---- Sparse bipartite matrix builder ----
 
 #' Build sparse works-by-items incidence matrices from a list of transactions.
@@ -801,6 +938,86 @@ co <- cooccurrence
   )
 
   list(B = B, B_bin = B_bin, items = all_items, n = n, k = k)
+}
+
+
+
+# ---- aggregate_by helpers ----
+
+#' Combine per-group edge tables into one aggregated table.
+#'
+#' Stacks the (from, to, weight, count) rows from each group's
+#' `cooccurrence` data frame, groups by unordered pair, and reduces
+#' the weight column with the chosen aggregator. The count column is
+#' always summed (it is a count, not a weight). Threshold and top_n
+#' are applied AFTER aggregation so per-group filtering doesn't
+#' distort the global combine.
+#' @noRd
+.co_aggregate_parts <- function(parts, aggregate, threshold, top_n) {
+  all_edges <- do.call(rbind, lapply(parts, function(p) {
+    p[, c("from", "to", "weight", "count"), drop = FALSE]
+  }))
+  rownames(all_edges) <- NULL
+
+  if (nrow(all_edges) == 0L) {
+    return(data.frame(from = character(0), to = character(0),
+                      weight = numeric(0), count = integer(0),
+                      stringsAsFactors = FALSE))
+  }
+
+  agg_fn <- switch(aggregate,
+    sum  = sum, mean = mean, min  = min, max  = max
+  )
+
+  ## Group by ordered pair (from is already < to within each part).
+  key <- paste(all_edges$from, all_edges$to, sep = "\037")
+  weight_by_pair <- vapply(split(all_edges$weight, key),
+                           agg_fn, numeric(1))
+  count_by_pair  <- vapply(split(all_edges$count, key),
+                           function(v) as.integer(sum(v)), integer(1))
+
+  uk <- names(weight_by_pair)
+  fr_to <- do.call(rbind, strsplit(uk, "\037", fixed = TRUE))
+  edges <- data.frame(
+    from   = fr_to[, 1],
+    to     = fr_to[, 2],
+    weight = unname(weight_by_pair),
+    count  = unname(count_by_pair),
+    stringsAsFactors = FALSE
+  )
+
+  if (threshold > 0) edges <- edges[edges$weight >= threshold, ]
+  edges <- edges[order(-edges$weight), ]
+  if (!is.null(top_n)) {
+    top_n <- as.integer(top_n)
+    if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
+  }
+  rownames(edges) <- NULL
+  edges
+}
+
+#' Build a symmetric sparse matrix from an edge data frame.
+#' @noRd
+.co_edges_to_sparse <- function(edges, items) {
+  n_items <- length(items)
+  if (nrow(edges) == 0L) {
+    return(Matrix::sparseMatrix(
+      i = integer(0), j = integer(0), x = numeric(0),
+      dims = c(n_items, n_items), symmetric = TRUE,
+      dimnames = list(items, items)
+    ))
+  }
+  ii <- match(edges$from, items)
+  jj <- match(edges$to,   items)
+  swap <- ii > jj
+  if (any(swap)) {
+    tmp <- ii[swap]; ii[swap] <- jj[swap]; jj[swap] <- tmp
+  }
+  Matrix::sparseMatrix(
+    i = ii, j = jj, x = edges$weight,
+    dims = c(n_items, n_items), symmetric = TRUE,
+    dimnames = list(items, items)
+  )
 }
 
 

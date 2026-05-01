@@ -1168,3 +1168,231 @@ test_that("cooccurrence scales to wide sparse inputs without densifying", {
   expect_lt(elapsed, 120)
 })
 
+
+# ---- window= parameter (categorical time series) -----------------------
+
+test_that("window=2 produces adjacent-pair co-occurrence", {
+  ## Sequence ABCAB, window=2 → mini-transactions {A,B}, {B,C}, {A,C},
+  ## {A,B}. Raw counts: A-B=2, A-C=1, B-C=1.
+  seq <- list(c("A", "B", "C", "A", "B"))
+  res <- cooccurrence(seq, window = 2L, similarity = "none")
+
+  expect_equal(nrow(res), 3L)
+  expect_equal(attr(res, "n_transactions"), 4L)
+
+  pair <- function(r, a, b) {
+    rows <- (r$from == a & r$to == b) | (r$from == b & r$to == a)
+    r[rows, , drop = FALSE]
+  }
+  expect_equal(pair(res, "A", "B")$count, 2L)
+  expect_equal(pair(res, "A", "C")$count, 1L)
+  expect_equal(pair(res, "B", "C")$count, 1L)
+})
+
+test_that("window equal to sequence length matches bag-of-states", {
+  ## window = T → exactly one window per sequence, deduped to its
+  ## state set. This must equal the no-window (default) result.
+  seq <- list(c("A", "B", "C", "A", "B"))
+  res_win  <- cooccurrence(seq, window = 5L, similarity = "none")
+  res_bag  <- cooccurrence(seq, similarity = "none")
+
+  key <- function(r) paste(pmin(r$from, r$to), pmax(r$from, r$to))
+  res_win <- res_win[order(key(res_win)), c("from", "to", "count")]
+  res_bag <- res_bag[order(key(res_bag)), c("from", "to", "count")]
+  rownames(res_win) <- rownames(res_bag) <- NULL
+  expect_equal(res_win, res_bag)
+})
+
+test_that("window drops sequences shorter than the window", {
+  ## Two sequences, only the long one contributes when window=4.
+  seqs <- list(c("A", "B"), c("A", "B", "C", "A"))
+  res <- cooccurrence(seqs, window = 4L, similarity = "none")
+  ## One window (the full long sequence), three states, three pairs.
+  expect_equal(nrow(res), 3L)
+  expect_equal(attr(res, "n_transactions"), 1L)
+})
+
+test_that("window works on wide TraMineR-style data with void markers", {
+  ## Voids must be dropped before windowing.
+  df <- data.frame(
+    t1 = c("A", "B"),
+    t2 = c("B", "NA"),
+    t3 = c("C", "C"),
+    t4 = c("A", "%"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "all", window = 2L, similarity = "none")
+  ## Row 1 cleaned: A,B,C,A → windows {A,B}, {B,C}, {C,A} → A-B=1, A-C=1, B-C=1
+  ## Row 2 cleaned: B,C   → window  {B,C}                 → B-C=1
+  pair <- function(r, a, b) {
+    rows <- (r$from == a & r$to == b) | (r$from == b & r$to == a)
+    r[rows, , drop = FALSE]
+  }
+  expect_equal(pair(res, "A", "B")$count, 1L)
+  expect_equal(pair(res, "A", "C")$count, 1L)
+  expect_equal(pair(res, "B", "C")$count, 2L)
+})
+
+test_that("window composes with similarity normalisation", {
+  ## Same ABCAB / window=2 setup. After dedup-by-window:
+  ##   transactions = {A,B}, {B,C}, {A,C}, {A,B}
+  ##   freq: A=3, B=3, C=2; counts: A-B=2, A-C=1, B-C=1
+  ##   jaccard(A,B) = 2 / (3+3-2) = 0.5
+  seq <- list(c("A", "B", "C", "A", "B"))
+  res <- cooccurrence(seq, window = 2L, similarity = "jaccard")
+  ab <- res[(res$from == "A" & res$to == "B") |
+              (res$from == "B" & res$to == "A"), ]
+  expect_equal(ab$weight, 0.5)
+})
+
+test_that("window=1 is rejected", {
+  expect_error(
+    cooccurrence(list(c("A", "B", "C")), window = 1L),
+    "window >= 2"
+  )
+})
+
+test_that("window is rejected for non-sequence formats", {
+  df <- data.frame(items = c("A;B;C", "B;C", "A;C"),
+                   stringsAsFactors = FALSE)
+  expect_error(
+    cooccurrence(df, field = "items", sep = ";", window = 2L),
+    "ordered sequence formats"
+  )
+
+  df_long <- data.frame(doc = c(1, 1, 2), item = c("A", "B", "C"),
+                        stringsAsFactors = FALSE)
+  expect_error(
+    cooccurrence(df_long, field = "item", by = "doc", window = 2L),
+    "ordered sequence formats"
+  )
+
+  bin <- matrix(c(1, 1, 0, 1, 0, 1), nrow = 2,
+                dimnames = list(NULL, c("A", "B", "C")))
+  expect_error(
+    cooccurrence(bin, window = 2L),
+    "ordered sequence formats"
+  )
+})
+
+test_that("aggregate_by sums per-group counts equals global count (similarity = none)", {
+  df <- data.frame(
+    journal  = c("J1", "J1", "J2", "J2", "J3"),
+    keywords = c("A;B;C", "B;C", "A;B", "B;C", "A;C"),
+    stringsAsFactors = FALSE
+  )
+  r_agg <- cooccurrence(df, field = "keywords", sep = ";",
+                        aggregate_by = "journal", similarity = "none")
+  r_glo <- cooccurrence(df[, "keywords", drop = FALSE],
+                        field = "keywords", sep = ";",
+                        similarity = "none")
+
+  key <- function(r) paste(pmin(r$from, r$to), pmax(r$from, r$to))
+  a <- r_agg[order(key(r_agg)), c("from", "to", "weight")]
+  g <- r_glo[order(key(r_glo)), c("from", "to", "weight")]
+  rownames(a) <- rownames(g) <- NULL
+  expect_equal(a, g)
+})
+
+test_that("aggregate_by attributes record group info", {
+  df <- data.frame(j = c("a", "a", "b"),
+                   k = c("X;Y", "Y;Z", "X;Z"),
+                   stringsAsFactors = FALSE)
+  r <- cooccurrence(df, field = "k", sep = ";",
+                    aggregate_by = "j", similarity = "none")
+  expect_identical(attr(r, "aggregate_by"), "j")
+  expect_identical(attr(r, "aggregate"), "sum")
+  expect_setequal(attr(r, "groups"), c("a", "b"))
+  expect_false("group" %in% names(r))
+})
+
+test_that("aggregate = mean / min / max give different weights", {
+  df <- data.frame(
+    journal  = c("J1", "J1", "J2"),
+    keywords = c("A;B", "A;B", "A;B"),
+    stringsAsFactors = FALSE
+  )
+  ## J1 has count 2 for A-B; J2 has count 1.
+  r_sum  <- cooccurrence(df, field = "keywords", sep = ";",
+                         aggregate_by = "journal", aggregate = "sum",
+                         similarity = "none")
+  r_mean <- cooccurrence(df, field = "keywords", sep = ";",
+                         aggregate_by = "journal", aggregate = "mean",
+                         similarity = "none")
+  r_min  <- cooccurrence(df, field = "keywords", sep = ";",
+                         aggregate_by = "journal", aggregate = "min",
+                         similarity = "none")
+  r_max  <- cooccurrence(df, field = "keywords", sep = ";",
+                         aggregate_by = "journal", aggregate = "max",
+                         similarity = "none")
+  expect_equal(r_sum$weight,  3)
+  expect_equal(r_mean$weight, 1.5)
+  expect_equal(r_min$weight,  1)
+  expect_equal(r_max$weight,  2)
+  ## Count is always summed regardless of aggregate.
+  expect_equal(r_mean$count, 3L)
+  expect_equal(r_max$count,  3L)
+})
+
+test_that("aggregate_by composes with per-group similarity normalisation", {
+  df <- data.frame(
+    journal  = c("J1", "J1", "J2"),
+    keywords = c("A;B", "A;B;C", "A;B"),
+    stringsAsFactors = FALSE
+  )
+  ## In J1: A appears 2x, B 2x, C 1x. Co-occ A-B=2, A-C=1, B-C=1.
+  ## Per-group jaccard at J1: A-B = 2/(2+2-2) = 1; A-C = 1/(2+1-1) = 0.5; B-C = 0.5.
+  ## In J2: A-B=1, jaccard = 1/(1+1-1) = 1.
+  ## Sum across journals: A-B = 1+1 = 2, A-C = 0.5, B-C = 0.5.
+  r <- cooccurrence(df, field = "keywords", sep = ";",
+                    aggregate_by = "journal", aggregate = "sum",
+                    similarity = "jaccard")
+  ab <- r[(r$from == "A" & r$to == "B") | (r$from == "B" & r$to == "A"), ]
+  ac <- r[(r$from == "A" & r$to == "C") | (r$from == "C" & r$to == "A"), ]
+  expect_equal(ab$weight, 2)
+  expect_equal(ac$weight, 0.5)
+})
+
+test_that("aggregate_by + split_by together is rejected", {
+  df <- data.frame(j = c("a", "b"), k = c("X;Y", "X;Y"),
+                   stringsAsFactors = FALSE)
+  expect_error(
+    cooccurrence(df, field = "k", sep = ";",
+                 aggregate_by = "j", split_by = "j"),
+    "cannot be combined"
+  )
+})
+
+test_that("aggregate_by applies threshold and top_n after aggregation", {
+  df <- data.frame(
+    journal  = c("J1", "J1", "J2", "J2"),
+    keywords = c("A;B;C", "B;C", "A;C", "B;C"),
+    stringsAsFactors = FALSE
+  )
+  ## Per-group counts:
+  ##   J1: A-B=1, A-C=1, B-C=2
+  ##   J2: A-C=1, B-C=1
+  ## Summed: A-B=1, A-C=2, B-C=3
+  r <- cooccurrence(df, field = "keywords", sep = ";",
+                    aggregate_by = "journal", similarity = "none",
+                    threshold = 2, top_n = 1)
+  expect_equal(nrow(r), 1L)
+  expect_true(r$weight >= 2)
+  expect_true(r$from == "B" || r$to == "B")  # B-C is the strongest
+})
+
+test_that("window combined with split_by computes per group", {
+  df <- data.frame(
+    grp = c("g1", "g1", "g2", "g2"),
+    t1  = c("A", "B", "A", "C"),
+    t2  = c("B", "C", "B", "B"),
+    t3  = c("C", "A", "C", "A"),
+    stringsAsFactors = FALSE
+  )
+  res <- cooccurrence(df, field = "all", window = 2L, split_by = "grp",
+                      similarity = "none")
+  expect_true("group" %in% names(res))
+  expect_setequal(unique(res$group), c("g1", "g2"))
+  ## Each group should have at least one edge.
+  expect_true(all(table(res$group) >= 1L))
+})

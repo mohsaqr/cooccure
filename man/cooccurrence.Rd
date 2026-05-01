@@ -12,6 +12,9 @@ cooccurrence(
   sep = NULL,
   weight_by = NULL,
   split_by = NULL,
+  aggregate_by = NULL,
+  aggregate = c("sum", "mean", "min", "max"),
+  window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   counting = c("full", "fractional"),
@@ -30,6 +33,9 @@ co(
   sep = NULL,
   weight_by = NULL,
   split_by = NULL,
+  aggregate_by = NULL,
+  aggregate = c("sum", "mean", "min", "max"),
+  window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   counting = c("full", "fractional"),
@@ -76,6 +82,30 @@ models.}
 by before computing co-occurrence. A separate network is computed per
 group and the results are combined into a single data frame with an
 additional \code{group} column. Only works with data.frame inputs.}
+
+\item{aggregate_by}{Character or \code{NULL}. Column name to group
+the data by before computing co-occurrence. For each unique value,
+the per-group network is computed (with the chosen
+\code{similarity}, \code{counting}, \code{scale}, \code{window});
+the per-group edge weights are then combined across groups via
+\code{aggregate} into ONE final network. Differs from
+\code{split_by}, which keeps groups separate. Cannot be combined
+with \code{split_by}. Only applies to data frame inputs.}
+
+\item{aggregate}{Character. How to combine edge weights across
+groups when \code{aggregate_by} is used: \code{"sum"} (default),
+\code{"mean"}, \code{"min"}, or \code{"max"}. The \code{count}
+column is always summed. \code{threshold} and \code{top_n} are
+applied AFTER aggregation.}
+
+\item{window}{Integer or \code{NULL}. Sliding-window size for
+categorical time-series / ordered-sequence input. When set to an
+integer \eqn{w \ge 2}, every window of \code{w} consecutive
+positions in a sequence becomes a mini-transaction; states inside
+the same window co-occur. Sequences shorter than \code{w}
+contribute no transactions. Only applies to ordered formats:
+wide (\code{field = "all"}) and \code{list}. Default \code{NULL}
+(whole sequence treated as one transaction --- bag of states).}
 
 \item{similarity}{Character. Similarity measure:
 \describe{
@@ -179,6 +209,15 @@ cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),
 
 # Short alias
 co(df, field = "keywords", sep = ";", similarity = "cosine")
+
+# Windowed co-occurrence on a categorical time series. With
+# window = 2 only adjacent states co-occur; window = 3 also pairs
+# states two positions apart, etc.
+seqs <- list(
+  c("focus", "focus", "distract", "focus", "confused"),
+  c("focus", "distract", "distract", "focus")
+)
+cooccurrence(seqs, window = 2)
 
 # Weighted long format (e.g. LDA topic-document probabilities)
 theta <- data.frame(
