@@ -1,8 +1,8 @@
 # Co-occurrence Networks with IMDB Movie Data
 
 This tutorial demonstrates every feature of the `cooccure` package using
-1,000 highly-rated IMDB movies (rating $\geq$ 7.0, $\geq$ 1,000 votes,
-1970–2024).
+1,000 highly-rated IMDB movies (rating $`\geq`$ 7.0, $`\geq`$ 1,000
+votes, 1970–2024).
 
 Starting from raw tabular data, we build genre co-occurrence networks,
 construct actor collaboration networks, compare co-occurrence patterns
@@ -13,6 +13,7 @@ for visualization and downstream analysis.
 ## Data
 
 ``` r
+
 library(cooccure)
 ```
 
@@ -21,6 +22,7 @@ The dataset contains the title of the movie, the year and decade, the
 the rating band.
 
 ``` r
+
 head(movies)
 #>       tconst                          primaryTitle startYear
 #> 1  tt0118117                       The War at Home      1996
@@ -47,6 +49,7 @@ specifying the column and `sep` specifying the delimiter that separates
 values within that field.
 
 ``` r
+
 cooccurrence(movies, field = "genres", sep = ",")
 #> # cooccurrence: 22 nodes, 129 edges (1000 transactions)
 #>       from          to weight count
@@ -73,6 +76,7 @@ a bar chart, showing how many nodes share each degree value and whether
 connectivity is concentrated or evenly spread across genres.
 
 ``` r
+
 library(cograph)
 
 Net <- co(movies, field = "genres", sep = ",", similarity = "jaccard")
@@ -96,6 +100,7 @@ the top 3 pairs under each measure using a movie genres dataset.
   how strongly the genres are actually associated.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
 #> # cooccurrence: 4 nodes, 3 edges (1000 transactions)
 #>    from      to weight count
@@ -111,6 +116,7 @@ co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
   either appears alone.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 3)
 #> # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: jaccard
 #>       from        to    weight count
@@ -125,6 +131,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 3)
   differences between genres.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
 #> # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: cosine
 #>       from        to    weight count
@@ -140,6 +147,7 @@ co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
   appears alongside broader ones.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
 #> # cooccurrence: 5 nodes, 3 edges (1000 transactions) | similarity: inclusion
 #>         from      to weight count
@@ -155,6 +163,7 @@ co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
   disproportionately high relative to their individual frequencies.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "association", top_n = 3)
 #> # cooccurrence: 5 nodes, 3 edges (1000 transactions) | similarity: association
 #>         from     to      weight count
@@ -173,6 +182,7 @@ co(movies, field = "genres", sep = ",", similarity = "association", top_n = 3)
   exclusively paired.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
 #> # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: dice
 #>       from        to    weight count
@@ -190,6 +200,7 @@ co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
   the penalty for common genres is compounded.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "equivalence", top_n = 3)
 #> # cooccurrence: 6 nodes, 3 edges (1000 transactions) | similarity: equivalence
 #>       from        to    weight count
@@ -232,11 +243,12 @@ pairs, while a 2-genre movie creates only 1, giving multi-genre movies
 disproportionate influence.
 
 **Fractional counting** addresses this by weighting each pair by
-$1/(n - 1)$, where $n$ is the number of items in the transaction, so
+$`1/(n-1)`$, where $`n`$ is the number of items in the transaction, so
 every transaction contributes equally regardless of how many genres it
 contains.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", top_n = 5)
 #> # cooccurrence: 5 nodes, 5 edges (1000 transactions)
 #>    from      to weight count
@@ -248,6 +260,7 @@ co(movies, field = "genres", sep = ",", top_n = 5)
 ```
 
 ``` r
+
 co(movies, field = "genres", sep = ",", counting = "fractional", top_n = 5)
 #> # cooccurrence: 5 nodes, 5 edges (1000 transactions)
 #>    from      to weight count
@@ -280,6 +293,7 @@ any similarity measure.
   weights are now much closer together than raw counts would suggest.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", scale = "log", top_n = 5)
 #> # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: log
 #>    from      to   weight count
@@ -300,6 +314,7 @@ co(movies, field = "genres", sep = ",", scale = "log", top_n = 5)
   high exclusivity relative to how often either appears alone.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax", top_n = 5)
 #> # cooccurrence: 8 nodes, 5 edges (1000 transactions) | similarity: jaccard | scale: minmax
 #>       from          to    weight count
@@ -317,6 +332,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax"
   across a wide range of combinations.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", scale = "binary", top_n = 5)
 #> # cooccurrence: 4 nodes, 5 edges (1000 transactions) | scale: binary
 #>       from        to weight count
@@ -335,6 +351,7 @@ co(movies, field = "genres", sep = ",", scale = "binary", top_n = 5)
   count difference of 159 versus 63 would imply.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", scale = "sqrt", top_n = 5)
 #> # cooccurrence: 5 nodes, 5 edges (1000 transactions) | scale: sqrt
 #>    from      to    weight count
@@ -355,6 +372,7 @@ genres that genuinely cluster together rather than simply co-occurring
 by volume.
 
 ``` r
+
 co(movies, field = "genres", sep = ",",
    similarity = "association", scale = "log", min_occur = 20, top_n = 5)
 #> # cooccurrence: 9 nodes, 5 edges (998 transactions) | similarity: association | scale: log
@@ -377,6 +395,7 @@ can be used independently or combined.
   movies with co-occurrence of minimum 20 are kept.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "jaccard", min_occur = 20)
 #> # cooccurrence: 17 nodes, 102 edges (998 transactions) | similarity: jaccard
 #>         from          to    weight count
@@ -398,6 +417,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", min_occur = 20)
   Here only pairs with a Jaccard similarity above 0.15 are kept.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "jaccard", threshold = 0.15)
 #> # cooccurrence: 12 nodes, 10 edges (1000 transactions) | similarity: jaccard
 #>         from          to    weight count
@@ -417,6 +437,7 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", threshold = 0.15
   their absolute value.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 10)
 #> # cooccurrence: 12 nodes, 10 edges (1000 transactions) | similarity: jaccard
 #>         from          to    weight count
@@ -436,6 +457,7 @@ All three thresholds can be combined for fine-grained control over
 network size and density:
 
 ``` r
+
 co(movies, field = "genres", sep = ",",
    similarity = "association", counting = "fractional",
    min_occur = 15, threshold = 0.001, top_n = 20)
@@ -462,6 +484,7 @@ format. The `field` argument specifies the entity column and `by`
 specifies the grouping column.
 
 ``` r
+
 co(actors, field = "actor", by = "tconst",
    similarity = "jaccard", min_occur = 3, threshold = 0.1)
 #> # cooccurrence: 12 nodes, 7 edges (47 transactions) | similarity: jaccard
@@ -482,6 +505,7 @@ large casts, though in this case the results are unchanged because the
 dataset is small and cast sizes are similar across movies.
 
 ``` r
+
 co(actors, field = "actor", by = "tconst",
    similarity = "jaccard", counting = "fractional",
    min_occur = 3, threshold = 0.05)
@@ -507,6 +531,7 @@ frame with a group column.
   genre combinations have changed over time.
 
 ``` r
+
 co(movies, field = "genres", sep = ",",
    split_by = "decade", similarity = "jaccard",
    min_occur = 5, top_n = 5)
@@ -528,6 +553,7 @@ co(movies, field = "genres", sep = ",",
 Individual groups can be extracted by filtering the group column:
 
 ``` r
+
 decades <- co(movies, field = "genres", sep = ",",
               split_by = "decade", similarity = "jaccard",
               min_occur = 5, top_n = 5)
@@ -549,6 +575,7 @@ decades[decades$group == "2010s", ]
   band.
 
 ``` r
+
 movies$rating_band <- ifelse(movies$averageRating >= 8, "8+", "7-7.9")
 co(movies, field = "genres", sep = ",",
    split_by = "rating_band", similarity = "jaccard",
@@ -574,6 +601,7 @@ The default output format returns a tidy data frame with `from`, `to`,
 visualization.
 
 ``` r
+
 co(movies, field = "genres", sep = ",", top_n = 5)
 #> # cooccurrence: 5 nodes, 5 edges (1000 transactions)
 #>    from      to weight count
@@ -591,6 +619,7 @@ into Gephi, with `Source`, `Target`, `Weight`, `Type`, and `Count`
 columns. The result can be written straight to CSV.
 
 ``` r
+
 co(movies, field = "genres", sep = ",",
    similarity = "jaccard", output = "gephi", top_n = 10)
 #> # cooccurrence: 0 nodes, 10 edges (1000 transactions) | similarity: jaccard
@@ -608,6 +637,7 @@ co(movies, field = "genres", sep = ",",
 ```
 
 ``` r
+
 write.csv(
   co(movies, field = "genres", sep = ",", similarity = "jaccard", output = "gephi"),
   "genre_network.csv", row.names = FALSE
@@ -624,6 +654,7 @@ visualization. The layout argument controls the node placement algorithm
 sizes nodes by their degree centrality.
 
 ``` r
+
 library(cograph)
 net <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "cograph")
@@ -636,6 +667,7 @@ Additional styling arguments control `edge_width_range`, `label_size`,
 `node_color`, and `node_border_width`:
 
 ``` r
+
 library(cograph)
 splot(net, layout = "gephi", label_size = .8, label_fontface = "bold",
            node_fill = "#F9C22E",  
@@ -651,12 +683,13 @@ The igraph output format returns an `igraph` object. All standard igraph
 functions work on the result without any conversion.
 
 ``` r
+
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH e312dfb UNW- 17 102 -- 
+#> IGRAPH 89ab0cf UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from e312dfb (vertex names):
+#> + edges from 89ab0cf (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -671,6 +704,7 @@ g
 Centrality measures can be computed directly on the `igraph` object:
 
 ``` r
+
 igraph::degree(g)
 #>      Action   Adventure   Animation   Biography      Comedy       Crime 
 #>          14          14          14          13          16          11 
@@ -696,6 +730,7 @@ that expects a matrix input, such as clustering or heatmap
 visualization.
 
 ``` r
+
 mat <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "matrix")
 round(mat[1:6, 1:6], 3)
@@ -720,6 +755,7 @@ converts the result to a square similarity matrix, where each cell
 contains the Jaccard weight between the corresponding pair of genres:
 
 ``` r
+
 result <- co(movies, field = "genres", sep = ",",
              similarity = "jaccard", min_occur = 20)
 as_matrix(result)
@@ -801,6 +837,7 @@ as_matrix(result)
 matrix instead, with no similarity normalization applied:
 
 ``` r
+
 as_matrix(result, type = "raw")
 #>             Action Adventure Animation Biography Comedy Crime Documentary Drama
 #> Action           0        44        27         5     27    59           0    71
@@ -845,10 +882,11 @@ converts the result to an igraph object, giving access to the full
 igraph ecosystem for further network analysis:
 
 ``` r
+
 as_igraph(result)
-#> IGRAPH 8a899af UNW- 17 102 -- 
+#> IGRAPH 5cb1762 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 8a899af (vertex names):
+#> + edges from 5cb1762 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -871,6 +909,7 @@ same genre co-occurrence network from the same underlying data.
 all genres as a comma-separated string, one row per movie.
 
 ``` r
+
 res1 <- co(movies, field = "genres", sep = ",")
 ```
 
@@ -881,6 +920,7 @@ first reshaped from wide to long, then passed to
 identifier.
 
 ``` r
+
 genre_long <- do.call(rbind, lapply(seq_len(nrow(movies)), function(i) {
   gs <- trimws(strsplit(movies$genres[i], ",")[[1]])
   data.frame(movie_id = movies$tconst[i], genre = gs, stringsAsFactors = FALSE)
@@ -893,6 +933,7 @@ columns are genres, and values are 0 or 1. Auto-detected when all values
 are binary and no `field`, `by`, or `sep` arguments are provided.
 
 ``` r
+
 all_genres <- sort(unique(genre_long$genre))
 bin <- matrix(0L, nrow = nrow(movies), ncol = length(all_genres),
               dimnames = list(movies$tconst, all_genres))
@@ -907,6 +948,7 @@ res3 <- co(bin)
 element is a character vector of genres for one movie.
 
 ``` r
+
 res4 <- co(lapply(strsplit(movies$genres, ","), trimws))
 ```
 
@@ -914,6 +956,7 @@ All four produce identical weights, confirming that the format choice is
 purely a matter of convenience:
 
 ``` r
+
 all.equal(res1$weight, res2$weight)
 #> [1] TRUE
 all.equal(res1$weight, res3$weight)
@@ -932,6 +975,7 @@ the result to a `cograph_network` and rendering it without any
 intermediate objects.
 
 ``` r
+
 co(movies, field = "genres", sep = ",",
    similarity = "jaccard", counting = "fractional",
    scale = "minmax", min_occur = 15, threshold = 0.05,

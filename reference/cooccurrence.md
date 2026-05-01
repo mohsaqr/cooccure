@@ -14,6 +14,9 @@ cooccurrence(
   sep = NULL,
   weight_by = NULL,
   split_by = NULL,
+  aggregate_by = NULL,
+  aggregate = c("sum", "mean", "min", "max"),
+  window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   counting = c("full", "fractional"),
@@ -32,6 +35,9 @@ co(
   sep = NULL,
   weight_by = NULL,
   split_by = NULL,
+  aggregate_by = NULL,
+  aggregate = c("sum", "mean", "min", "max"),
+  window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
   counting = c("full", "fractional"),
@@ -93,6 +99,33 @@ co(
   co-occurrence. A separate network is computed per group and the
   results are combined into a single data frame with an additional
   `group` column. Only works with data.frame inputs.
+
+- aggregate_by:
+
+  Character or `NULL`. Column name to group the data by before computing
+  co-occurrence. For each unique value, the per-group network is
+  computed (with the chosen `similarity`, `counting`, `scale`,
+  `window`); the per-group edge weights are then combined across groups
+  via `aggregate` into ONE final network. Differs from `split_by`, which
+  keeps groups separate. Cannot be combined with `split_by`. Only
+  applies to data frame inputs.
+
+- aggregate:
+
+  Character. How to combine edge weights across groups when
+  `aggregate_by` is used: `"sum"` (default), `"mean"`, `"min"`, or
+  `"max"`. The `count` column is always summed. `threshold` and `top_n`
+  are applied AFTER aggregation.
+
+- window:
+
+  Integer or `NULL`. Sliding-window size for categorical time-series /
+  ordered-sequence input. When set to an integer \\w \ge 2\\, every
+  window of `w` consecutive positions in a sequence becomes a
+  mini-transaction; states inside the same window co-occur. Sequences
+  shorter than `w` contribute no transactions. Only applies to ordered
+  formats: wide (`field = "all"`) and `list`. Default `NULL` (whole
+  sequence treated as one transaction — bag of states).
 
 - similarity:
 
@@ -304,6 +337,19 @@ co(df, field = "keywords", sep = ";", similarity = "cosine")
 #>    graph  matrix 0.4082483     1
 #>  algebra network 0.4082483     1
 #>   matrix network 0.4082483     1
+
+# Windowed co-occurrence on a categorical time series. With
+# window = 2 only adjacent states co-occur; window = 3 also pairs
+# states two positions apart, etc.
+seqs <- list(
+  c("focus", "focus", "distract", "focus", "confused"),
+  c("focus", "distract", "distract", "focus")
+)
+cooccurrence(seqs, window = 2)
+#> # cooccurrence: 3 nodes, 2 edges (7 transactions)
+#>      from    to weight count
+#>  distract focus      4     4
+#>  confused focus      1     1
 
 # Weighted long format (e.g. LDA topic-document probabilities)
 theta <- data.frame(

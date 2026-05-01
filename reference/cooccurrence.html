@@ -55,6 +55,9 @@ convention.</p>
 <span>  sep <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  weight_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  split_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  aggregate_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  aggregate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="st">"mean"</span>, <span class="st">"min"</span>, <span class="st">"max"</span><span class="op">)</span>,</span>
+<span>  window <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  similarity <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"jaccard"</span>, <span class="st">"cosine"</span>, <span class="st">"inclusion"</span>, <span class="st">"association"</span>, <span class="st">"dice"</span>,</span>
 <span>    <span class="st">"equivalence"</span>, <span class="st">"relative"</span><span class="op">)</span>,</span>
 <span>  counting <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"full"</span>, <span class="st">"fractional"</span><span class="op">)</span>,</span>
@@ -73,6 +76,9 @@ convention.</p>
 <span>  sep <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  weight_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  split_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  aggregate_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  aggregate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"sum"</span>, <span class="st">"mean"</span>, <span class="st">"min"</span>, <span class="st">"max"</span><span class="op">)</span>,</span>
+<span>  window <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  similarity <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"none"</span>, <span class="st">"jaccard"</span>, <span class="st">"cosine"</span>, <span class="st">"inclusion"</span>, <span class="st">"association"</span>, <span class="st">"dice"</span>,</span>
 <span>    <span class="st">"equivalence"</span>, <span class="st">"relative"</span><span class="op">)</span>,</span>
 <span>  counting <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"full"</span>, <span class="st">"fractional"</span><span class="op">)</span>,</span>
@@ -132,6 +138,36 @@ models.</p></dd>
 by before computing co-occurrence. A separate network is computed per
 group and the results are combined into a single data frame with an
 additional <code>group</code> column. Only works with data.frame inputs.</p></dd>
+
+
+<dt id="arg-aggregate-by">aggregate_by<a class="anchor" aria-label="anchor" href="#arg-aggregate-by"></a></dt>
+<dd><p>Character or <code>NULL</code>. Column name to group
+the data by before computing co-occurrence. For each unique value,
+the per-group network is computed (with the chosen
+<code>similarity</code>, <code>counting</code>, <code>scale</code>, <code>window</code>);
+the per-group edge weights are then combined across groups via
+<code>aggregate</code> into ONE final network. Differs from
+<code>split_by</code>, which keeps groups separate. Cannot be combined
+with <code>split_by</code>. Only applies to data frame inputs.</p></dd>
+
+
+<dt id="arg-aggregate">aggregate<a class="anchor" aria-label="anchor" href="#arg-aggregate"></a></dt>
+<dd><p>Character. How to combine edge weights across
+groups when <code>aggregate_by</code> is used: <code>"sum"</code> (default),
+<code>"mean"</code>, <code>"min"</code>, or <code>"max"</code>. The <code>count</code>
+column is always summed. <code>threshold</code> and <code>top_n</code> are
+applied AFTER aggregation.</p></dd>
+
+
+<dt id="arg-window">window<a class="anchor" aria-label="anchor" href="#arg-window"></a></dt>
+<dd><p>Integer or <code>NULL</code>. Sliding-window size for
+categorical time-series / ordered-sequence input. When set to an
+integer \(w \ge 2\), every window of <code>w</code> consecutive
+positions in a sequence becomes a mini-transaction; states inside
+the same window co-occur. Sequences shorter than <code>w</code>
+contribute no transactions. Only applies to ordered formats:
+wide (<code>field = "all"</code>) and <code>list</code>. Default <code>NULL</code>
+(whole sequence treated as one transaction — bag of states).</p></dd>
 
 
 <dt id="arg-similarity">similarity<a class="anchor" aria-label="anchor" href="#arg-similarity"></a></dt>
@@ -326,6 +362,19 @@ the American Society for Information Science and Technology</em>, 60(8),
 <span class="r-out co"><span class="r-pr">#&gt;</span>    graph  matrix 0.4082483     1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  algebra network 0.4082483     1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   matrix network 0.4082483     1</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Windowed co-occurrence on a categorical time series. With</span></span></span>
+<span class="r-in"><span><span class="co"># window = 2 only adjacent states co-occur; window = 3 also pairs</span></span></span>
+<span class="r-in"><span><span class="co"># states two positions apart, etc.</span></span></span>
+<span class="r-in"><span><span class="va">seqs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"focus"</span>, <span class="st">"focus"</span>, <span class="st">"distract"</span>, <span class="st">"focus"</span>, <span class="st">"confused"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"focus"</span>, <span class="st">"distract"</span>, <span class="st">"distract"</span>, <span class="st">"focus"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">cooccurrence</span><span class="op">(</span><span class="va">seqs</span>, window <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> # cooccurrence: 3 nodes, 2 edges (7 transactions)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      from    to weight count</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  distract focus      4     4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  confused focus      1     1</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Weighted long format (e.g. LDA topic-document probabilities)</span></span></span>
 <span class="r-in"><span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span></span>

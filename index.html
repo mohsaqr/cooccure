@@ -202,56 +202,56 @@
 <col width="32%">
 <col width="25%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Method</th>
 <th>Formula</th>
 <th>Description</th>
 <th>Best for</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>"none"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">C_{ij}</annotation></semantics></math></td>
 <td>Raw co-occurrence count</td>
 <td>Exploratory analysis</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"jaccard"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub><mo>−</mo><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{f_i + f_j - C_{ij}}</annotation></semantics></math></td>
 <td>Divides co-occurrences by the total number of transactions containing either item</td>
 <td>General purpose</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"cosine"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msqrt><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></msqrt></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{\sqrt{f_i \cdot f_j}}</annotation></semantics></math></td>
 <td>Divides co-occurrences by the geometric mean of item frequencies (Salton’s cosine)</td>
 <td>Scale-invariant comparison</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"inclusion"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>,</mo><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{\min(f_i, f_j)}</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>,</mo><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{\min(f_i, f_j)}</annotation></semantics></math></td>
 <td>Divides co-occurrences by the frequency of the rarer item (Simpson coefficient)</td>
 <td>Subset and hierarchical relationships</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"association"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{f_i \cdot f_j}</annotation></semantics></math></td>
 <td>Divides co-occurrences by the product of item frequencies, discounting chance co-occurrences (van Eck &amp; Waltman, 2009)</td>
 <td>Bibliometric networks</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"dice"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><mrow><mn>2</mn><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{2 C_{ij}}{f_i + f_j}</annotation></semantics></math></td>
 <td>Divides co-occurrences by the arithmetic mean of item frequencies</td>
 <td>Binary presence/absence networks</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"equivalence"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msubsup><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}^2}{f_i \cdot f_j}</annotation></semantics></math></td>
 <td>Squares the co-occurrence count before dividing by the product of frequencies (cosine squared)</td>
 <td>Strict filtering</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"relative"</code></td>
 <td>Row-normalized (each row sums to 1)</td>
 <td>Normalizes each row so that all edge weights from an item sum to 1</td>
@@ -264,7 +264,7 @@
 <div class="section level2">
 <h2 id="counting">Counting<a class="anchor" aria-label="anchor" href="#counting"></a>
 </h2>
-<p>The <code>counting</code> argument controls how much each transaction contributes to the co-occurrence count. Under full counting (default), each co-occurring pair adds 1 regardless of how many items are in the transaction. Under fractional counting, each pair adds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/(n-1)</annotation></semantics></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> is the number of items in the transaction, preventing large transactions from dominating the network. For example, a document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting.</p>
+<p>The <code>counting</code> argument controls how much each transaction contributes to the co-occurrence count. Under full counting (default), each co-occurring pair adds 1 regardless of how many items are in the transaction. Under fractional counting, each pair adds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">1/(n-1)</annotation></semantics></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> is the number of items in the transaction, preventing large transactions from dominating the network. For example, a document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Full counting (default): each co-occurring pair adds 1</span></span>
 <span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">data</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span>
@@ -292,52 +292,52 @@
 <col width="28%">
 <col width="21%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Method</th>
 <th>Transformation</th>
 <th>Description</th>
 <th>Use case</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>"minmax"</code></td>
-<td>Scale to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
+<td>Scale to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
 </td>
-<td>Rescales all weights to the range <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="true" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
+<td>Rescales all weights to the range <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
 </td>
 <td>Visualization and cross-network comparison</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"log"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\log(1 + w)</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(1 + w)</annotation></semantics></math></td>
 <td>Applies a natural log transformation</td>
 <td>Compressing heavy-tailed distributions</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"log10"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>log</mo><mn>10</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">\log_{10}(1 + w)</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>10</mn></msub><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log_{10}(1 + w)</annotation></semantics></math></td>
 <td>Same as log but base 10</td>
 <td>When base 10 interpretation is preferred</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"sqrt"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mi>w</mi></msqrt><annotation encoding="application/x-tex">\sqrt{w}</annotation></semantics></math></td>
 <td>Square root transformation</td>
 <td>Mild compression of skewed weights</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"binary"</code></td>
 <td>1 if <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">w &gt; 0</annotation></semantics></math>, else 0</td>
 <td>Converts all positive weights to 1</td>
 <td>Presence/absence networks</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"zscore"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mi>w</mi><mo>−</mo><mi>μ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">(w - \mu) / \sigma</annotation></semantics></math></td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>w</mi><mo>−</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">(w - \mu) / \sigma</annotation></semantics></math></td>
 <td>Standardizes weights to mean 0 and standard deviation 1</td>
 <td>Statistical comparison across networks</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"proportion"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mi>/</mi><mo>∑</mo><mi>w</mi></mrow><annotation encoding="application/x-tex">w / \sum w</annotation></semantics></math></td>
 <td>Divides each weight by the total sum of weights</td>
@@ -547,56 +547,56 @@
 <col width="34%">
 <col width="23%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Argument</th>
 <th>Type</th>
 <th>Description</th>
 <th>Default</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>data</code></td>
 <td>various</td>
 <td>Input data (data.frame, matrix, or list)</td>
 <td>required</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>field</code></td>
 <td>character</td>
 <td>Column(s) containing entities (nodes)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>by</code></td>
 <td>character</td>
 <td>Column grouping entities into transactions</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>weight_by</code></td>
 <td>character</td>
 <td>Column with numeric weights for long format (e.g. LDA topic probabilities)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>sep</code></td>
 <td>character</td>
 <td>Delimiter for splitting delimited fields</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>split_by</code></td>
 <td>character</td>
 <td>Column to split data by (separate network per group)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>similarity</code></td>
 <td>character</td>
 <td>Normalization measure</td>
 <td><code>"none"</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>counting</code></td>
 <td>character</td>
 <td>
@@ -604,31 +604,31 @@
 </td>
 <td><code>"full"</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>scale</code></td>
 <td>character</td>
 <td>Weight scaling method</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>threshold</code></td>
 <td>numeric</td>
 <td>Minimum edge weight (after normalization + scaling)</td>
 <td><code>0</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>min_occur</code></td>
 <td>integer</td>
 <td>Minimum entity frequency (transactions)</td>
 <td><code>1</code></td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>top_n</code></td>
 <td>integer</td>
 <td>Keep only the top N edges by weight (per group if split)</td>
 <td><code>NULL</code></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>output</code></td>
 <td>character</td>
 <td>Output format: <code>"default"</code>, <code>"gephi"</code>, <code>"igraph"</code>, <code>"cograph"</code>, <code>"matrix"</code>
@@ -660,6 +660,7 @@
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
+<li><a href="https://cloud.r-project.org/package=cooccure" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/mohsaqr/cooccure/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/mohsaqr/cooccure/issues" class="external-link">Report a bug</a></li>
 </ul>

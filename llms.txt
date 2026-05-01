@@ -15,6 +15,7 @@ is also available as the short alias
 ## Installation
 
 ``` r
+
 # CRAN release
 install.packages("cooccure")
 
@@ -40,6 +41,7 @@ Use the `field` argument to specify the column with the relevant values,
 and `sep` to specify the delimiter.
 
 ``` r
+
 df <- data.frame(
   id = 1:3,
   keywords = c("network; graph; matrix",
@@ -64,6 +66,7 @@ Use the `field` argument to specify the columns with the relevant
 values, and `sep` to specify the delimiter.
 
 ``` r
+
 df <- data.frame(
   author_kw = c("machine learning; nlp", "deep learning", "nlp"),
   index_kw  = c("classification", "image recognition", "text mining")
@@ -80,6 +83,7 @@ Use the `field` argument to specify the column containing the items, and
 the `by` argument to specify which column groups them into transactions.
 
 ``` r
+
 citations <- data.frame(
   paper_id = c(1, 1, 1, 2, 2, 3, 3, 3),
   reference = c("Smith2020", "Jones2019", "Lee2021",
@@ -94,6 +98,7 @@ Use the `weight_by` argument to pass a numeric weight column for
 where each document contributes a topic with a given probability:
 
 ``` r
+
 theta <- data.frame(
   doc   = c("d1","d1","d1","d2","d2","d3","d3"),
   topic = c("T1","T2","T3","T1","T3","T2","T3"),
@@ -116,6 +121,7 @@ all values are 0 or 1 and no `field`, `by`, or `sep` arguments are
 provided.
 
 ``` r
+
 dtm <- matrix(c(1,1,0,1,
                 0,1,1,0,
                 1,0,1,1), nrow = 3, byrow = TRUE,
@@ -135,6 +141,7 @@ tools like **TraMineR** and **tna**. Pass `field = "all"` to treat every
 column as a time point.
 
 ``` r
+
 sequences <- data.frame(
   t1 = c("A", "B", "A"),
   t2 = c("B", "C", "C"),
@@ -152,6 +159,7 @@ A *list of character vectors* is the most direct format, where each list
 element is a transaction containing a set of categorical items.
 
 ``` r
+
 baskets <- list(
   c("bread", "milk", "eggs"),
   c("bread", "butter"),
@@ -166,10 +174,11 @@ cooccurrence(baskets)
 The `similarity` argument controls how raw co-occurrence counts are
 normalized into a similarity or association measure. All similarity
 measures are based on two inputs: the co-occurrence count between two
-items ($C_{ij}$), and how frequently each item appears individually
-across all transactions ($f_{i}$, $f_{j}$).
+items ($`C_{ij}`$), and how frequently each item appears individually
+across all transactions ($`f_i`$, $`f_j`$).
 
 ``` r
+
 # Jaccard similarity
 cooccurrence(baskets, similarity = "jaccard")
 
@@ -218,29 +227,30 @@ cooccurrence(papers, field = "keywords", sep = ";", similarity = "association")
 
 ### Similarity method overview
 
-| Method          | Formula                                         | Description                                                                                                            | Best for                              |
-|-----------------|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------------|
-| `"none"`        | $C_{ij}$                                        | Raw co-occurrence count                                                                                                | Exploratory analysis                  |
-| `"jaccard"`     | $\frac{C_{ij}}{f_{i} + f_{j} - C_{ij}}$         | Divides co-occurrences by the total number of transactions containing either item                                      | General purpose                       |
-| `"cosine"`      | $\frac{C_{ij}}{\sqrt{f_{i} \cdot f_{j}}}$       | Divides co-occurrences by the geometric mean of item frequencies (Salton’s cosine)                                     | Scale-invariant comparison            |
-| `"inclusion"`   | $\frac{C_{ij}}{\min\left( f_{i},f_{j} \right)}$ | Divides co-occurrences by the frequency of the rarer item (Simpson coefficient)                                        | Subset and hierarchical relationships |
-| `"association"` | $\frac{C_{ij}}{f_{i} \cdot f_{j}}$              | Divides co-occurrences by the product of item frequencies, discounting chance co-occurrences (van Eck & Waltman, 2009) | Bibliometric networks                 |
-| `"dice"`        | $\frac{2C_{ij}}{f_{i} + f_{j}}$                 | Divides co-occurrences by the arithmetic mean of item frequencies                                                      | Binary presence/absence networks      |
-| `"equivalence"` | $\frac{C_{ij}^{2}}{f_{i} \cdot f_{j}}$          | Squares the co-occurrence count before dividing by the product of frequencies (cosine squared)                         | Strict filtering                      |
-| `"relative"`    | Row-normalized (each row sums to 1)             | Normalizes each row so that all edge weights from an item sum to 1                                                     | Asymmetric tendencies                 |
+| Method | Formula | Description | Best for |
+|----|----|----|----|
+| `"none"` | $`C_{ij}`$ | Raw co-occurrence count | Exploratory analysis |
+| `"jaccard"` | $`\frac{C_{ij}}{f_i + f_j - C_{ij}}`$ | Divides co-occurrences by the total number of transactions containing either item | General purpose |
+| `"cosine"` | $`\frac{C_{ij}}{\sqrt{f_i \cdot f_j}}`$ | Divides co-occurrences by the geometric mean of item frequencies (Salton’s cosine) | Scale-invariant comparison |
+| `"inclusion"` | $`\frac{C_{ij}}{\min(f_i, f_j)}`$ | Divides co-occurrences by the frequency of the rarer item (Simpson coefficient) | Subset and hierarchical relationships |
+| `"association"` | $`\frac{C_{ij}}{f_i \cdot f_j}`$ | Divides co-occurrences by the product of item frequencies, discounting chance co-occurrences (van Eck & Waltman, 2009) | Bibliometric networks |
+| `"dice"` | $`\frac{2 C_{ij}}{f_i + f_j}`$ | Divides co-occurrences by the arithmetic mean of item frequencies | Binary presence/absence networks |
+| `"equivalence"` | $`\frac{C_{ij}^2}{f_i \cdot f_j}`$ | Squares the co-occurrence count before dividing by the product of frequencies (cosine squared) | Strict filtering |
+| `"relative"` | Row-normalized (each row sums to 1) | Normalizes each row so that all edge weights from an item sum to 1 | Asymmetric tendencies |
 
 ## Counting
 
 The `counting` argument controls how much each transaction contributes
 to the co-occurrence count. Under full counting (default), each
 co-occurring pair adds 1 regardless of how many items are in the
-transaction. Under fractional counting, each pair adds $1/(n - 1)$ where
-$n$ is the number of items in the transaction, preventing large
+transaction. Under fractional counting, each pair adds $`1/(n-1)`$ where
+$`n`$ is the number of items in the transaction, preventing large
 transactions from dominating the network. For example, a document with
 10 keywords creates 45 pairs under full counting but contributes only
 1/9 per pair under fractional counting.
 
 ``` r
+
 # Full counting (default): each co-occurring pair adds 1
 co(data, field = "keywords", sep = ";")
 
@@ -255,6 +265,7 @@ similarity normalization, useful for visualization, thresholding, or
 feeding into downstream models.
 
 ``` r
+
 # Log-scaled Jaccard similarity
 cooccurrence(baskets, similarity = "jaccard", scale = "log")
 
@@ -264,15 +275,15 @@ cooccurrence(baskets, similarity = "cosine", scale = "minmax")
 
 ### Scaling method overview
 
-| Method         | Transformation                | Description                                             | Use case                                   |
-|----------------|-------------------------------|---------------------------------------------------------|--------------------------------------------|
-| `"minmax"`     | Scale to $\lbrack 0,1\rbrack$ | Rescales all weights to the range $\lbrack 0,1\rbrack$  | Visualization and cross-network comparison |
-| `"log"`        | $\log(1 + w)$                 | Applies a natural log transformation                    | Compressing heavy-tailed distributions     |
-| `"log10"`      | $\log_{10}(1 + w)$            | Same as log but base 10                                 | When base 10 interpretation is preferred   |
-| `"sqrt"`       | $\sqrt{w}$                    | Square root transformation                              | Mild compression of skewed weights         |
-| `"binary"`     | 1 if $w > 0$, else 0          | Converts all positive weights to 1                      | Presence/absence networks                  |
-| `"zscore"`     | $(w - \mu)/\sigma$            | Standardizes weights to mean 0 and standard deviation 1 | Statistical comparison across networks     |
-| `"proportion"` | $w/\sum w$                    | Divides each weight by the total sum of weights         | Expressing edges as relative importance    |
+| Method | Transformation | Description | Use case |
+|----|----|----|----|
+| `"minmax"` | Scale to $`[0, 1]`$ | Rescales all weights to the range $`[0, 1]`$ | Visualization and cross-network comparison |
+| `"log"` | $`\log(1 + w)`$ | Applies a natural log transformation | Compressing heavy-tailed distributions |
+| `"log10"` | $`\log_{10}(1 + w)`$ | Same as log but base 10 | When base 10 interpretation is preferred |
+| `"sqrt"` | $`\sqrt{w}`$ | Square root transformation | Mild compression of skewed weights |
+| `"binary"` | 1 if $`w > 0`$, else 0 | Converts all positive weights to 1 | Presence/absence networks |
+| `"zscore"` | $`(w - \mu) / \sigma`$ | Standardizes weights to mean 0 and standard deviation 1 | Statistical comparison across networks |
+| `"proportion"` | $`w / \sum w`$ | Divides each weight by the total sum of weights | Expressing edges as relative importance |
 
 ## Filtering
 
@@ -283,9 +294,10 @@ Three filtering arguments control which edges appear in the result:
   computed.
 - `threshold`: keeps only edges with a weight at or above a specified
   value, applied after similarity normalization and scaling.
-- `top_n`: keeps only the $n$ strongest edges by weight.
+- `top_n`: keeps only the $`n`$ strongest edges by weight.
 
 ``` r
+
 # Drop entities appearing in fewer than 3 transactions
 cooccurrence(baskets, min_occur = 3)
 
@@ -300,6 +312,7 @@ All three can be combined for fine-grained control over the network size
 and density:
 
 ``` r
+
 cooccurrence(papers, field = "keywords", sep = ";",
              similarity = "association", min_occur = 2,
              threshold = 0.01, top_n = 50)
@@ -316,6 +329,7 @@ frequencies are group-specific. All other parameters (`similarity`,
 `scale`, `threshold`, `min_occur`, `top_n`) apply per group.
 
 ``` r
+
 papers <- data.frame(
   year = c(2020, 2020, 2020, 2021, 2021, 2021),
   keywords = c("network; graph; matrix", "graph; algebra",
@@ -348,6 +362,7 @@ attributes on the returned data frame, making it easy to access the
 underlying data for further analysis or inspection.
 
 ``` r
+
 attr(result, "matrix")          # Normalized weight matrix
 attr(result, "raw_matrix")      # Raw count matrix (diagonal zeroed)
 attr(result, "items")           # Character vector of all items
@@ -362,6 +377,7 @@ The `cooccurrence` object can be also printed, summarized, and plotted
 directly as a co-occurrence network (Saqr et al., 2023):
 
 ``` r
+
 # Summary statistics
 summary(result)
 
@@ -385,6 +401,7 @@ The `output` argument controls the format returned directly:
 - `"matrix"` — square co-occurrence matrix
 
 ``` r
+
 # Default: tidy data frame with from, to, weight, count
 co(data, field = "keywords", sep = ";")
 
@@ -406,6 +423,7 @@ mat <- co(data, field = "keywords", sep = ";", output = "matrix")
 The Gephi output can be written directly to CSV for import:
 
 ``` r
+
 write.csv(co(data, field = "keywords", sep = ";", output = "gephi"),
           "network.csv", row.names = FALSE)
 ```
@@ -419,6 +437,7 @@ install only what you need.
 ### Matrix
 
 ``` r
+
 # Normalized similarity matrix
 as_matrix(result)
 
@@ -429,6 +448,7 @@ as_matrix(result, type = "raw")
 ### igraph
 
 ``` r
+
 # install.packages("igraph")
 g <- as_igraph(result)
 plot(g, edge.width = igraph::E(g)$weight * 3)
@@ -439,6 +459,7 @@ igraph::betweenness(g)
 ### tidygraph
 
 ``` r
+
 # install.packages("tidygraph")
 tg <- as_tidygraph(result)
 # Use with ggraph
@@ -447,6 +468,7 @@ tg <- as_tidygraph(result)
 ### cograph
 
 ``` r
+
 # remotes::install_github("mohsaqr/cograph")
 net <- as_cograph(result)
 cograph::splot(net)
@@ -456,6 +478,7 @@ cograph::communities(net)
 ### Nestimate
 
 ``` r
+
 # remotes::install_github("mohsaqr/Nestimate")
 net <- as_netobject(result)
 Nestimate::centrality(net)
@@ -468,9 +491,9 @@ Regardless of input format, the internal pipeline is:
 
 1.  **Parse** input into a list of character vectors (transactions)
 2.  **Filter** entities below `min_occur` frequency
-3.  **Build** a binary transaction matrix $B$ (rows = transactions,
+3.  **Build** a binary transaction matrix $`B`$ (rows = transactions,
     columns = items)
-4.  **Compute** raw co-occurrence: $C = B^{\top}B$ via
+4.  **Compute** raw co-occurrence: $`C = B^\top B`$ via
     [`crossprod()`](https://rdrr.io/r/base/crossprod.html)
 5.  **Normalize** using the chosen `similarity` measure
 6.  **Scale** weights if `scale` is specified
@@ -483,21 +506,21 @@ optimized BLAS routines for the matrix multiplication.
 
 ## Full parameter reference
 
-| Argument     | Type      | Description                                                                | Default     |
-|--------------|-----------|----------------------------------------------------------------------------|-------------|
-| `data`       | various   | Input data (data.frame, matrix, or list)                                   | required    |
-| `field`      | character | Column(s) containing entities (nodes)                                      | `NULL`      |
-| `by`         | character | Column grouping entities into transactions                                 | `NULL`      |
-| `weight_by`  | character | Column with numeric weights for long format (e.g. LDA topic probabilities) | `NULL`      |
-| `sep`        | character | Delimiter for splitting delimited fields                                   | `NULL`      |
-| `split_by`   | character | Column to split data by (separate network per group)                       | `NULL`      |
-| `similarity` | character | Normalization measure                                                      | `"none"`    |
-| `counting`   | character | `"full"` or `"fractional"`                                                 | `"full"`    |
-| `scale`      | character | Weight scaling method                                                      | `NULL`      |
-| `threshold`  | numeric   | Minimum edge weight (after normalization + scaling)                        | `0`         |
-| `min_occur`  | integer   | Minimum entity frequency (transactions)                                    | `1`         |
-| `top_n`      | integer   | Keep only the top N edges by weight (per group if split)                   | `NULL`      |
-| `output`     | character | Output format: `"default"`, `"gephi"`, `"igraph"`, `"cograph"`, `"matrix"` | `"default"` |
+| Argument | Type | Description | Default |
+|----|----|----|----|
+| `data` | various | Input data (data.frame, matrix, or list) | required |
+| `field` | character | Column(s) containing entities (nodes) | `NULL` |
+| `by` | character | Column grouping entities into transactions | `NULL` |
+| `weight_by` | character | Column with numeric weights for long format (e.g. LDA topic probabilities) | `NULL` |
+| `sep` | character | Delimiter for splitting delimited fields | `NULL` |
+| `split_by` | character | Column to split data by (separate network per group) | `NULL` |
+| `similarity` | character | Normalization measure | `"none"` |
+| `counting` | character | `"full"` or `"fractional"` | `"full"` |
+| `scale` | character | Weight scaling method | `NULL` |
+| `threshold` | numeric | Minimum edge weight (after normalization + scaling) | `0` |
+| `min_occur` | integer | Minimum entity frequency (transactions) | `1` |
+| `top_n` | integer | Keep only the top N edges by weight (per group if split) | `NULL` |
+| `output` | character | Output format: `"default"`, `"gephi"`, `"igraph"`, `"cograph"`, `"matrix"` | `"default"` |
 
 ## References
 

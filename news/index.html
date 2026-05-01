@@ -36,7 +36,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="cooccure-011">cooccure 0.1.1<a class="anchor" aria-label="anchor" href="#cooccure-011"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.1.1" id="cooccure-011">cooccure 0.1.1<a class="anchor" aria-label="anchor" href="#cooccure-011"></a></h2><p class="text-muted">CRAN release: 2026-04-24</p>
 <ul><li>First CRAN release. Package renamed from <code>cooccur</code> (GitHub-only development name) to <code>cooccure</code> to avoid collision with an unrelated archived CRAN package of the same name.</li>
 <li>Internal engine rewritten on top of <code><a href="https://rdrr.io/pkg/Matrix/man/sparseMatrix.html" class="external-link">Matrix::sparseMatrix</a></code> / <code><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">Matrix::crossprod</a></code>. The previous implementation allocated dense <code>n x k</code> and <code>k x k</code> matrices, which hit R’s vector memory limit on corpora with many documents and items (e.g. citation networks &gt; ~100k unique references). The sparse rewrite stays in triplet form end-to-end and scales linearly with the number of non-zero co-occurrences.</li>
 <li>

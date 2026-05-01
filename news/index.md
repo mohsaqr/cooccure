@@ -2,6 +2,8 @@
 
 ## cooccure 0.1.1
 
+CRAN release: 2026-04-24
+
 - First CRAN release. Package renamed from `cooccur` (GitHub-only
   development name) to `cooccure` to avoid collision with an unrelated
   archived CRAN package of the same name.
