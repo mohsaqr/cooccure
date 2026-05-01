@@ -212,6 +212,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
   }
   if (!is.null(aggregate_by) && !is.null(split_by))
     stop("`aggregate_by` and `split_by` cannot be combined.", call. = FALSE)
+  if (!is.null(weight_by) && !is.null(window))
+    stop("`window` is not compatible with `weight_by`.", call. = FALSE)
   stopifnot(is.numeric(lambda), length(lambda) == 1L, lambda > 0)
 
   if (is.null(scale) || identical(scale, "none")) {
@@ -338,8 +340,6 @@ co <- cooccurrence
 
   # Weighted path — long format only
   if (!is.null(weight_by)) {
-    if (!is.null(window))
-      stop("`window` is not compatible with `weight_by`.", call. = FALSE)
     if (fmt != "long")
       stop("`weight_by` is only supported for long format (field + by).",
            call. = FALSE)
@@ -989,38 +989,58 @@ co <- cooccurrence
 .co_attention_pairs <- function(transactions, items, lambda = 1.0) {
   n_items <- length(items)
 
+  ## Per transaction, generate triplets via vectorised triangle-index
+  ## construction (avoids utils::combn(), which is recursive R and
+  ## materialises a 2 x C(n,2) matrix per call).
   triplets_list <- lapply(transactions, function(t) {
     n <- length(t)
     if (n < 2L) return(NULL)
-    combs <- utils::combn(n, 2L)               # 2 x C(n, 2)
-    gaps <- combs[2L, ] - combs[1L, ]
-    weights <- exp(-gaps / lambda)
-    ii <- match(t[combs[1L, ]], items)
-    jj <- match(t[combs[2L, ]], items)
-    swap <- ii > jj
-    if (any(swap)) {
-      tmp <- ii[swap]; ii[swap] <- jj[swap]; jj[swap] <- tmp
-    }
-    cbind(i = ii, j = jj, w = weights)
+    pos_i <- rep.int(seq_len(n - 1L), (n - 1L):1L)
+    pos_j <- sequence((n - 1L):1L, 2:n)
+    weights <- exp(-(pos_j - pos_i) / lambda)
+    list(i = match(t[pos_i], items),
+         j = match(t[pos_j], items),
+         w = weights)
   })
   triplets_list <- triplets_list[!vapply(triplets_list, is.null, logical(1))]
 
-  if (length(triplets_list) == 0L) {
+  if (length(triplets_list) == 0L)
+    return(.co_sym_sparse(integer(0), integer(0), numeric(0), items))
+
+  ii <- unlist(lapply(triplets_list, `[[`, "i"), use.names = FALSE)
+  jj <- unlist(lapply(triplets_list, `[[`, "j"), use.names = FALSE)
+  ww <- unlist(lapply(triplets_list, `[[`, "w"), use.names = FALSE)
+  .co_sym_sparse(ii, jj, ww, items)
+}
+
+
+# ---- Shared sparse-matrix builder ----
+
+#' Build a symmetric sparse matrix from triplets, normalising i <= j.
+#'
+#' `Matrix::sparseMatrix(symmetric = TRUE)` requires entries in one
+#' triangle. Callers that arrive with mixed i,j must swap; this helper
+#' centralises the swap and the empty-triplets shortcut so the
+#' three places that build symmetric pair matrices
+#' (`.co_attention_pairs`, `.co_edges_to_sparse`, plus the empty
+#' fallbacks) read as one line.
+#' @noRd
+.co_sym_sparse <- function(i, j, x, items) {
+  n_items <- length(items)
+  if (length(i) == 0L) {
     return(Matrix::sparseMatrix(
       i = integer(0), j = integer(0), x = numeric(0),
-      dims = c(n_items, n_items),
-      symmetric = TRUE,
+      dims = c(n_items, n_items), symmetric = TRUE,
       dimnames = list(items, items)
     ))
   }
-
-  trip <- do.call(rbind, triplets_list)
+  swap <- i > j
+  if (any(swap)) {
+    tmp <- i[swap]; i[swap] <- j[swap]; j[swap] <- tmp
+  }
   Matrix::sparseMatrix(
-    i = as.integer(trip[, "i"]),
-    j = as.integer(trip[, "j"]),
-    x = as.numeric(trip[, "w"]),
-    dims = c(n_items, n_items),
-    symmetric = TRUE,
+    i = as.integer(i), j = as.integer(j), x = as.numeric(x),
+    dims = c(n_items, n_items), symmetric = TRUE,
     dimnames = list(items, items)
   )
 }
@@ -1084,25 +1104,11 @@ co <- cooccurrence
 #' Build a symmetric sparse matrix from an edge data frame.
 #' @noRd
 .co_edges_to_sparse <- function(edges, items) {
-  n_items <- length(items)
-  if (nrow(edges) == 0L) {
-    return(Matrix::sparseMatrix(
-      i = integer(0), j = integer(0), x = numeric(0),
-      dims = c(n_items, n_items), symmetric = TRUE,
-      dimnames = list(items, items)
-    ))
-  }
-  ii <- match(edges$from, items)
-  jj <- match(edges$to,   items)
-  swap <- ii > jj
-  if (any(swap)) {
-    tmp <- ii[swap]; ii[swap] <- jj[swap]; jj[swap] <- tmp
-  }
-  Matrix::sparseMatrix(
-    i = ii, j = jj, x = edges$weight,
-    dims = c(n_items, n_items), symmetric = TRUE,
-    dimnames = list(items, items)
-  )
+  if (nrow(edges) == 0L)
+    return(.co_sym_sparse(integer(0), integer(0), numeric(0), items))
+  .co_sym_sparse(match(edges$from, items),
+                 match(edges$to,   items),
+                 edges$weight, items)
 }
 
 
