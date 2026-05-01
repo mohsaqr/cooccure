@@ -19,7 +19,8 @@ cooccurrence(
   window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional"),
+  counting = c("full", "fractional", "attention"),
+  lambda = 1,
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -40,7 +41,8 @@ co(
   window = NULL,
   similarity = c("none", "jaccard", "cosine", "inclusion", "association", "dice",
     "equivalence", "relative"),
-  counting = c("full", "fractional"),
+  counting = c("full", "fractional", "attention"),
+  lambda = 1,
   scale = NULL,
   threshold = 0,
   min_occur = 1L,
@@ -178,6 +180,20 @@ co(
   :   Each pair adds \\1 / (n_i - 1)\\ where \\n_i\\ is the number of
       items in transaction \\i\\. Transactions with many items
       contribute less per pair (Perianes-Rodriguez et al., 2016).
+
+  `"attention"`
+
+  :   Each pair within a transaction contributes \\\exp(-\|pos_i -
+      pos_j\| / \lambda)\\ — closer positions give a stronger edge,
+      distant pairs decay. Requires ordered transactions (list / wide /
+      delimited / windowed input). The decay rate \\\lambda\\ is
+      controlled by the `lambda` argument.
+
+- lambda:
+
+  Numeric. Decay rate for `counting = "attention"`. Higher `lambda` →
+  slower decay → distant pairs still contribute. Default `1.0`, matching
+  the tna package. Ignored for other counting methods.
 
 - scale:
 
