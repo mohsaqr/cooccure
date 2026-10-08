@@ -8,9 +8,9 @@ tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to
 **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects.
 
 The main function
-[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
 is also available as the short alias
-[`co()`](https://saqr.me/cooccure/reference/cooccurrence.md).
+[`co()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 ## Installation
 
@@ -351,7 +351,7 @@ co(papers, field = "keywords", sep = ";", split_by = "year",
 
 ## Output
 
-[`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
 returns a tidy data frame of class `cooccurrence` that can be piped,
 filtered, and joined like any standard data frame. The raw co-occurrence
 count is always preserved in the `count` column regardless of similarity

@@ -1,11 +1,11 @@
 # IMDB actor-genre long table (1970-2024)
 
 Long-format table mapping each of the 624 actors in
-[`actors`](https://saqr.me/cooccure/reference/actors.md) to every genre
-of every movie they appeared in. Use this to build an actor
+[`actors`](https://pak.dynasite.org/cooccure/reference/actors.md) to
+every genre of every movie they appeared in. Use this to build an actor
 co-occurrence network grouped by genre: which actors share the same
 genres? Pass `field = "actor"` and `by = "genre"` to
-[`cooccurrence`](https://saqr.me/cooccure/reference/cooccurrence.md).
+[`cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 ## Usage
 

@@ -2,7 +2,7 @@
 
 Creates a `netobject` from a `cooccurrence` edge list, compatible with
 `Nestimate::centrality()`,
-[`Nestimate::bootstrap_network()`](https://saqr.me/Nestimate/reference/bootstrap_network.html),
+[`Nestimate::bootstrap_network()`](https://pak.dynasite.org/Nestimate/reference/bootstrap_network.html),
 etc.
 
 ## Usage

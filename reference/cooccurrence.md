@@ -89,7 +89,7 @@ co(
   - A `list` of character vectors (each element is a transaction).
 
   - A `nestimate_data` object from
-    [`Nestimate::prepare()`](https://saqr.me/Nestimate/reference/prepare.html);
+    [`Nestimate::prepare()`](https://pak.dynasite.org/Nestimate/reference/prepare.html);
     its `sequence_data` is used, so event logs can be sessionized there
     and networked here.
 

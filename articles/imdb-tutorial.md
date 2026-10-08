@@ -795,9 +795,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 544b6b4 UNW- 17 102 -- 
+#> IGRAPH 9248606 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 544b6b4 (vertex names):
+#> + edges from 9248606 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -858,7 +858,7 @@ the fact, without re-running the computation. This is useful when you
 want to start with the default tidy data frame and convert to a specific
 format only when needed.
 
-[`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md)
+[`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md)
 converts the result to a square similarity matrix, where each cell
 contains the Jaccard weight between the corresponding pair of genres:
 
@@ -985,16 +985,16 @@ as_matrix(result, type = "raw")
 #> War              0       0       9     1       0       3     0        1   0
 ```
 
-[`as_igraph()`](https://saqr.me/cooccure/reference/as_igraph.md)
+[`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md)
 converts the result to an igraph object, giving access to the full
 igraph ecosystem for further network analysis:
 
 ``` r
 
 as_igraph(result)
-#> IGRAPH 78c4ba6 UNW- 17 102 -- 
+#> IGRAPH 08bedff UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 78c4ba6 (vertex names):
+#> + edges from 08bedff (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -1023,8 +1023,8 @@ res1 <- co(movies, field = "genres", sep = ",")
 
 *Long/bipartite* format uses one row per genre–movie pair. The data is
 first reshaped from wide to long, then passed to
-[`co()`](https://saqr.me/cooccure/reference/cooccurrence.md) with
-`field` specifying the genre column and by specifying the movie
+[`co()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
+with `field` specifying the genre column and by specifying the movie
 identifier.
 
 ``` r

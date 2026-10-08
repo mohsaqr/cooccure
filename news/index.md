@@ -2,7 +2,9 @@
 
 ## cooccure 0.4.0
 
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+CRAN release: 2026-07-22
+
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   gains a `window =` parameter for sliding-window co-occurrence on
   ordered sequence input (lists of vectors and wide TraMineR-style data
   frames via `field = "all"`). Each window of `w` consecutive positions
@@ -11,7 +13,7 @@
   behavior. TraMineR void markers (`NA`, `""`, `"%"`, `"*"`, `"NaN"`)
   are dropped before windowing. Pure base R via
   [`embed()`](https://rdrr.io/r/stats/embed.html).
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   gains `aggregate_by =` and `aggregate =` parameters. `aggregate_by`
   groups the data by a column (e.g. journal id), computes the per-group
   co-occurrence network with whatever `similarity` / `counting` /
@@ -28,27 +30,27 @@
   `tna::build_model(type = "attention")` semantics, undirected. The new
   `lambda =` parameter (default `1.0`) controls the decay rate.
 - `group =` is now accepted as an alias for `split_by =`.
-- [`summary.cooccurrence()`](https://saqr.me/cooccure/reference/summary.cooccurrence.md)
+- [`summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md)
   now returns a structured summary object with network size, density,
   mean degree, isolates, node-level degree and strength, and optional
   group-level summaries.
-- [`print.cooccurrence()`](https://saqr.me/cooccure/reference/print.cooccurrence.md)
+- [`print.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/print.cooccurrence.md)
   now shows a compact diagnostic header before the edge preview,
   including density, mean degree, isolates, method metadata, and top
   nodes.
 - `plot.cooccurrence(type = "degree")` adds a base R degree-distribution
   plot.
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   accepts a raw event log directly via `action =` (the event column),
   with optional `actor =`, `time =`, `session =`, `order =`, and
   `time_threshold =` (default 900 seconds). The log is sessionized into
   ordered sequences and each session becomes one transaction, so
   `window =` and `counting = "attention"` apply. Sessionization —
   timestamp parsing and gap splitting — is delegated to
-  [`Nestimate::prepare()`](https://saqr.me/Nestimate/reference/prepare.html)
+  [`Nestimate::prepare()`](https://pak.dynasite.org/Nestimate/reference/prepare.html)
   rather than reimplemented, so `Nestimate` is required for this input
   only.
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   gains `vars =`, naming the indicator (one-hot) columns directly. The
   specification is resolved like `select` in base
   [`subset()`](https://rdrr.io/r/base/subset.html), so a bare range
@@ -64,9 +66,9 @@
 - `NA` in an indicator table is treated as absent. It previously reached
   [`Matrix::sparseMatrix()`](https://rdrr.io/pkg/Matrix/man/sparseMatrix.html)
   as an `NA` index and failed with an internal error.
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   accepts a `nestimate_data` object from
-  [`Nestimate::prepare()`](https://saqr.me/Nestimate/reference/prepare.html)
+  [`Nestimate::prepare()`](https://pak.dynasite.org/Nestimate/reference/prepare.html)
   and uses its `sequence_data`, so event logs can be sessionized by
   `prepare()` (time gaps, timestamp parsing) and networked here without
   duplicating that logic. Passing one used to fall into the
@@ -84,9 +86,9 @@
   thresholded on its own value. Filtering by the undirected pair could
   retain a direction whose weight was below `threshold`.
 - Added a cross-implementation test suite pinning
-  [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
+  [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
   to
-  [`Nestimate::cooccurrence()`](https://saqr.me/Nestimate/reference/cooccurrence.html)
+  [`Nestimate::cooccurrence()`](https://pak.dynasite.org/Nestimate/reference/cooccurrence.html)
   across all eight similarity measures, all five shared input formats,
   `min_occur`, `threshold`, `top_n`, their combinations, degenerate
   inputs, and randomized networks. The two agree exactly once
@@ -102,19 +104,20 @@
   an item that appears in only that document.
 - Bug fix: `threshold` and `top_n` filtered the edge list but not the
   stored matrix, so
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md), the
-  heatmap, and the cograph and netobject converters disagreed with the
-  printed edges (`top_n = 1` returned one edge but a three-edge matrix).
-  The matrix is now rebuilt from the surviving edges.
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md),
+  the heatmap, and the cograph and netobject converters disagreed with
+  the printed edges (`top_n = 1` returned one edge but a three-edge
+  matrix). The matrix is now rebuilt from the surviving edges.
 - Bug fix: with `counting = "attention"`, a window covering the whole
   sequence did not reproduce the unwindowed result.
   [`embed()`](https://rdrr.io/r/stats/embed.html) emits each window
   most-recent-first, and attention reads positional gaps off the
   transaction, so the decay was mirrored. Windows are restored to
   reading order before deduplication; set-based counting is unaffected.
-- [`as_igraph()`](https://saqr.me/cooccure/reference/as_igraph.md) and
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md) now
-  accept `output = "gephi"` objects, whose columns are named
+- [`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md)
+  and
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md)
+  now accept `output = "gephi"` objects, whose columns are named
   `Source`/`Target`/`Weight`/`Count`. They previously failed with
   “undefined columns selected”.
 - A group that fails during `split_by` now warns and names the group.
@@ -133,10 +136,10 @@
 - Bug fix: a `split_by` result inherited the FIRST group’s `matrix`,
   `items`, `frequencies`, and `n_transactions` attributes from
   [`rbind()`](https://rdrr.io/r/base/cbind.html), so
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md) and
-  the other converters silently described only that group. Those
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md)
+  and the other converters silently described only that group. Those
   attributes are now dropped from split results, and
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md)
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md)
   rebuilds from the full edge list. Per-group support is recorded in the
   new `group_items` and `group_transactions` attributes.
 - Bug fix: the `groups` attribute of a `split_by` result listed every
@@ -173,7 +176,7 @@ CRAN release: 2026-04-24
   scales linearly with the number of non-zero co-occurrences.
 - `attr(x, "matrix")` and `attr(x, "raw_matrix")` are now sparse Matrix
   objects.
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md)
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md)
   densifies them on demand so existing downstream code keeps working.
 - Added `Matrix` to `Imports`.
 - Delimited parsers (`.co_parse_delimited`, `.co_parse_multi_delimited`)
@@ -186,8 +189,9 @@ CRAN release: 2026-04-24
 ## cooccure 0.1.0
 
 - Initial development release (distributed as `cooccur` on GitHub).
-- [`cooccurrence()`](https://saqr.me/cooccure/reference/cooccurrence.md)
-  (alias [`co()`](https://saqr.me/cooccure/reference/cooccurrence.md))
+- [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
+  (alias
+  [`co()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md))
   builds co-occurrence networks from six input formats: delimited
   fields, multi-column delimited, long/bipartite, binary matrices, wide
   sequences (`field = "all"`), and lists of character vectors.
@@ -204,10 +208,10 @@ CRAN release: 2026-04-24
 - `output` argument returns edges in default, Gephi, `igraph`,
   `cograph`, or matrix form.
 - S3 converters:
-  [`as_matrix()`](https://saqr.me/cooccure/reference/as_matrix.md),
-  [`as_igraph()`](https://saqr.me/cooccure/reference/as_igraph.md),
-  [`as_tidygraph()`](https://saqr.me/cooccure/reference/as_tidygraph.md),
-  [`as_cograph()`](https://saqr.me/cooccure/reference/as_cograph.md),
-  [`as_netobject()`](https://saqr.me/cooccure/reference/as_netobject.md).
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md),
+  [`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md),
+  [`as_tidygraph()`](https://pak.dynasite.org/cooccure/reference/as_tidygraph.md),
+  [`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md),
+  [`as_netobject()`](https://pak.dynasite.org/cooccure/reference/as_netobject.md).
 - Shiny app accessible via
-  [`launch_app()`](https://saqr.me/cooccure/reference/launch_app.md).
+  [`launch_app()`](https://pak.dynasite.org/cooccure/reference/launch_app.md).
