@@ -1,7 +1,10 @@
 # Extract the co-occurrence matrix
 
-Returns the full square co-occurrence matrix (normalized + scaled). Use
-`type = "raw"` for the raw count matrix.
+Returns the full square co-occurrence matrix: the edge weights after
+similarity normalization, scaling, and filtering, or with `type = "raw"`
+the raw co-occurrence counts. Use it when a method downstream
+(clustering, a heatmap, another network package) expects a matrix rather
+than an edge list.
 
 ## Usage
 
@@ -24,11 +27,16 @@ as_matrix(x, type = c("normalized", "raw"), ...)
 
 - type:
 
-  Character. `"normalized"` (default) or `"raw"`.
+  Character. `"normalized"` (default) for the weights, or `"raw"` for
+  the number of transactions in which each pair co-occurs.
 
 ## Value
 
-A numeric matrix.
+A dense base numeric matrix, one row and one column per item, with item
+names as row and column names and a zero diagonal. It is symmetric for
+every similarity except `"relative"`, where row `i` holds the weights
+from item `i` and each row sums to 1. Results built with `split_by`
+store no single matrix, so the matrix is rebuilt from the edge list.
 
 ## Examples
 

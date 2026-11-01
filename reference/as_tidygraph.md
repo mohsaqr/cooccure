@@ -1,6 +1,7 @@
 # Convert to tidygraph
 
-Creates a `tbl_graph` from a `cooccurrence` edge list.
+Creates a `tbl_graph` from a `cooccurrence` edge list, for use with
+tidygraph and ggraph. Requires the tidygraph and igraph packages.
 
 ## Usage
 
@@ -19,11 +20,16 @@ as_tidygraph(x, ...)
 
 - ...:
 
-  Ignored.
+  Passed to
+  [`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md).
 
 ## Value
 
-A `tbl_graph` object.
+A `tbl_graph` (which also inherits from `igraph`) with the same vertices
+and edges as
+[`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md):
+node column `name`, edge columns `from`, `to`, `weight`, `count`. Raises
+an error when tidygraph is not installed.
 
 ## Examples
 

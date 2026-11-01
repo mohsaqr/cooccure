@@ -1,8 +1,12 @@
 # Build a co-occurrence network
 
 Constructs an undirected co-occurrence network from various input
-formats and returns a tidy edge data frame. Argument names follow the
-citenets convention.
+formats and returns a tidy edge data frame. Two items are linked when
+they occur in the same transaction (a document, a basket, a session, a
+window of a sequence); the edge weight is the number of shared
+transactions, optionally normalized by one of eight similarity measures
+and rescaled. Argument names follow the citenets convention. `co()` is a
+short alias.
 
 ## Usage
 
@@ -162,7 +166,11 @@ co(
 
   `"relative"`
 
-  :   Row-normalized: each row sums to 1.
+  :   Row-normalized: each row of the stored matrix sums to 1. This is
+      the only asymmetric measure. The edge data frame holds one row per
+      pair, carrying the `from` to `to` direction; the stored matrix
+      ([`as_matrix`](https://pak.dynasite.org/cooccure/reference/as_matrix.md))
+      holds both directions.
 
 - counting:
 
@@ -182,7 +190,7 @@ co(
   `"attention"`
 
   :   Each pair within a transaction contributes \\\exp(-\|pos_i -
-      pos_j\| / \lambda)\\ — closer positions give a stronger edge,
+      pos_j\| / \lambda)\\, so closer positions give a stronger edge and
       distant pairs decay. Requires ordered transactions (list / wide /
       delimited / windowed input). The decay rate \\\lambda\\ is
       controlled by the `lambda` argument.
@@ -238,7 +246,8 @@ co(
 
 - top_n:
 
-  Integer or `NULL`. Keep only the top `top_n` edges by weight. When
+  Integer or `NULL`. Keep only the top `top_n` edges by weight. Ties at
+  the cut are truncated, so exactly `top_n` edges are returned. When
   `split_by` is used, applied per group. Default `NULL` (all edges).
 
 - output:
@@ -251,8 +260,8 @@ co(
 
   `"gephi"`
 
-  :   `Source`, `Target`, `Weight`, `Type` (= `"Undirected"`). Ready for
-      Gephi import.
+  :   `Source`, `Target`, `Weight`, `Type` (= `"Undirected"`), `Count`.
+      Ready for Gephi import.
 
   `"igraph"`
 
@@ -348,44 +357,82 @@ co(
   window of `w` consecutive positions in a sequence becomes a
   mini-transaction; states inside the same window co-occur. Sequences
   shorter than `w` contribute no transactions. Only applies to ordered
-  formats: wide (`field = "all"`) and `list`. Default `NULL` (whole
-  sequence treated as one transaction — bag of states).
+  formats: wide (`field = "all"`), `list`, and event logs given with
+  `action`. Default `NULL` (whole sequence treated as one transaction —
+  bag of states).
 
 - lambda:
 
-  Numeric. Decay rate for `counting = "attention"`. Higher `lambda` →
-  slower decay → distant pairs still contribute. Default `1.0`, matching
-  the tna package. Ignored for other counting methods.
+  Numeric. Decay rate for `counting = "attention"`. A higher `lambda`
+  gives slower decay, so distant pairs still contribute. Default `1.0`,
+  matching the tna package. Ignored for other counting methods.
 
 - ...:
 
-  Currently unused.
+  Must be empty. Any argument passed here, named or not, raises an
+  error, so a misspelled argument name (e.g. `simliarity`) fails loudly
+  instead of being ignored.
 
 ## Value
 
 Depends on `output`:
 
-- `"default"`: A `cooccurrence` data frame with columns `from`, `to`,
-  `weight`, `count` (and `group` when `split_by` is used).
+- `"default"`: A data frame of class `c("cooccurrence", "data.frame")`
+  with one row per undirected edge (item pair with non-zero weight) and
+  columns `from`, `to` (character item names), `weight` (numeric, after
+  similarity and scaling), and `count` (number of transactions
+  containing both items). With `split_by`, one row per edge per group,
+  plus a character `group` column. With `aggregate_by`, one row per edge
+  of the combined network, and `count` is summed across groups.
 
-- `"gephi"`: A data frame with columns `Source`, `Target`, `Weight`,
-  `Type`, `Count`. Ready for Gephi CSV import.
+- `"gephi"`: The same edges, still of class `cooccurrence`, with columns
+  `Source`, `Target`, `Weight`, `Type` (always `"Undirected"`), `Count`
+  (and `group` when split). Ready for Gephi CSV import.
 
-- `"igraph"`: An `igraph` graph object.
+- `"igraph"`: An undirected `igraph` graph, as returned by
+  [`as_igraph`](https://pak.dynasite.org/cooccure/reference/as_igraph.md).
 
-- `"cograph"`: A `cograph_network` object.
+- `"cograph"`: A `cograph_network` object, as returned by
+  [`as_cograph`](https://pak.dynasite.org/cooccure/reference/as_cograph.md).
 
-- `"matrix"`: A square numeric co-occurrence matrix.
+- `"matrix"`: A square numeric base matrix with items as row and column
+  names and a zero diagonal, as returned by
+  [`as_matrix`](https://pak.dynasite.org/cooccure/reference/as_matrix.md).
 
-For the data frame outputs, rows are sorted by weight descending and
-attributes store the full matrix, item frequencies, and parameters.
+For the data frame outputs, rows are sorted by weight, largest first.
+The weight matrix, raw count matrix, items, item frequencies, and the
+parameters used are kept as attributes; read them through
+[`as_matrix`](https://pak.dynasite.org/cooccure/reference/as_matrix.md),
+[`summary`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md),
+and
+[`as.data.frame.summary.cooccurrence`](https://pak.dynasite.org/cooccure/reference/as.data.frame.summary.cooccurrence.md)
+rather than directly. Printing shows a one-line network header (nodes,
+edges, density, mean degree, transactions), the method, and the
+strongest edges.
+
+Errors are raised for unknown arguments in `...`, for `split_by`
+combined with `aggregate_by`, for `window` combined with `weight_by`,
+for `vars` combined with `field`, `by`, or `sep`, and when no non-empty
+transaction remains. A `split_by` group that fails for another reason is
+dropped with a warning naming the group.
 
 ## References
 
 van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
 data? An analysis of some well-known similarity measures. *Journal of
 the American Society for Information Science and Technology*, 60(8),
-1635–1651.
+1635–1651. [doi:10.1002/asi.21075](https://doi.org/10.1002/asi.21075)
+
+Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).
+Constructing bibliometric networks: A comparison between full and
+fractional counting. *Journal of Informetrics*, 10(4), 1178–1195.
+[doi:10.1016/j.joi.2016.10.006](https://doi.org/10.1016/j.joi.2016.10.006)
+
+Saqr, M., Lopez-Pernas, S., Conde, M. A., & Hernandez-Garcia, A. (2024).
+Social network analysis: A primer, a guide and a tutorial in R. In M.
+Saqr & S. Lopez-Pernas (Eds.), *Learning Analytics Methods and
+Tutorials: A Practical Guide Using R*. Springer.
+[doi:10.1007/978-3-031-54464-4_15](https://doi.org/10.1007/978-3-031-54464-4_15)
 
 ## Examples
 

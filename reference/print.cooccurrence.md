@@ -1,6 +1,14 @@
 # Print a cooccurrence edge list
 
 Prints a compact network diagnostic header followed by an edge preview.
+The header gives the number of nodes, edges, and transactions, the
+density and mean degree, the similarity, counting, and scaling used, the
+number of isolates, and the five highest-degree nodes, so the size and
+sparsity of a network can be judged before any edge is read. For a
+`split_by` result the pooled density and degree are omitted, since they
+are undefined when several networks are stacked; use
+[`summary`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md)
+for per-group metrics.
 
 ## Usage
 
@@ -17,7 +25,7 @@ print(x, n = 10L, ...)
 
 - n:
 
-  Integer. Number of rows to show. Default 10.
+  Integer. Number of edge rows to show. Default 10.
 
 - ...:
 
@@ -25,7 +33,8 @@ print(x, n = 10L, ...)
 
 ## Value
 
-Invisibly returns `x`.
+Invisibly returns `x`, unchanged. Called for the side effect of
+printing.
 
 ## Examples
 

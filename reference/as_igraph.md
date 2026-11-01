@@ -1,7 +1,8 @@
 # Convert to igraph
 
 Creates an undirected, weighted `igraph` graph from a `cooccurrence`
-edge list.
+edge list, so the result can be analyzed with any igraph function.
+Requires the igraph package.
 
 ## Usage
 
@@ -16,16 +17,20 @@ as_igraph(x, ...)
 
 - x:
 
-  A `cooccurrence` data frame.
+  A `cooccurrence` data frame (default or `"gephi"` column names).
 
 - ...:
 
   Passed to
-  [`igraph::graph_from_data_frame`](https://r.igraph.org/reference/graph_from_data_frame.html).
+  [`igraph::graph_from_data_frame()`](https://r.igraph.org/reference/graph_from_data_frame.html),
+  apart from `directed` and `vertices`, which are set here.
 
 ## Value
 
-An `igraph` object.
+An undirected `igraph` object with one vertex per item (vertex attribute
+`name`, isolated items included) and one edge per row of `x` (edge
+attributes `weight` and `count`). Raises an error when igraph is not
+installed.
 
 ## Examples
 

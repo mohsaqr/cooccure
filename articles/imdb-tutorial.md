@@ -1,8 +1,13 @@
 # Co-occurrence Networks with IMDB Movie Data
 
-This tutorial demonstrates every feature of the `cooccure` package using
+This tutorial demonstrates the core of the `cooccure` package using
 1,000 highly-rated IMDB movies (rating $`\geq`$ 7.0, $`\geq`$ 1,000
-votes, 1970–2024).
+votes, 1970–2024). Inputs that the movie data does not need — one-hot
+tables (`vars`), raw event logs (`action`), sliding windows over ordered
+sequences (`window`), position-decay weighting
+(`counting = "attention"`), and pooling groups into one network
+(`aggregate_by`) — are documented with runnable examples in
+[`?cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 Starting from raw tabular data, we build genre co-occurrence networks,
 construct actor collaboration networks, compare co-occurrence patterns
@@ -17,9 +22,9 @@ for visualization and downstream analysis.
 library(cooccure)
 ```
 
-The dataset contains the title of the movie, the year and decade, the
-`genres` (comma-separated), the average rating, the number of votes, and
-the rating band.
+The dataset contains the IMDB identifier and title of each movie, the
+year and decade, the `genres` (comma-separated), the average rating, and
+the number of votes.
 
 ``` r
 
@@ -73,23 +78,31 @@ The result shows 22 genre nodes and 129 edges. *Drama* dominates the top
 pairs simply because it is the most frequent genre, inflating
 co-occurrence with nearly every other genre regardless of actual
 association strength. Jaccard similarity normalizes for this, so the
-strongest edges reflect true affinity rather than frequency. A directed
-co-occurrence graph is then built and its degree distribution plotted as
-a bar chart, showing how many nodes share each degree value and whether
-connectivity is concentrated or evenly spread across genres.
+strongest edges reflect true affinity rather than frequency.
+
+Before reading individual edges, the degree distribution tells whether
+the network has a few hub genres or links nearly everything to
+everything. The Jaccard network is built directly as a `cograph_network`
+with `output = "cograph"` and passed to cograph’s
+[`degree_distribution()`](https://sonsoles.me/cograph/reference/degree_distribution.html).
 
 ``` r
 
 library(cograph)
 
-Net <- co(movies, field = "genres", sep = ",", similarity = "jaccard")
+genre_net <- co(movies, field = "genres", sep = ",", similarity = "jaccard",
+                output = "cograph")
 
-Gr<- as_cograph(Net, directed = TRUE)
-
-degree_distribution(Gr)
+degree_distribution(genre_net, col = "#0072B2")
 ```
 
 ![](imdb-tutorial_files/figure-html/genre-jaccard-1.png)
+
+Most genres link to between 9 and 17 of the other 21, so the genre
+network is dense rather than hub-dominated: a genre’s connections say
+little on their own, and the edge weights carry the structure. The two
+outliers at the low end are *Western* (1 link) and *News* (2 links),
+each tagged on a single movie.
 
 ### Comparing similarity measures
 
@@ -153,10 +166,12 @@ co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
 ```
 
 - `similarity = "inclusion"` — Dividing by the less common genre’s
-  frequency surfaces subset relationships. *Documentary*–*News* and
-  *History*–*News* both score 1, meaning *News* movies are always also
-  tagged as *Documentary* or *History*—*News* is a niche genre that only
-  appears alongside broader ones.
+  frequency surfaces subset relationships. *Documentary*–*News*,
+  *History*–*News*, and *Drama*–*Western* all score 1 with a count of 1:
+  *News* and *Western* are each tagged on a single movie, so any genre
+  that shares that movie scores a perfect inclusion. Inclusion rewards
+  rare items, so pair it with `min_occur` before reading a score of 1 as
+  a real subset relation.
 
 ``` r
 
@@ -173,9 +188,11 @@ co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
 
 - `similarity = "association"` — Discounting by the product of
   individual frequencies reveals pairs that co-occur far more than
-  chance would predict. Rare genre combinations like *History*–*News*
-  and *Documentary*–*News* top the list because their co-occurrence is
-  disproportionately high relative to their individual frequencies.
+  chance would predict. *History*–*News*, *Horror*–*Sci-Fi*, and
+  *Documentary*–*News* top the list because their co-occurrence is high
+  relative to their individual frequencies — but each rests on one or
+  two movies, so association strength, like inclusion, needs `min_occur`
+  to keep single-movie pairs from dominating.
 
 ``` r
 
@@ -212,13 +229,13 @@ co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
 #>     Comedy     Drama 0.3486842   159
 ```
 
-- `similarity = "equivalence"` — Squaring the cosine amplifies
-  differences between strong and weak pairs, pushing weaker associations
-  further down the rankings. *Adventure*-*Animation* retains the top
-  spot, but *Drama*–*Romance* displaces *Action*-*Crime* into third
-  place, suggesting that while *Action*-*Crime* has a higher raw count,
-  *Drama*–*Romance* represents a tighter and more exclusive pairing once
-  the penalty for common genres is compounded.
+- `similarity = "equivalence"` — Equivalence is the square of cosine, so
+  it ranks pairs exactly as cosine does: *Adventure*-*Animation*, then
+  *Drama*–*Romance*, then *Action*-*Crime*. What changes is the spread.
+  The top pair is 1.17 times the third under cosine (0.448 against
+  0.383) and 1.37 times under equivalence (0.201 against 0.147), so
+  equivalence is the measure to use when weak pairs should fade from a
+  weighted plot.
 
 ``` r
 
@@ -319,7 +336,7 @@ any similarity measure.
 - `scale = "log"` — Applies a natural log transformation, compressing
   the heavy tail of the distribution. The ranking of pairs is preserved
   but the gap between frequent and infrequent pairs is reduced.
-  *Comedy*-*Drama* and Drama*-*Romance\* remain at the top, but their
+  *Comedy*-*Drama* and *Drama*-*Romance* remain at the top, but their
   weights are now much closer together than raw counts would suggest.
 
 ``` r
@@ -362,10 +379,13 @@ co(movies, field = "genres", sep = ",", similarity = "jaccard", scale = "minmax"
 ```
 
 - `scale = "binary"` — Converts all positive weights to 1, producing a
-  presence/absence network. The top pairs are no longer ranked by
-  strength but simply by whether they co-occur at all.
-  *Action*-*Adventure* dominate simply because they appear together
-  across a wide range of combinations.
+  presence/absence network. Every edge then has the same weight, so
+  `top_n` has no strength to rank by and the five rows below are simply
+  the first pairs in the stored matrix order, which starts with the
+  alphabetically earliest genres (*Action*, *Adventure*, *Animation*),
+  not the strongest ones. The binary network is for questions about
+  topology — which genres are connected at all (129 pairs here) — and
+  the `count` column still records how often each pair occurred.
 
 ``` r
 
@@ -437,7 +457,9 @@ can be used independently or combined.
 - `min_occur` — Drops any genre appearing in fewer than the specified
   number of transactions before co-occurrences are computed, removing
   rare items that would otherwise inflate the edge count. Here only
-  movies with co-occurrence of minimum 20 are kept.
+  genres tagged on at least 20 movies are kept, which removes five rare
+  genres (22 nodes become 17) and the two movies tagged only with them
+  (1,000 transactions become 998).
 
 ``` r
 
@@ -560,9 +582,11 @@ co(actors, field = "actor", by = "tconst",
 
 Julia Bache-Wiig and Robin Ottersen score 1.0, meaning they appear
 together in every movie either of them appears in — a perfect Jaccard
-score. Applying fractional counting downweights pairs from movies with
-large casts, though in this case the results are unchanged because the
-dataset is small and cast sizes are similar across movies.
+score. Fractional counting downweights pairs from movies with large
+casts. Here the result is unchanged: after `min_occur = 3`, no movie
+keeps more than two of the qualifying actors, so every pair’s fractional
+weight $`1/(n-1)`$ is exactly 1. Fractional counting only changes a
+network when transactions differ in how many items they keep.
 
 ``` r
 
@@ -585,9 +609,9 @@ co(actors, field = "actor", by = "tconst",
 
 ## 6. Splitting by groups
 
-The split_by argument computes a separate co-occurrence network for each
-level of a grouping variable and returns all results in a single data
-frame with a group column.
+The `split_by` argument computes a separate co-occurrence network for
+each level of a grouping variable and returns all results in a single
+data frame with a group column.
 
 - `split_by = "decade"` — Each decade gets its own Jaccard-weighted
   genre network. The dominant pairs shift across decades, reflecting how
@@ -748,7 +772,7 @@ co(movies, field = "genres", sep = ",",
 
 write.csv(
   co(movies, field = "genres", sep = ",", similarity = "jaccard", output = "gephi"),
-  "genre_network.csv", row.names = FALSE
+  file.path(tempdir(), "genre_network.csv"), row.names = FALSE
 )
 ```
 
@@ -772,15 +796,14 @@ splot(net, layout = "fr", scale_nodes_by = "degree")
 ![](imdb-tutorial_files/figure-html/out-cograph-1.png)
 
 Additional styling arguments control `edge_width_range`, `label_size`,
-`node_color`, and `node_border_width`:
+`node_fill`, and `node_border_width`:
 
 ``` r
 
-library(cograph)
-splot(net, layout = "gephi", label_size = .8, label_fontface = "bold",
-           node_fill = "#F9C22E",  
-           node_border_width = 0.0001, edge_color = "black",
-           scale_nodes_by = "degree", edge_width_range = c(0.1:4))
+splot(net, layout = "gephi", label_size = 0.8, label_fontface = "bold",
+      node_fill = "#E69F00",
+      node_border_width = 0.0001, edge_color = "black",
+      scale_nodes_by = "degree", edge_width_range = c(0.1, 4))
 ```
 
 ![](imdb-tutorial_files/figure-html/cograph-styled-1.png)
@@ -795,9 +818,9 @@ functions work on the result without any conversion.
 g <- co(movies, field = "genres", sep = ",",
         similarity = "jaccard", min_occur = 20, output = "igraph")
 g
-#> IGRAPH 9248606 UNW- 17 102 -- 
+#> IGRAPH fcb0673 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 9248606 (vertex names):
+#> + edges from fcb0673 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -841,14 +864,43 @@ visualization.
 
 mat <- co(movies, field = "genres", sep = ",",
           similarity = "jaccard", min_occur = 20, output = "matrix")
-round(mat[1:6, 1:6], 3)
-#>           Action Adventure Animation Biography Comedy Crime
-#> Action     0.000     0.208     0.133     0.019  0.067 0.237
-#> Adventure  0.208     0.000     0.285     0.040  0.089 0.008
-#> Animation  0.133     0.285     0.000     0.011  0.083 0.013
-#> Biography  0.019     0.040     0.011     0.000  0.021 0.048
-#> Comedy     0.067     0.089     0.083     0.021  0.000 0.083
-#> Crime      0.237     0.008     0.013     0.048  0.083 0.000
+round(mat, 3)
+#>             Action Adventure Animation Biography Comedy Crime Documentary Drama
+#> Action       0.000     0.208     0.133     0.019  0.067 0.237       0.000 0.099
+#> Adventure    0.208     0.000     0.285     0.040  0.089 0.008       0.008 0.052
+#> Animation    0.133     0.285     0.000     0.011  0.083 0.013       0.004 0.034
+#> Biography    0.019     0.040     0.011     0.000  0.021 0.048       0.204 0.086
+#> Comedy       0.067     0.089     0.083     0.021  0.000 0.083       0.017 0.211
+#> Crime        0.237     0.008     0.013     0.048  0.083 0.000       0.017 0.131
+#> Documentary  0.000     0.008     0.004     0.204  0.017 0.017       0.000 0.008
+#> Drama        0.099     0.052     0.034     0.086  0.211 0.131       0.008 0.000
+#> Family       0.005     0.054     0.088     0.014  0.036 0.000       0.033 0.031
+#> Fantasy      0.056     0.063     0.090     0.000  0.037 0.005       0.000 0.021
+#> History      0.019     0.019     0.015     0.156  0.015 0.000       0.092 0.066
+#> Music        0.000     0.000     0.008     0.074  0.025 0.000       0.159 0.027
+#> Mystery      0.016     0.007     0.009     0.000  0.009 0.096       0.010 0.042
+#> Romance      0.013     0.012     0.009     0.011  0.168 0.016       0.000 0.198
+#> Sport        0.005     0.000     0.010     0.054  0.020 0.000       0.065 0.022
+#> Thriller     0.111     0.021     0.000     0.005  0.008 0.175       0.000 0.085
+#> War          0.022     0.015     0.000     0.000  0.006 0.000       0.017 0.042
+#>             Family Fantasy History Music Mystery Romance Sport Thriller   War
+#> Action       0.005   0.056   0.019 0.000   0.016   0.013 0.005    0.111 0.022
+#> Adventure    0.054   0.063   0.019 0.000   0.007   0.012 0.000    0.021 0.015
+#> Animation    0.088   0.090   0.015 0.008   0.009   0.009 0.010    0.000 0.000
+#> Biography    0.014   0.000   0.156 0.074   0.000   0.011 0.054    0.005 0.000
+#> Comedy       0.036   0.037   0.015 0.025   0.009   0.168 0.020    0.008 0.006
+#> Crime        0.000   0.005   0.000 0.000   0.096   0.016 0.000    0.175 0.000
+#> Documentary  0.033   0.000   0.092 0.159   0.010   0.000 0.065    0.000 0.017
+#> Drama        0.031   0.021   0.066 0.027   0.042   0.198 0.022    0.085 0.042
+#> Family       0.000   0.061   0.000 0.000   0.000   0.005 0.000    0.008 0.000
+#> Fantasy      0.061   0.000   0.011 0.012   0.027   0.010 0.000    0.000 0.000
+#> History      0.000   0.011   0.000 0.018   0.000   0.014 0.000    0.019 0.106
+#> Music        0.000   0.012   0.018 0.000   0.000   0.010 0.000    0.000 0.012
+#> Mystery      0.000   0.027   0.000 0.000   0.000   0.015 0.000    0.123 0.000
+#> Romance      0.005   0.010   0.014 0.010   0.015   0.000 0.022    0.020 0.016
+#> Sport        0.000   0.000   0.000 0.000   0.000   0.022 0.000    0.000 0.000
+#> Thriller     0.008   0.000   0.019 0.000   0.123   0.020 0.000    0.000 0.008
+#> War          0.000   0.000   0.106 0.012   0.000   0.016 0.000    0.008 0.000
 ```
 
 ## 8. Converters
@@ -992,9 +1044,9 @@ igraph ecosystem for further network analysis:
 ``` r
 
 as_igraph(result)
-#> IGRAPH 08bedff UNW- 17 102 -- 
+#> IGRAPH 6cc7f46 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 08bedff (vertex names):
+#> + edges from 6cc7f46 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -1006,12 +1058,15 @@ as_igraph(result)
 #> + ... omitted several edges
 ```
 
-## 9. Six input formats, one result
+## 9. Four input formats, one result
 
 The same data can be provided in different formats — `cooccure`
 auto-detects the format and produces identical results regardless of
 which representation is used. The four examples below all compute the
-same genre co-occurrence network from the same underlying data.
+same genre co-occurrence network from the same underlying data. (The
+package reads further formats — multi-column delimited fields, wide
+sequences, one-hot tables with `vars`, and event logs — shown in
+[`?cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).)
 
 *Delimited field* is the most common format. A single column contains
 all genres as a comma-separated string, one row per movie.
@@ -1021,18 +1076,20 @@ all genres as a comma-separated string, one row per movie.
 res1 <- co(movies, field = "genres", sep = ",")
 ```
 
-*Long/bipartite* format uses one row per genre–movie pair. The data is
-first reshaped from wide to long, then passed to
+*Long/bipartite* format uses one row per genre–movie pair. The genre
+strings are split into a list, each movie identifier is repeated once
+per genre, and the result is passed to
 [`co()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
-with `field` specifying the genre column and by specifying the movie
+with `field` naming the genre column and `by` naming the movie
 identifier.
 
 ``` r
 
-genre_long <- do.call(rbind, lapply(seq_len(nrow(movies)), function(i) {
-  gs <- trimws(strsplit(movies$genres[i], ",")[[1]])
-  data.frame(movie_id = movies$tconst[i], genre = gs, stringsAsFactors = FALSE)
-}))
+genre_list <- lapply(strsplit(movies$genres, ","), trimws)
+genre_long <- data.frame(
+  movie_id = rep(movies$tconst, lengths(genre_list)),
+  genre    = unlist(genre_list)
+)
 res2 <- co(genre_long, field = "genre", by = "movie_id")
 ```
 
@@ -1042,13 +1099,7 @@ are binary and no `field`, `by`, or `sep` arguments are provided.
 
 ``` r
 
-all_genres <- sort(unique(genre_long$genre))
-bin <- matrix(0L, nrow = nrow(movies), ncol = length(all_genres),
-              dimnames = list(movies$tconst, all_genres))
-for (i in seq_len(nrow(genre_long))) {
-  row <- match(genre_long$movie_id[i], movies$tconst)
-  bin[row, genre_long$genre[i]] <- 1L
-}
+bin <- as.data.frame.matrix(with(genre_long, table(movie_id, genre)))
 res3 <- co(bin)
 ```
 
@@ -1057,19 +1108,19 @@ element is a character vector of genres for one movie.
 
 ``` r
 
-res4 <- co(lapply(strsplit(movies$genres, ","), trimws))
+res4 <- co(genre_list)
 ```
 
-All four produce identical weights, confirming that the format choice is
-purely a matter of convenience:
+All four produce the same co-occurrence matrix, confirming that the
+format choice is purely a matter of convenience:
 
 ``` r
 
-all.equal(res1$weight, res2$weight)
+all.equal(as_matrix(res1), as_matrix(res2))
 #> [1] TRUE
-all.equal(res1$weight, res3$weight)
+all.equal(as_matrix(res1), as_matrix(res3))
 #> [1] TRUE
-all.equal(res1$weight, res4$weight)
+all.equal(as_matrix(res1), as_matrix(res4))
 #> [1] TRUE
 ```
 
@@ -1096,7 +1147,12 @@ co(movies, field = "genres", sep = ",",
 
 ## References
 
+Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).
+Constructing bibliometric networks: A comparison between full and
+fractional counting. *Journal of Informetrics*, *10*(4), 1178-1195.
+<https://doi.org/10.1016/j.joi.2016.10.006>
+
 van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence
-data? An analysis of some well‐known similarity measures. *Journal of
+data? An analysis of some well-known similarity measures. *Journal of
 the American Society for Information Science and Technology*, *60*(8),
-1635-1651.
+1635-1651. <https://doi.org/10.1002/asi.21075>
