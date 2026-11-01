@@ -1,6 +1,6 @@
 # cooccure <img src="man/figures/logo.png" align="right" height="200"  alt="" />
 
-The **cooccure** R package enables building co-occurrence networks from multiple data formats. It accepts six input formats and supports multiple similarity measures, scaling methods, fractional counting, group-level splitting, and flexible filtering. Results are returned as a tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects.
+The **cooccure** R package builds co-occurrence networks: two items are linked when they appear in the same transaction (a document, a basket, a session, a stretch of a sequence). It auto-detects six input formats, also reads one-hot tables, raw event logs, and sliding windows over ordered sequences, and supports eight similarity measures, eight scaling methods, full, fractional, and position-decay counting, per-group or pooled networks, and filtering. Results are returned as a tidy edge data frame (`from`, `to`, `weight`, `count`) convertible to **igraph**, **tidygraph**, **cograph**, and **Nestimate** objects.
 
 The main function `cooccurrence()` is also available as the short alias `co()`.
 
@@ -16,7 +16,7 @@ remotes::install_github("mohsaqr/cooccure")
 
 ## Input formats
 
-**cooccure** auto-detects the input format from the arguments provided. Six formats are supported (delimited field, multi-column delimited, long/bipartite, binary matrix, wide sequence, and list of character vectors), covering the most common shapes data comes in.
+**cooccure** auto-detects the input format from the arguments provided. Six formats are auto-detected (delimited field, multi-column delimited, long/bipartite, binary matrix, wide sequence, and list of character vectors), covering the most common shapes data comes in. One-hot tables with extra columns, ordered sequences read through a sliding window, and raw event logs are selected with dedicated arguments (sections 7 and 8).
 
 ### 1. Delimited field
 
@@ -122,11 +122,58 @@ baskets <- list(
 cooccurrence(baskets)
 ```
 
+### 7. One-hot / indicator table
+
+A *one-hot* table has one column per item and one row per transaction, often alongside identifier or metadata columns. Name the indicator columns with `vars`; every other column is ignored. Columns can be given as a bare range, bare names, positions, a negative selection, or a character vector, exactly as `select` in base `subset()`. Any non-zero, non-`NA` value counts as present, so count tables such as document-term matrices work too.
+
+```r
+onehot <- data.frame(
+  doc     = c("d1", "d2", "d3"),
+  network = c(1, 0, 1),
+  graph   = c(1, 1, 1),
+  algebra = c(0, 1, 1)
+)
+cooccurrence(onehot, vars = network:algebra)
+```
+
+### 8. Ordered sequences and event logs
+
+For a categorical time series, treating a whole sequence as one transaction links every state to every other state it ever shares a sequence with. `window = w` instead makes every run of `w` consecutive positions a transaction, so only states that occur close together are linked. It applies to lists of sequences, wide sequence data (`field = "all"`), and event logs.
+
+```r
+states <- list(
+  c("plan", "monitor", "adapt", "monitor", "evaluate"),
+  c("plan", "adapt", "adapt", "evaluate")
+)
+cooccurrence(states, window = 2)
+```
+
+A raw event log (one row per event) is passed with `action` naming the event column, plus optional `actor`, `time`, `session`, and `order` columns. The log is split into sessions on time gaps longer than `time_threshold` seconds (default 900) and each session becomes one transaction. Sessionization is done by `Nestimate::prepare()`, so this input requires the **Nestimate** package.
+
+```r
+events <- data.frame(
+  student = rep(c("s1", "s2"), each = 3),
+  code    = c("read", "write", "read", "test", "write", "read"),
+  stamp   = as.POSIXct("2026-01-01 09:00:00") + c(0, 60, 120, 0, 30, 90)
+)
+cooccurrence(events, actor = "student", action = "code", time = "stamp")
+```
+
 ## Similarity measures
 
 The `similarity` argument controls how raw co-occurrence counts are normalized into a similarity or association measure. All similarity measures are based on two inputs: the co-occurrence count between two items ($C_{ij}$), and how frequently each item appears individually across all transactions ($f_i$, $f_j$).
 
+The examples from here on use a small keyword table:
+
 ```r
+papers <- data.frame(
+  year = c(2020, 2020, 2020, 2021, 2021, 2021),
+  keywords = c("network; graph; matrix", "graph; algebra",
+               "network; algebra; graph",
+               "deep learning; nlp", "nlp; transformers",
+               "deep learning; transformers; nlp")
+)
+
 # Jaccard similarity
 cooccurrence(baskets, similarity = "jaccard")
 
@@ -150,7 +197,7 @@ cooccurrence(papers, field = "keywords", sep = ";", similarity = "association")
 
 - **Strict filtering**: `"equivalence"` (cosine squared) amplifies differences, pushing pairs with weak overlap closer to zero and retaining only the strongest associations.
 
-- **Asymmetric tendencies**: `"relative"` normalizes each row so that edge weights sum to 1, capturing the relative tendency of one item to appear with another rather than absolute co-occurrence counts.
+- **Asymmetric tendencies**: `"relative"` normalizes each row so that edge weights sum to 1, capturing the relative tendency of one item to appear with another rather than absolute co-occurrence counts. It is the only asymmetric measure: the edge data frame carries one direction per pair, and `as_matrix()` returns both.
 
 ### Similarity method overview
 
@@ -167,14 +214,17 @@ cooccurrence(papers, field = "keywords", sep = ";", similarity = "association")
 
 ## Counting
 
-The `counting` argument controls how much each transaction contributes to the co-occurrence count. Under full counting (default), each co-occurring pair adds 1 regardless of how many items are in the transaction. Under fractional counting, each pair adds $1/(n-1)$ where $n$ is the number of items in the transaction, preventing large transactions from dominating the network. For example, a document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting.
+The `counting` argument controls how much each transaction contributes to the co-occurrence count. Under full counting (default), each co-occurring pair adds 1 regardless of how many items are in the transaction. Under fractional counting, each pair adds $1/(n-1)$ where $n$ is the number of items in the transaction, preventing large transactions from dominating the network (Perianes-Rodriguez et al., 2016). For example, a document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting. Under attention counting, for ordered transactions, each pair adds $\exp(-|pos_i - pos_j| / \lambda)$, so items that occur close together in a sequence are linked more strongly than items far apart; `lambda` (default 1) sets how fast the weight decays.
 
 ```r
 # Full counting (default): each co-occurring pair adds 1
-co(data, field = "keywords", sep = ";")
+co(papers, field = "keywords", sep = ";")
 
 # Fractional: each pair adds 1/(n-1) where n = items in the transaction
-co(data, field = "keywords", sep = ";", counting = "fractional")
+co(papers, field = "keywords", sep = ";", counting = "fractional")
+
+# Attention: each pair adds exp(-gap / lambda) within an ordered sequence
+co(states, counting = "attention", lambda = 1)
 ```
 
 ## Scaling
@@ -207,7 +257,7 @@ Three filtering arguments control which edges appear in the result:
 
 - `min_occur`: drops any entity appearing in fewer than a specified number of transactions, removing rare items before co-occurrences are computed.
 - `threshold`: keeps only edges with a weight at or above a specified value, applied after similarity normalization and scaling.
-- `top_n`: keeps only the $n$ strongest edges by weight.
+- `top_n`: keeps only the $n$ strongest edges by weight (ties at the cut are truncated, so exactly $n$ edges are kept).
 
 ```r
 # Drop entities appearing in fewer than 3 transactions
@@ -230,49 +280,59 @@ cooccurrence(papers, field = "keywords", sep = ";",
 
 ## Splitting by groups
 
-The `split_by` argument computes a separate co-occurrence network for each level of a grouping variable and returns them in a single data frame with a `group` column. This is useful for comparing co-occurrence patterns across time periods, disciplines, journals, or any categorical variable. Each group gets its own similarity computation, meaning item frequencies are group-specific. All other parameters (`similarity`, `scale`, `threshold`, `min_occur`, `top_n`) apply per group.
+The `split_by` argument (alias `group`) computes a separate co-occurrence network for each level of a grouping variable and returns them in a single data frame with a `group` column. This is useful for comparing co-occurrence patterns across time periods, disciplines, journals, or any categorical variable. Each group gets its own similarity computation, meaning item frequencies are group-specific. All other parameters (`similarity`, `scale`, `threshold`, `min_occur`, `top_n`) apply per group.
 
 ```r
-papers <- data.frame(
-  year = c(2020, 2020, 2020, 2021, 2021, 2021),
-  keywords = c("network; graph; matrix", "graph; algebra",
-               "network; algebra; graph",
-               "deep learning; nlp", "nlp; transformers",
-               "deep learning; transformers; nlp")
-)
-
 co(papers, field = "keywords", sep = ";", split_by = "year",
    similarity = "jaccard")
-#> # cooccurrence: 7 nodes, 8 edges | split_by: year (2 groups) | similarity: jaccard
+#> # cooccurrence: 7 nodes, 8 edges
+#> # split_by: year (2 groups)
+#> # similarity: jaccard | counting: full
+#> # isolates: 0 | per-group metrics: summary()
 #>           from           to    weight count group
 #>        algebra        graph 0.6666667     2  2020
 #>          graph      network 0.6666667     2  2020
+#>         matrix      network 0.5000000     1  2020
+#>          graph       matrix 0.3333333     1  2020
+#>        algebra      network 0.3333333     1  2020
 #>  deep learning          nlp 0.6666667     2  2021
 #>            nlp transformers 0.6666667     2  2021
-#>            ...
+#>  deep learning transformers 0.3333333     1  2021
+```
+
+Per-group density, size, and mean weight come from `summary()` as a tidy data frame:
+
+```r
+by_year <- co(papers, field = "keywords", sep = ";", split_by = "year",
+              similarity = "jaccard")
+as.data.frame(summary(by_year), what = "groups")
+```
+
+`aggregate_by` is the opposite choice: it computes one network per group and then combines the edge weights into ONE network (`aggregate = "sum"`, `"mean"`, `"min"`, or `"max"`; counts are always summed). Use it when items should be normalized within their own context (for example, keywords within a journal) before the contexts are pooled.
+
+```r
+co(papers, field = "keywords", sep = ";", aggregate_by = "year",
+   similarity = "jaccard", aggregate = "mean")
 ```
 
 ## Output
 
 `cooccurrence()` returns a tidy data frame of class `cooccurrence` that can be piped, filtered, and joined like any standard data frame. The raw co-occurrence count is always preserved in the `count` column regardless of similarity or scaling, meaning the original counts can always be traced back.
 
-The full matrix, item frequencies, and all parameters are stored as attributes on the returned data frame, making it easy to access the underlying data for further analysis or inspection.
+The full matrix, item frequencies, and parameters travel with the result, and accessor functions return them in tidy form:
 
 ```r
-attr(result, "matrix")          # Normalized weight matrix
-attr(result, "raw_matrix")      # Raw count matrix (diagonal zeroed)
-attr(result, "items")           # Character vector of all items
-attr(result, "frequencies")     # Named vector of item frequencies
-attr(result, "similarity")      # Similarity measure used
-attr(result, "scale")           # Scaling method used
-attr(result, "n_transactions")  # Number of transactions
-attr(result, "n_items")         # Number of unique items
+result <- co(papers, field = "keywords", sep = ";", similarity = "jaccard")
+
+as_matrix(result)                    # Normalized weight matrix
+as_matrix(result, type = "raw")      # Raw count matrix (diagonal zeroed)
+as.data.frame(summary(result))       # One row per node: degree, strength, frequency
 ```
 
-The `cooccurrence` object can be also printed, summarized, and plotted directly as a co-occurrence network (Saqr et al., 2023):
+The `cooccurrence` object can be also printed, summarized, and plotted directly as a co-occurrence network (Saqr et al., 2024):
 
 ```r
-# Summary statistics
+# Summary statistics: size, density, degree, weight distribution
 summary(result)
 
 # Heatmap
@@ -294,28 +354,32 @@ The `output` argument controls the format returned directly:
 
 ```r
 # Default: tidy data frame with from, to, weight, count
-co(data, field = "keywords", sep = ";")
+co(papers, field = "keywords", sep = ";")
 
 # Gephi-ready: Source, Target, Weight, Type, Count columns
-co(data, field = "keywords", sep = ";", output = "gephi")
-#>   Source  Target Weight       Type Count
-#>    graph network      3 Undirected     3
+co(papers, field = "keywords", sep = ";", output = "gephi")
+#>         Source       Target Weight       Type Count
+#>        algebra        graph      2 Undirected     2
+#>          graph      network      2 Undirected     2
+#>  deep learning          nlp      2 Undirected     2
+#>            nlp transformers      2 Undirected     2
+#>  ...
 
 # igraph object
-g <- co(data, field = "keywords", sep = ";", output = "igraph")
+g <- co(papers, field = "keywords", sep = ";", output = "igraph")
 
 # cograph object
-net <- co(data, field = "keywords", sep = ";", output = "cograph")
+net <- co(papers, field = "keywords", sep = ";", output = "cograph")
 
 # Square matrix
-mat <- co(data, field = "keywords", sep = ";", output = "matrix")
+mat <- co(papers, field = "keywords", sep = ";", output = "matrix")
 ```
 
 The Gephi output can be written directly to CSV for import:
 
 ```r
-write.csv(co(data, field = "keywords", sep = ";", output = "gephi"),
-          "network.csv", row.names = FALSE)
+write.csv(co(papers, field = "keywords", sep = ";", output = "gephi"),
+          file.path(tempdir(), "network.csv"), row.names = FALSE)
 ```
 
 ## Converters
@@ -337,7 +401,6 @@ as_matrix(result, type = "raw")
 ```r
 # install.packages("igraph")
 g <- as_igraph(result)
-plot(g, edge.width = igraph::E(g)$weight * 3)
 igraph::degree(g)
 igraph::betweenness(g)
 ```
@@ -353,35 +416,38 @@ tg <- as_tidygraph(result)
 ### cograph
 
 ```r
-# remotes::install_github("mohsaqr/cograph")
+# install.packages("cograph")
 net <- as_cograph(result)
 cograph::splot(net)
 cograph::communities(net)
 ```
 
+**cograph** exports its own `as_cograph()`. If you attach **cograph** with `library(cograph)` after **cooccure**, call `cooccure::as_cograph(result)` or build the network with `output = "cograph"`.
+
 ### Nestimate
 
 ```r
-# remotes::install_github("mohsaqr/Nestimate")
+# install.packages("Nestimate")
 net <- as_netobject(result)
-Nestimate::centrality(net)
-Nestimate::bootstrap_network(net)
+Nestimate::net_centrality(net)
 ```
+
+The netobject carries the estimated weight matrix but not the raw transactions, so Nestimate functions that resample the original data (such as `bootstrap_network()`) do not run on it.
 
 ## How it works
 
 Regardless of input format, the internal pipeline is:
 
-1. **Parse** input into a list of character vectors (transactions)
+1. **Parse** input into a list of character vectors (transactions); with `window`, each window of consecutive positions is a transaction
 2. **Filter** entities below `min_occur` frequency
-3. **Build** a binary transaction matrix $B$ (rows = transactions, columns = items)
-4. **Compute** raw co-occurrence: $C = B^\top B$ via `crossprod()`
+3. **Build** a sparse transaction matrix $B$ (rows = transactions, columns = items), weighted by the `counting` method
+4. **Compute** co-occurrence: $C = B^\top B$ via sparse `Matrix::crossprod()`
 5. **Normalize** using the chosen `similarity` measure
 6. **Scale** weights if `scale` is specified
 7. **Filter** edges below `threshold` and keep `top_n`
 8. **Return** upper triangle as a tidy sorted edge data frame
 
-The computation is vectorized throughout - no loops in the hot path. `crossprod()` delegates to optimized BLAS routines for the matrix multiplication.
+The computation is vectorized throughout - no loops in the hot path - and stays in sparse form, so it scales to corpora with hundreds of thousands of distinct items.
 
 ## Full parameter reference
 
@@ -394,18 +460,32 @@ The computation is vectorized throughout - no loops in the hot path. `crossprod(
 | `sep` | character | Delimiter for splitting delimited fields | `NULL` |
 | `split_by` | character | Column to split data by (separate network per group) | `NULL` |
 | `similarity` | character | Normalization measure | `"none"` |
-| `counting` | character | `"full"` or `"fractional"` | `"full"` |
+| `counting` | character | `"full"`, `"fractional"`, or `"attention"` | `"full"` |
 | `scale` | character | Weight scaling method | `NULL` |
-| `threshold` | numeric | Minimum edge weight (after normalization + scaling) | `0` |
+| `threshold` | numeric | Minimum edge weight (after normalization + scaling); `0` keeps all edges | `0` |
 | `min_occur` | integer | Minimum entity frequency (transactions) | `1` |
 | `top_n` | integer | Keep only the top N edges by weight (per group if split) | `NULL` |
 | `output` | character | Output format: `"default"`, `"gephi"`, `"igraph"`, `"cograph"`, `"matrix"` | `"default"` |
+| `vars` | column spec | Indicator (one-hot) columns; other columns ignored | `NULL` |
+| `actor` | character | Event log: column(s) identifying who acted | `NULL` |
+| `action` | character | Event log: event/state column; turns on event-log input | `NULL` |
+| `time` | character | Event log: timestamp column | `NULL` |
+| `session` | character | Event log: explicit session column(s) | `NULL` |
+| `order` | character | Event log: tie-breaking column for identical timestamps | `NULL` |
+| `time_threshold` | numeric | Event log: gap in seconds that starts a new session | `900` |
+| `group` | character | Alias for `split_by` | `NULL` |
+| `aggregate_by` | character | Column to group by, then combine into one network | `NULL` |
+| `aggregate` | character | Combiner for `aggregate_by`: `"sum"`, `"mean"`, `"min"`, `"max"` | `"sum"` |
+| `window` | integer | Sliding-window size for ordered sequences | `NULL` |
+| `lambda` | numeric | Decay rate for `counting = "attention"` | `1` |
 
 ## References
 
-Saqr, M., López-Pernas, S., Conde, M. Á., & Hernández-García, Á. (2023). Social Network Analysis: A Primer, a Guide and a Tutorial in R. In Saqr, M. & López-Pernas, S. (Eds.), *Learning Analytics Methods and Tutorials: A Practical Guide Using R*. Springer. <https://lamethods.org/book1/chapters/ch15-sna/ch15-sna.html>
+Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016). Constructing bibliometric networks: A comparison between full and fractional counting. *Journal of Informetrics*, *10*(4), 1178-1195. <https://doi.org/10.1016/j.joi.2016.10.006>
 
-van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well‐known similarity measures. *Journal of the American Society for Information Science and Technology*, *60*(8), 1635-1651.
+Saqr, M., López-Pernas, S., Conde, M. Á., & Hernández-García, Á. (2024). Social Network Analysis: A Primer, a Guide and a Tutorial in R. In Saqr, M. & López-Pernas, S. (Eds.), *Learning Analytics Methods and Tutorials: A Practical Guide Using R*. Springer. <https://doi.org/10.1007/978-3-031-54464-4_15>
+
+van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well-known similarity measures. *Journal of the American Society for Information Science and Technology*, *60*(8), 1635-1651. <https://doi.org/10.1002/asi.21075>
 
 ## Authors
 

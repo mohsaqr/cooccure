@@ -9,15 +9,23 @@
 \arguments{
 \item{x}{A \code{cooccurrence} data frame.}
 
-\item{n}{Integer. Number of rows to show. Default 10.}
+\item{n}{Integer. Number of edge rows to show. Default 10.}
 
 \item{...}{Ignored.}
 }
 \value{
-Invisibly returns \code{x}.
+Invisibly returns \code{x}, unchanged. Called for the side effect
+of printing.
 }
 \description{
 Prints a compact network diagnostic header followed by an edge preview.
+The header gives the number of nodes, edges, and transactions, the
+density and mean degree, the similarity, counting, and scaling used, the
+number of isolates, and the five highest-degree nodes, so the size and
+sparsity of a network can be judged before any edge is read. For a
+\code{split_by} result the pooled density and degree are omitted, since
+they are undefined when several networks are stacked; use
+\code{\link[=summary.cooccurrence]{summary}} for per-group metrics.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))

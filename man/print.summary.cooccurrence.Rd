@@ -9,13 +9,23 @@
 \arguments{
 \item{x}{A \code{summary.cooccurrence} object.}
 
-\item{n}{Integer. Number of top nodes/groups to show. Default 5.}
+\item{n}{Integer. Number of top nodes and groups to show. Default 5.}
 
 \item{...}{Ignored.}
 }
 \value{
-Invisibly returns \code{x}.
+Invisibly returns \code{x}, unchanged. Called for the side effect
+of printing.
 }
 \description{
-Print a cooccurrence summary
+Prints the network-level metrics, the parameters used, the weight and
+count ranges, the top nodes by degree, and the largest groups by edge
+count. For a \code{split_by} result the pooled possible edges, density,
+mean degree, and top-node line are omitted, since they are undefined for
+stacked networks.
+}
+\examples{
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+s <- summary(res)
+print(s, n = 2)
 }

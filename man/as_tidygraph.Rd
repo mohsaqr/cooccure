@@ -12,13 +12,18 @@ as_tidygraph(x, ...)
 \arguments{
 \item{x}{A \code{cooccurrence} data frame.}
 
-\item{...}{Ignored.}
+\item{...}{Passed to \code{\link{as_igraph}()}.}
 }
 \value{
-A \code{tbl_graph} object.
+A \code{tbl_graph} (which also inherits from \code{igraph}) with
+the same vertices and edges as \code{\link{as_igraph}()}: node column
+\code{name}, edge columns \code{from}, \code{to}, \code{weight},
+\code{count}. Raises an error when \pkg{tidygraph} is not installed.
 }
 \description{
-Creates a \code{tbl_graph} from a \code{cooccurrence} edge list.
+Creates a \code{tbl_graph} from a \code{cooccurrence} edge list, for
+use with \pkg{tidygraph} and \pkg{ggraph}. Requires the \pkg{tidygraph}
+and \pkg{igraph} packages.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))

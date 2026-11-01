@@ -26,9 +26,18 @@ row per group when the network was built with \code{split_by}.}
 \item{...}{Ignored.}
 }
 \value{
-A base \code{data.frame}. For \code{what = "nodes"}, one row per
-node; for \code{what = "groups"}, one row per group (zero rows when the
-network was not split).
+A base \code{data.frame}.
+For \code{what = "nodes"}, one row per node, sorted by degree, then
+strength (both decreasing), then name, with columns \code{node}
+(character), \code{degree} (integer, number of incident edges),
+\code{strength} (sum of incident edge weights), \code{count_strength}
+(sum of incident raw counts), and \code{frequency} (number of
+transactions containing the node; \code{NA} when not stored, as for
+\code{split_by} and \code{aggregate_by} results).
+For \code{what = "groups"}, one row per group with columns
+\code{group}, \code{n_nodes}, \code{n_edges}, \code{possible_edges},
+\code{density}, \code{weight_mean}, and \code{count_sum}; zero rows
+when the network was not split.
 }
 \description{
 Returns the summary's node-level metrics (one row per node) or its
@@ -38,4 +47,12 @@ so callers never have to reach into the summary object's internals.
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 as.data.frame(summary(res))
+
+# One row per group for a split network
+df <- data.frame(
+  keywords = c("a; b", "b; c", "a; c", "a; b; c"),
+  year = c(2020, 2020, 2021, 2021)
+)
+by_year <- cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
+as.data.frame(summary(by_year), what = "groups")
 }

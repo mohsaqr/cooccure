@@ -2,13 +2,23 @@
 
 #' Extract the co-occurrence matrix
 #'
-#' Returns the full square co-occurrence matrix (normalized + scaled).
-#' Use \code{type = "raw"} for the raw count matrix.
+#' Returns the full square co-occurrence matrix: the edge weights after
+#' similarity normalization, scaling, and filtering, or with
+#' \code{type = "raw"} the raw co-occurrence counts. Use it when a method
+#' downstream (clustering, a heatmap, another network package) expects a
+#' matrix rather than an edge list.
 #'
 #' @param x A \code{cooccurrence} data frame.
-#' @param type Character. \code{"normalized"} (default) or \code{"raw"}.
+#' @param type Character. \code{"normalized"} (default) for the weights, or
+#'   \code{"raw"} for the number of transactions in which each pair
+#'   co-occurs.
 #' @param ... Ignored.
-#' @return A numeric matrix.
+#' @return A dense base numeric matrix, one row and one column per item,
+#'   with item names as row and column names and a zero diagonal. It is
+#'   symmetric for every similarity except \code{"relative"}, where row
+#'   \code{i} holds the weights from item \code{i} and each row sums to 1.
+#'   Results built with \code{split_by} store no single matrix, so the
+#'   matrix is rebuilt from the edge list.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' as_matrix(res)
@@ -54,11 +64,17 @@ as_matrix.cooccurrence <- function(x, type = c("normalized", "raw"), ...) {
 #' Convert to igraph
 #'
 #' Creates an undirected, weighted \code{igraph} graph from a
-#' \code{cooccurrence} edge list.
+#' \code{cooccurrence} edge list, so the result can be analyzed with any
+#' \pkg{igraph} function. Requires the \pkg{igraph} package.
 #'
-#' @param x A \code{cooccurrence} data frame.
-#' @param ... Passed to \code{igraph::graph_from_data_frame}.
-#' @return An \code{igraph} object.
+#' @param x A \code{cooccurrence} data frame (default or \code{"gephi"}
+#'   column names).
+#' @param ... Passed to \code{igraph::graph_from_data_frame()}, apart from
+#'   \code{directed} and \code{vertices}, which are set here.
+#' @return An undirected \code{igraph} object with one vertex per item
+#'   (vertex attribute \code{name}, isolated items included) and one edge
+#'   per row of \code{x} (edge attributes \code{weight} and \code{count}).
+#'   Raises an error when \pkg{igraph} is not installed.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' if (requireNamespace("igraph", quietly = TRUE)) {
@@ -103,11 +119,16 @@ as_igraph.cooccurrence <- function(x, ...) {
 
 #' Convert to tidygraph
 #'
-#' Creates a \code{tbl_graph} from a \code{cooccurrence} edge list.
+#' Creates a \code{tbl_graph} from a \code{cooccurrence} edge list, for
+#' use with \pkg{tidygraph} and \pkg{ggraph}. Requires the \pkg{tidygraph}
+#' and \pkg{igraph} packages.
 #'
 #' @param x A \code{cooccurrence} data frame.
-#' @param ... Ignored.
-#' @return A \code{tbl_graph} object.
+#' @param ... Passed to \code{\link{as_igraph}()}.
+#' @return A \code{tbl_graph} (which also inherits from \code{igraph}) with
+#'   the same vertices and edges as \code{\link{as_igraph}()}: node column
+#'   \code{name}, edge columns \code{from}, \code{to}, \code{weight},
+#'   \code{count}. Raises an error when \pkg{tidygraph} is not installed.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' if (requireNamespace("tidygraph", quietly = TRUE) &&
@@ -129,17 +150,30 @@ as_tidygraph.cooccurrence <- function(x, ...) {
 #' Convert to cograph network
 #'
 #' Creates a \code{cograph_network} object from a \code{cooccurrence}
-#' edge list, compatible with \code{cograph::splot()} and other cograph
-#' functions.
+#' edge list, so the network can be plotted with \code{cograph::splot()}
+#' and analyzed with \pkg{cograph} functions such as
+#' \code{cograph::centrality()} and \code{cograph::communities()}.
+#' Requires the \pkg{cograph} package.
+#'
+#' \pkg{cograph} exports its own \code{as_cograph()}. When \pkg{cograph} is
+#' attached after \pkg{cooccure}, a bare \code{as_cograph()} call resolves
+#' to the \pkg{cograph} version, which reads the edge data frame with its
+#' own defaults. Call \code{cooccure::as_cograph()}, or build the network
+#' with \code{cooccurrence(..., output = "cograph")}, to get this method.
 #'
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Ignored.
-#' @return A \code{cograph_network} object.
+#' @return A list of class \code{cograph_network}, always undirected, built
+#'   from the upper triangle of \code{as_matrix(x)}. It holds the weight
+#'   matrix, a node table (one row per item: \code{id}, \code{label},
+#'   \code{name}, \code{x}, \code{y}), an edge table (one row per edge:
+#'   integer \code{from} and \code{to} node ids, \code{weight}), and the
+#'   node and edge counts. Raises an error when \pkg{cograph} is not
+#'   installed.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' if (requireNamespace("cograph", quietly = TRUE)) {
-#'   net <- as_cograph(res)
-#'   net$n_nodes
+#'   cooccure::as_cograph(res)
 #' }
 #' @export
 as_cograph <- function(x, ...) UseMethod("as_cograph")
@@ -189,18 +223,30 @@ as_cograph.cooccurrence <- function(x, ...) {
 
 #' Convert to Nestimate netobject
 #'
-#' Creates a \code{netobject} from a \code{cooccurrence} edge list,
-#' compatible with \code{Nestimate::centrality()},
-#' \code{Nestimate::bootstrap_network()}, etc.
+#' Creates a \code{netobject} from a \code{cooccurrence} edge list, so the
+#' network can be passed to \pkg{Nestimate} functions that work on an
+#' estimated weight matrix, such as \code{Nestimate::net_centrality()}.
+#' Requires the \pkg{Nestimate} package.
+#'
+#' The netobject carries no raw data (its \code{data} element is
+#' \code{NULL}), so \pkg{Nestimate} functions that resample the original
+#' observations, such as \code{Nestimate::bootstrap_network()}, cannot run
+#' on it and stop with an error asking for a network built with
+#' \code{Nestimate::build_network()}.
 #'
 #' @param x A \code{cooccurrence} data frame.
 #' @param ... Ignored.
-#' @return A \code{netobject} with class \code{c("netobject", "cograph_network")}.
+#' @return A list of class \code{c("netobject", "cograph_network")},
+#'   always undirected, with method \code{"cooccurrence"}. It holds the
+#'   weight matrix from \code{as_matrix(x)}, a node table (one row per
+#'   item), an edge table (one row per edge of the upper triangle), and the
+#'   similarity, scale, threshold, and number of transactions used. Raises
+#'   an error when \pkg{Nestimate} is not installed.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' if (requireNamespace("Nestimate", quietly = TRUE)) {
 #'   net <- as_netobject(res)
-#'   net$n_nodes
+#'   Nestimate::net_centrality(net)
 #' }
 #' @export
 as_netobject <- function(x, ...) UseMethod("as_netobject")

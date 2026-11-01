@@ -13,16 +13,25 @@
 (requires \pkg{igraph}), or \code{"degree"} for a base-R degree
 distribution bar plot.}
 
-\item{...}{Passed to the plotting function.}
+\item{...}{Passed to the plotting function: \code{graphics::image()} for
+the heatmap, \code{plot()} on the \code{igraph} object for the network,
+and \code{graphics::barplot()} for the degree distribution (where they
+override the default labels and colors).}
 }
 \value{
-Invisibly returns \code{x}.
+Invisibly returns \code{x}, unchanged. Called for the side effect
+of drawing on the current graphics device.
 }
 \description{
 Plots the co-occurrence matrix as a heatmap, an \pkg{igraph} network, or a
-base-R degree distribution.
+base-R degree distribution. The heatmap shows which item pairs carry the
+heaviest weights; the degree distribution shows whether connectivity is
+concentrated on a few hub items or spread evenly. For publication-quality
+network drawings, convert with \code{\link{as_cograph}} and use
+\code{cograph::splot()}.
 }
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C"), c("C","D")))
 plot(res)
+plot(res, type = "degree")
 }

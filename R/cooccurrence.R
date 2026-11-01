@@ -6,8 +6,11 @@
 #' Build a co-occurrence network
 #'
 #' Constructs an undirected co-occurrence network from various input formats
-#' and returns a tidy edge data frame. Argument names follow the citenets
-#' convention.
+#' and returns a tidy edge data frame. Two items are linked when they occur
+#' in the same transaction (a document, a basket, a session, a window of a
+#' sequence); the edge weight is the number of shared transactions, optionally
+#' normalized by one of eight similarity measures and rescaled. Argument names
+#' follow the citenets convention. \code{co()} is a short alias.
 #'
 #' @param data Input data. Accepts:
 #'   \itemize{
@@ -93,7 +96,11 @@
 #'     \item{\code{"dice"}}{\eqn{2 C_{ij} / (f_i + f_j)}.}
 #'     \item{\code{"equivalence"}}{Salton's cosine squared:
 #'       \eqn{C_{ij}^2 / (f_i \cdot f_j)}.}
-#'     \item{\code{"relative"}}{Row-normalized: each row sums to 1.}
+#'     \item{\code{"relative"}}{Row-normalized: each row of the stored
+#'       matrix sums to 1. This is the only asymmetric measure. The edge
+#'       data frame holds one row per pair, carrying the \code{from} to
+#'       \code{to} direction; the stored matrix (\code{\link{as_matrix}})
+#'       holds both directions.}
 #'   }
 #' @param scale Character or \code{NULL}. Optional scaling applied to weights
 #'   after similarity normalization:
@@ -116,14 +123,14 @@
 #'       Transactions with many items contribute less per pair
 #'       (Perianes-Rodriguez et al., 2016).}
 #'     \item{\code{"attention"}}{Each pair within a transaction
-#'       contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)} — closer
-#'       positions give a stronger edge, distant pairs decay. Requires
+#'       contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)}, so closer
+#'       positions give a stronger edge and distant pairs decay. Requires
 #'       ordered transactions (list / wide / delimited / windowed
 #'       input). The decay rate \eqn{\lambda} is controlled by the
 #'       \code{lambda} argument.}
 #'   }
 #' @param lambda Numeric. Decay rate for \code{counting = "attention"}.
-#'   Higher \code{lambda} → slower decay → distant pairs still
+#'   A higher \code{lambda} gives slower decay, so distant pairs still
 #'   contribute. Default \code{1.0}, matching the \pkg{tna} package.
 #'   Ignored for other counting methods.
 #' @param threshold Numeric. Minimum edge weight to retain, applied after
@@ -134,7 +141,8 @@
 #' @param min_occur Integer. Minimum entity frequency. Entities appearing in
 #'   fewer than \code{min_occur} transactions are dropped. Default 1.
 #' @param top_n Integer or \code{NULL}. Keep only the top \code{top_n} edges
-#'   by weight. When \code{split_by} is used, applied per group.
+#'   by weight. Ties at the cut are truncated, so exactly \code{top_n} edges
+#'   are returned. When \code{split_by} is used, applied per group.
 #'   Default \code{NULL} (all edges).
 #' @param aggregate_by Character or \code{NULL}. Column name to group
 #'   the data by before computing co-occurrence. For each unique value,
@@ -155,39 +163,79 @@
 #'   positions in a sequence becomes a mini-transaction; states inside
 #'   the same window co-occur. Sequences shorter than \code{w}
 #'   contribute no transactions. Only applies to ordered formats:
-#'   wide (\code{field = "all"}) and \code{list}. Default \code{NULL}
-#'   (whole sequence treated as one transaction --- bag of states).
+#'   wide (\code{field = "all"}), \code{list}, and event logs given with
+#'   \code{action}. Default \code{NULL} (whole sequence treated as one
+#'   transaction --- bag of states).
 #' @param output Character. Column naming convention for the output:
 #'   \describe{
 #'     \item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
 #'     \item{\code{"gephi"}}{\code{Source}, \code{Target}, \code{Weight},
-#'       \code{Type} (= \code{"Undirected"}). Ready for Gephi import.}
+#'       \code{Type} (= \code{"Undirected"}), \code{Count}. Ready for Gephi
+#'       import.}
 #'     \item{\code{"igraph"}}{Returns an \code{igraph} graph object directly.}
 #'     \item{\code{"cograph"}}{Returns a \code{cograph_network} object directly.}
 #'     \item{\code{"matrix"}}{Returns the square co-occurrence matrix.}
 #'   }
-#' @param ... Currently unused.
+#' @param ... Must be empty. Any argument passed here, named or not, raises
+#'   an error, so a misspelled argument name (e.g. \code{simliarity}) fails
+#'   loudly instead of being ignored.
 #'
 #' @return Depends on \code{output}:
 #'   \itemize{
-#'     \item \code{"default"}: A \code{cooccurrence} data frame with columns
-#'       \code{from}, \code{to}, \code{weight}, \code{count} (and \code{group}
-#'       when \code{split_by} is used).
-#'     \item \code{"gephi"}: A data frame with columns \code{Source},
-#'       \code{Target}, \code{Weight}, \code{Type}, \code{Count}. Ready for
-#'       Gephi CSV import.
-#'     \item \code{"igraph"}: An \code{igraph} graph object.
-#'     \item \code{"cograph"}: A \code{cograph_network} object.
-#'     \item \code{"matrix"}: A square numeric co-occurrence matrix.
+#'     \item \code{"default"}: A data frame of class
+#'       \code{c("cooccurrence", "data.frame")} with one row per undirected
+#'       edge (item pair with non-zero weight) and columns \code{from},
+#'       \code{to} (character item names), \code{weight} (numeric, after
+#'       similarity and scaling), and \code{count} (number of transactions
+#'       containing both items). With \code{split_by}, one row per edge per
+#'       group, plus a character \code{group} column. With
+#'       \code{aggregate_by}, one row per edge of the combined network, and
+#'       \code{count} is summed across groups.
+#'     \item \code{"gephi"}: The same edges, still of class
+#'       \code{cooccurrence}, with columns \code{Source}, \code{Target},
+#'       \code{Weight}, \code{Type} (always \code{"Undirected"}),
+#'       \code{Count} (and \code{group} when split). Ready for Gephi CSV
+#'       import.
+#'     \item \code{"igraph"}: An undirected \code{igraph} graph, as returned
+#'       by \code{\link{as_igraph}}.
+#'     \item \code{"cograph"}: A \code{cograph_network} object, as returned
+#'       by \code{\link{as_cograph}}.
+#'     \item \code{"matrix"}: A square numeric base matrix with items as row
+#'       and column names and a zero diagonal, as returned by
+#'       \code{\link{as_matrix}}.
 #'   }
-#'   For the data frame outputs, rows are sorted by weight descending and
-#'   attributes store the full matrix, item frequencies, and parameters.
+#'   For the data frame outputs, rows are sorted by weight, largest first.
+#'   The weight matrix, raw count matrix, items, item frequencies, and the
+#'   parameters used are kept as attributes; read them through
+#'   \code{\link{as_matrix}}, \code{\link[=summary.cooccurrence]{summary}},
+#'   and \code{\link{as.data.frame.summary.cooccurrence}} rather than
+#'   directly. Printing shows a one-line network header (nodes, edges,
+#'   density, mean degree, transactions), the method, and the strongest
+#'   edges.
+#'
+#'   Errors are raised for unknown arguments in \code{...}, for
+#'   \code{split_by} combined with \code{aggregate_by}, for \code{window}
+#'   combined with \code{weight_by}, for \code{vars} combined with
+#'   \code{field}, \code{by}, or \code{sep}, and when no non-empty
+#'   transaction remains. A \code{split_by} group that fails for another
+#'   reason is dropped with a warning naming the group.
 #'
 #' @references
 #' van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
 #' data? An analysis of some well-known similarity measures. \emph{Journal of
 #' the American Society for Information Science and Technology}, 60(8),
-#' 1635--1651.
+#' 1635--1651. \doi{10.1002/asi.21075}
+#'
+#' Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).
+#' Constructing bibliometric networks: A comparison between full and
+#' fractional counting. \emph{Journal of Informetrics}, 10(4), 1178--1195.
+#' \doi{10.1016/j.joi.2016.10.006}
+#'
+#' Saqr, M., Lopez-Pernas, S., Conde, M. A., & Hernandez-Garcia, A. (2024).
+#' Social network analysis: A primer, a guide and a tutorial in R. In M. Saqr
+#' & S. Lopez-Pernas (Eds.), \emph{Learning Analytics Methods and Tutorials:
+#' A Practical Guide Using R}. Springer.
+#' \doi{10.1007/978-3-031-54464-4_15}
 #'
 #' @examples
 #' # Delimited keywords

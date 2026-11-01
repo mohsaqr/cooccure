@@ -10,16 +10,22 @@ as_igraph(x, ...)
 \method{as_igraph}{cooccurrence}(x, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} data frame (default or \code{"gephi"}
+column names).}
 
-\item{...}{Passed to \code{igraph::graph_from_data_frame}.}
+\item{...}{Passed to \code{igraph::graph_from_data_frame()}, apart from
+\code{directed} and \code{vertices}, which are set here.}
 }
 \value{
-An \code{igraph} object.
+An undirected \code{igraph} object with one vertex per item
+(vertex attribute \code{name}, isolated items included) and one edge
+per row of \code{x} (edge attributes \code{weight} and \code{count}).
+Raises an error when \pkg{igraph} is not installed.
 }
 \description{
 Creates an undirected, weighted \code{igraph} graph from a
-\code{cooccurrence} edge list.
+\code{cooccurrence} edge list, so the result can be analyzed with any
+\pkg{igraph} function. Requires the \pkg{igraph} package.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))

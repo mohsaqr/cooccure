@@ -12,12 +12,21 @@
 \item{...}{Ignored.}
 }
 \value{
-Invisibly returns a \code{summary.cooccurrence} object with network,
-node, and group-level metrics.
+Invisibly, a list of class \code{summary.cooccurrence} holding the
+scalar network metrics, the parameters used, a node table, and (for
+\code{split_by} results) a group table. The summary is also printed
+via \code{\link{print.summary.cooccurrence}} as a side effect. Get the
+tables with \code{as.data.frame(summary(x))} (one row per node) and
+\code{as.data.frame(summary(x), what = "groups")} (one row per group).
 }
 \description{
-Node- and group-level metrics are available as tidy data frames via
-\code{\link[base]{as.data.frame}}.
+Computes network-level metrics (nodes, edges, possible edges, density,
+mean degree, isolates, weight and count distribution), node-level metrics
+(degree, strength, count strength, frequency), and, for a
+\code{split_by} result, one row of metrics per group. The summary is
+printed when computed. Node- and group-level metrics are available as
+tidy data frames via
+\code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame}}.
 }
 \details{
 For a network built with \code{split_by}, the returned frame stacks one

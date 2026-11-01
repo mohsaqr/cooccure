@@ -15,17 +15,31 @@ as_cograph(x, ...)
 \item{...}{Ignored.}
 }
 \value{
-A \code{cograph_network} object.
+A list of class \code{cograph_network}, always undirected, built
+from the upper triangle of \code{as_matrix(x)}. It holds the weight
+matrix, a node table (one row per item: \code{id}, \code{label},
+\code{name}, \code{x}, \code{y}), an edge table (one row per edge:
+integer \code{from} and \code{to} node ids, \code{weight}), and the
+node and edge counts. Raises an error when \pkg{cograph} is not
+installed.
 }
 \description{
 Creates a \code{cograph_network} object from a \code{cooccurrence}
-edge list, compatible with \code{cograph::splot()} and other cograph
-functions.
+edge list, so the network can be plotted with \code{cograph::splot()}
+and analyzed with \pkg{cograph} functions such as
+\code{cograph::centrality()} and \code{cograph::communities()}.
+Requires the \pkg{cograph} package.
+}
+\details{
+\pkg{cograph} exports its own \code{as_cograph()}. When \pkg{cograph} is
+attached after \pkg{cooccure}, a bare \code{as_cograph()} call resolves
+to the \pkg{cograph} version, which reads the edge data frame with its
+own defaults. Call \code{cooccure::as_cograph()}, or build the network
+with \code{cooccurrence(..., output = "cograph")}, to get this method.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 if (requireNamespace("cograph", quietly = TRUE)) {
-  net <- as_cograph(res)
-  net$n_nodes
+  cooccure::as_cograph(res)
 }
 }

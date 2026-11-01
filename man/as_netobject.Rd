@@ -15,17 +15,30 @@ as_netobject(x, ...)
 \item{...}{Ignored.}
 }
 \value{
-A \code{netobject} with class \code{c("netobject", "cograph_network")}.
+A list of class \code{c("netobject", "cograph_network")},
+always undirected, with method \code{"cooccurrence"}. It holds the
+weight matrix from \code{as_matrix(x)}, a node table (one row per
+item), an edge table (one row per edge of the upper triangle), and the
+similarity, scale, threshold, and number of transactions used. Raises
+an error when \pkg{Nestimate} is not installed.
 }
 \description{
-Creates a \code{netobject} from a \code{cooccurrence} edge list,
-compatible with \code{Nestimate::centrality()},
-\code{Nestimate::bootstrap_network()}, etc.
+Creates a \code{netobject} from a \code{cooccurrence} edge list, so the
+network can be passed to \pkg{Nestimate} functions that work on an
+estimated weight matrix, such as \code{Nestimate::net_centrality()}.
+Requires the \pkg{Nestimate} package.
+}
+\details{
+The netobject carries no raw data (its \code{data} element is
+\code{NULL}), so \pkg{Nestimate} functions that resample the original
+observations, such as \code{Nestimate::bootstrap_network()}, cannot run
+on it and stop with an error asking for a network built with
+\code{Nestimate::build_network()}.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 if (requireNamespace("Nestimate", quietly = TRUE)) {
   net <- as_netobject(res)
-  net$n_nodes
+  Nestimate::net_centrality(net)
 }
 }

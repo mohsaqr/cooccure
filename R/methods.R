@@ -3,11 +3,19 @@
 #' Print a cooccurrence edge list
 #'
 #' Prints a compact network diagnostic header followed by an edge preview.
+#' The header gives the number of nodes, edges, and transactions, the
+#' density and mean degree, the similarity, counting, and scaling used, the
+#' number of isolates, and the five highest-degree nodes, so the size and
+#' sparsity of a network can be judged before any edge is read. For a
+#' \code{split_by} result the pooled density and degree are omitted, since
+#' they are undefined when several networks are stacked; use
+#' \code{\link[=summary.cooccurrence]{summary}} for per-group metrics.
 #'
 #' @param x A \code{cooccurrence} data frame.
-#' @param n Integer. Number of rows to show. Default 10.
+#' @param n Integer. Number of edge rows to show. Default 10.
 #' @param ... Ignored.
-#' @return Invisibly returns \code{x}.
+#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
+#'   of printing.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' print(res)
@@ -237,8 +245,13 @@ print.cooccurrence <- function(x, n = 10L, ...) {
 
 #' Summarize a cooccurrence network
 #'
-#' Node- and group-level metrics are available as tidy data frames via
-#' \code{\link[base]{as.data.frame}}.
+#' Computes network-level metrics (nodes, edges, possible edges, density,
+#' mean degree, isolates, weight and count distribution), node-level metrics
+#' (degree, strength, count strength, frequency), and, for a
+#' \code{split_by} result, one row of metrics per group. The summary is
+#' printed when computed. Node- and group-level metrics are available as
+#' tidy data frames via
+#' \code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame}}.
 #'
 #' For a network built with \code{split_by}, the returned frame stacks one
 #' network per group, so a node pair can occur once per group. Pooled
@@ -248,8 +261,12 @@ print.cooccurrence <- function(x, n = 10L, ...) {
 #'
 #' @param object A \code{cooccurrence} data frame.
 #' @param ... Ignored.
-#' @return Invisibly returns a \code{summary.cooccurrence} object with network,
-#'   node, and group-level metrics.
+#' @return Invisibly, a list of class \code{summary.cooccurrence} holding the
+#'   scalar network metrics, the parameters used, a node table, and (for
+#'   \code{split_by} results) a group table. The summary is also printed
+#'   via \code{\link{print.summary.cooccurrence}} as a side effect. Get the
+#'   tables with \code{as.data.frame(summary(x))} (one row per node) and
+#'   \code{as.data.frame(summary(x), what = "groups")} (one row per group).
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' summary(res)
@@ -266,10 +283,21 @@ summary.cooccurrence <- function(object, ...) {
 
 #' Print a cooccurrence summary
 #'
+#' Prints the network-level metrics, the parameters used, the weight and
+#' count ranges, the top nodes by degree, and the largest groups by edge
+#' count. For a \code{split_by} result the pooled possible edges, density,
+#' mean degree, and top-node line are omitted, since they are undefined for
+#' stacked networks.
+#'
 #' @param x A \code{summary.cooccurrence} object.
-#' @param n Integer. Number of top nodes/groups to show. Default 5.
+#' @param n Integer. Number of top nodes and groups to show. Default 5.
 #' @param ... Ignored.
-#' @return Invisibly returns \code{x}.
+#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
+#'   of printing.
+#' @examples
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' s <- summary(res)
+#' print(s, n = 2)
 #' @export
 print.summary.cooccurrence <- function(x, n = 5L, ...) {
   cat("cooccurrence network\n")
@@ -354,12 +382,29 @@ print.summary.cooccurrence <- function(x, n = 5L, ...) {
 #'   degree, strength, count strength, and frequency; \code{"groups"} for one
 #'   row per group when the network was built with \code{split_by}.
 #' @param ... Ignored.
-#' @return A base \code{data.frame}. For \code{what = "nodes"}, one row per
-#'   node; for \code{what = "groups"}, one row per group (zero rows when the
-#'   network was not split).
+#' @return A base \code{data.frame}.
+#'   For \code{what = "nodes"}, one row per node, sorted by degree, then
+#'   strength (both decreasing), then name, with columns \code{node}
+#'   (character), \code{degree} (integer, number of incident edges),
+#'   \code{strength} (sum of incident edge weights), \code{count_strength}
+#'   (sum of incident raw counts), and \code{frequency} (number of
+#'   transactions containing the node; \code{NA} when not stored, as for
+#'   \code{split_by} and \code{aggregate_by} results).
+#'   For \code{what = "groups"}, one row per group with columns
+#'   \code{group}, \code{n_nodes}, \code{n_edges}, \code{possible_edges},
+#'   \code{density}, \code{weight_mean}, and \code{count_sum}; zero rows
+#'   when the network was not split.
 #' @examples
 #' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
 #' as.data.frame(summary(res))
+#'
+#' # One row per group for a split network
+#' df <- data.frame(
+#'   keywords = c("a; b", "b; c", "a; c", "a; b; c"),
+#'   year = c(2020, 2020, 2021, 2021)
+#' )
+#' by_year <- cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
+#' as.data.frame(summary(by_year), what = "groups")
 #' @export
 as.data.frame.summary.cooccurrence <- function(x, row.names = NULL,
                                                optional = FALSE,
@@ -380,17 +425,26 @@ as.data.frame.summary.cooccurrence <- function(x, row.names = NULL,
 #' Plot a cooccurrence network
 #'
 #' Plots the co-occurrence matrix as a heatmap, an \pkg{igraph} network, or a
-#' base-R degree distribution.
+#' base-R degree distribution. The heatmap shows which item pairs carry the
+#' heaviest weights; the degree distribution shows whether connectivity is
+#' concentrated on a few hub items or spread evenly. For publication-quality
+#' network drawings, convert with \code{\link{as_cograph}} and use
+#' \code{cograph::splot()}.
 #'
 #' @param x A \code{cooccurrence} data frame.
 #' @param type Character. \code{"heatmap"} (default), \code{"network"}
 #'   (requires \pkg{igraph}), or \code{"degree"} for a base-R degree
 #'   distribution bar plot.
-#' @param ... Passed to the plotting function.
-#' @return Invisibly returns \code{x}.
+#' @param ... Passed to the plotting function: \code{graphics::image()} for
+#'   the heatmap, \code{plot()} on the \code{igraph} object for the network,
+#'   and \code{graphics::barplot()} for the degree distribution (where they
+#'   override the default labels and colors).
+#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
+#'   of drawing on the current graphics device.
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C"), c("C","D")))
 #' plot(res)
+#' plot(res, type = "degree")
 #' @export
 plot.cooccurrence <- function(x, type = c("heatmap", "network", "degree"), ...) {
   type <- match.arg(type)

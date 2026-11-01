@@ -1,3 +1,20 @@
+# cooccure 0.4.2
+
+* Documentation revision. Every exported function and S3 method now
+  documents the structure of its return value (class, columns, one row
+  per what). `?cooccurrence` gains references for fractional counting and
+  the tutorial chapter, documents that `...` rejects unknown arguments,
+  and notes that `similarity = "relative"` edges carry one direction per
+  pair. `?as_cograph` notes that **cograph** exports its own
+  `as_cograph()`; `?as_netobject` no longer claims compatibility with
+  `Nestimate::bootstrap_network()`, which needs raw data the netobject
+  does not carry. Examples no longer reach into result objects with `$`.
+  The README covers one-hot, windowed, event-log, attention and
+  `aggregate_by` input, uses only defined objects, and shows current
+  printed output. The IMDB vignette guards its **cograph**/**igraph**
+  chunks, replaces a loop and bracket indexing with vectorized base R,
+  and corrects prose that did not match the printed results.
+
 # cooccure 0.4.0
 
 * `cooccurrence()` gains a `window =` parameter for sliding-window

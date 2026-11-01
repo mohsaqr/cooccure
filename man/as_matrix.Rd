@@ -14,14 +14,24 @@ as_matrix(x, ...)
 
 \item{...}{Ignored.}
 
-\item{type}{Character. \code{"normalized"} (default) or \code{"raw"}.}
+\item{type}{Character. \code{"normalized"} (default) for the weights, or
+\code{"raw"} for the number of transactions in which each pair
+co-occurs.}
 }
 \value{
-A numeric matrix.
+A dense base numeric matrix, one row and one column per item,
+with item names as row and column names and a zero diagonal. It is
+symmetric for every similarity except \code{"relative"}, where row
+\code{i} holds the weights from item \code{i} and each row sums to 1.
+Results built with \code{split_by} store no single matrix, so the
+matrix is rebuilt from the edge list.
 }
 \description{
-Returns the full square co-occurrence matrix (normalized + scaled).
-Use \code{type = "raw"} for the raw count matrix.
+Returns the full square co-occurrence matrix: the edge weights after
+similarity normalization, scaling, and filtering, or with
+\code{type = "raw"} the raw co-occurrence counts. Use it when a method
+downstream (clustering, a heatmap, another network package) expects a
+matrix rather than an edge list.
 }
 \examples{
 res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
