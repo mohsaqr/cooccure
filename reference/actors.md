@@ -49,7 +49,7 @@ A data frame with 1,267 rows and 7 variables:
 
 ## Source
 
-<https://developer.imdb.com/non-commercial-datasets/>
+<https://data.imdb.com/non-commercial-datasets/>
 
 ## Examples
 

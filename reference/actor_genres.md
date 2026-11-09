@@ -27,7 +27,7 @@ A data frame with 2,502 rows and 2 variables:
 
 ## Source
 
-<https://developer.imdb.com/non-commercial-datasets/>
+<https://data.imdb.com/non-commercial-datasets/>
 
 ## Examples
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## cooccure 0.4.3
+
+- The dataset help pages point to the current IMDb non-commercial
+  datasets address.
+- The Nestimate equivalence test declares `format = "binary"` for 0/1
+  data, as Nestimate 1.0 requires.
+
 ## cooccure 0.4.2
 
 - Documentation revision. Every exported function and S3 method now
