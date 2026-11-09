@@ -86,9 +86,9 @@ test_that("all eight similarities match Nestimate on binary and wide input", {
   skip_if_not_installed("Nestimate")
   for (s in SIMS) {
     .expect_same_network(.co_matrix(.eq_binary, similarity = s),
-                         .ne_matrix(.eq_binary, similarity = s))
+                         .ne_matrix(.eq_binary, similarity = s, format = "binary"))
     .expect_same_network(.co_matrix(.eq_wide, field = "all", similarity = s),
-                         .ne_matrix(.eq_wide, field = "all", similarity = s))
+                         .ne_matrix(.eq_wide, similarity = s))
   }
 })
 

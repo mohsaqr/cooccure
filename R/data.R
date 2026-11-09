@@ -16,7 +16,7 @@
 #'   \item{averageRating}{IMDB average user rating.}
 #'   \item{numVotes}{Number of IMDB user votes.}
 #' }
-#' @source \url{https://developer.imdb.com/non-commercial-datasets/}
+#' @source \url{https://data.imdb.com/non-commercial-datasets/}
 #' @examples
 #' head(movies)
 #' cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard")
@@ -41,7 +41,7 @@
 #'   \item{genres}{Comma-separated genre labels for the linked movie.}
 #'   \item{averageRating}{IMDB average user rating for the linked movie.}
 #' }
-#' @source \url{https://developer.imdb.com/non-commercial-datasets/}
+#' @source \url{https://data.imdb.com/non-commercial-datasets/}
 #' @examples
 #' head(actors)
 #' cooccurrence(actors, field = "actor", by = "tconst", similarity = "jaccard")
@@ -61,7 +61,7 @@
 #'   \item{actor}{Actor name.}
 #'   \item{genre}{Genre label (one row per actor-genre combination).}
 #' }
-#' @source \url{https://developer.imdb.com/non-commercial-datasets/}
+#' @source \url{https://data.imdb.com/non-commercial-datasets/}
 #' @examples
 #' head(actor_genres)
 #' cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")

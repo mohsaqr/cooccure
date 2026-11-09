@@ -12,7 +12,7 @@ A data frame with 2,502 rows and 2 variables:
 }
 }
 \source{
-\url{https://developer.imdb.com/non-commercial-datasets/}
+\url{https://data.imdb.com/non-commercial-datasets/}
 }
 \usage{
 actor_genres

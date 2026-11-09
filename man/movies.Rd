@@ -17,7 +17,7 @@ A data frame with 1,000 rows and 7 variables:
 }
 }
 \source{
-\url{https://developer.imdb.com/non-commercial-datasets/}
+\url{https://data.imdb.com/non-commercial-datasets/}
 }
 \usage{
 movies
