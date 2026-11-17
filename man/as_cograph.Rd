@@ -3,43 +3,61 @@
 \name{as_cograph}
 \alias{as_cograph}
 \alias{as_cograph.cooccurrence}
-\title{Convert to cograph network}
+\title{Convert a co-occurrence network to a cograph network}
 \usage{
 as_cograph(x, ...)
 
-\method{as_cograph}{cooccurrence}(x, ...)
+\method{as_cograph}{cooccurrence}(x, group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
 \item{...}{Ignored.}
+
+\item{group}{For a result built with \code{split_by}, the name of the group to
+convert. \code{NULL} (default) for an unsplit result.}
 }
 \value{
-A list of class \code{cograph_network}, always undirected, built
-from the upper triangle of \code{as_matrix(x)}. It holds the weight
-matrix, a node table (one row per item: \code{id}, \code{label},
-\code{name}, \code{x}, \code{y}), an edge table (one row per edge:
-integer \code{from} and \code{to} node ids, \code{weight}), and the
-node and edge counts. Raises an error when \pkg{cograph} is not
-installed.
+A list of class \code{cograph_network} holding the weight matrix
+(\code{weights}), a node table (one row per item: \code{id}, \code{label}, \code{name}, \code{x},
+\code{y}), an edge table (one row per edge: integer \code{from} and \code{to} node ids
+and \code{weight}), \code{directed} (\code{TRUE} only for \code{similarity = "relative"}),
+and the node and edge counts.
 }
 \description{
-Creates a \code{cograph_network} object from a \code{cooccurrence}
-edge list, so the network can be plotted with \code{cograph::splot()}
-and analyzed with \pkg{cograph} functions such as
-\code{cograph::centrality()} and \code{cograph::communities()}.
-Requires the \pkg{cograph} package.
-}
-\details{
+\code{as_cograph()} converts a co-occurrence network to a \code{cograph_network}.
+\pkg{cograph} draws and analyzes networks from a weight matrix, with
+layouts and styling designed for publication figures and functions for
+centrality and community detection. Its \code{cograph_network} class is also
+the base class of the networks estimated by \pkg{Nestimate}.
+
+The \code{cograph_network} is built from the weight matrix returned by
+\code{\link[=as_matrix]{as_matrix()}}: a node table with one row per item and an edge table
+with one row per non-zero cell, one triangle for an undirected network
+and every off-diagonal cell for the directed \code{similarity = "relative"}
+network. The result can be passed to \code{cograph::splot()}.
+
 \pkg{cograph} exports its own \code{as_cograph()}. When \pkg{cograph} is
-attached after \pkg{cooccure}, a bare \code{as_cograph()} call resolves
-to the \pkg{cograph} version, which reads the edge data frame with its
-own defaults. Call \code{cooccure::as_cograph()}, or build the network
-with \code{cooccurrence(..., output = "cograph")}, to get this method.
+attached after \pkg{cooccure}, a bare \code{as_cograph()} call resolves to the
+\pkg{cograph} version, which reads the edge data frame with its own
+defaults. Call \code{cooccure::as_cograph()}, or build the network with
+\code{cooccurrence(..., output = "cograph")}. For a result built with
+\code{split_by}, \code{group} names the network to convert.
 }
+\section{Conditions}{
+
+\code{cooccure_missing_package} when \pkg{cograph} is not installed; the
+conditions of \code{\link[=as_matrix]{as_matrix()}} for \code{group}.
+}
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
 if (requireNamespace("cograph", quietly = TRUE)) {
-  cooccure::as_cograph(res)
+  cooccure::as_cograph(net)
 }
+}
+\seealso{
+\code{\link[=as_netobject]{as_netobject()}} for the \pkg{Nestimate} class; \code{\link[=as_igraph]{as_igraph()}};
+\code{\link[=as_matrix]{as_matrix()}}.
 }

@@ -2,36 +2,60 @@
 % Please edit documentation in R/methods.R
 \name{plot.cooccurrence}
 \alias{plot.cooccurrence}
-\title{Plot a cooccurrence network}
+\title{Plot a co-occurrence network}
 \usage{
-\method{plot}{cooccurrence}(x, type = c("heatmap", "network", "degree"), ...)
+\method{plot}{cooccurrence}(x, type = c("heatmap", "network", "degree"), group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
-\item{type}{Character. \code{"heatmap"} (default), \code{"network"}
-(requires \pkg{igraph}), or \code{"degree"} for a base-R degree
-distribution bar plot.}
+\item{type}{\code{"heatmap"} (default), \code{"network"} (requires \pkg{igraph}), or
+\code{"degree"}.}
 
-\item{...}{Passed to the plotting function: \code{graphics::image()} for
-the heatmap, \code{plot()} on the \code{igraph} object for the network,
-and \code{graphics::barplot()} for the degree distribution (where they
-override the default labels and colors).}
+\item{group}{For a result built with \code{split_by}, the name of the group to
+draw. \code{NULL} (default) for an unsplit result.}
+
+\item{...}{Passed to \code{graphics::image()} for the heatmap, \code{plot()} on the
+\code{igraph} object for the network, and \code{graphics::barplot()} for the
+degree distribution, where they override the defaults (for instance
+\code{col} or \code{main}).}
 }
 \value{
-Invisibly returns \code{x}, unchanged. Called for the side effect
-of drawing on the current graphics device.
+\code{x}, invisibly and unchanged. Called for the plot drawn on the
+current graphics device.
 }
 \description{
-Plots the co-occurrence matrix as a heatmap, an \pkg{igraph} network, or a
-base-R degree distribution. The heatmap shows which item pairs carry the
-heaviest weights; the degree distribution shows whether connectivity is
-concentrated on a few hub items or spread evenly. For publication-quality
-network drawings, convert with \code{\link{as_cograph}} and use
-\code{cograph::splot()}.
+\code{plot()} draws one of three displays of a co-occurrence network: a heatmap
+of the weight matrix (default), a network drawing through \pkg{igraph}, or
+the degree distribution as a bar chart. The heatmap shows which item pairs
+carry the heaviest weights and which never co-occur. The network drawing
+places linked items near one another. The degree distribution shows
+whether connectivity is concentrated on a few hub items or spread evenly.
+
+The heatmap uses
+a white-to-blue scale for non-negative weights and a red-white-blue scale
+centered on zero when weights can be negative (\code{scale = "zscore"}); rows
+are the source items, which matters for the directed
+\code{similarity = "relative"} network.
+
+For a result built with \code{split_by}, \code{group} names the network to draw.
+For publication-quality network drawings, convert with \code{\link[=as_cograph]{as_cograph()}} and
+use \code{cograph::splot()}.
 }
+\section{Conditions}{
+
+\code{cooccure_grouped_input} when \code{x} was built with \code{split_by} and \code{group}
+is \code{NULL}; \code{cooccure_missing_package} for \code{type = "network"} without
+\pkg{igraph}.
+}
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C"), c("C","D")))
-plot(res)
-plot(res, type = "degree")
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
+plot(net)
+plot(net, type = "degree")
+}
+\seealso{
+\code{\link[=as_cograph]{as_cograph()}} for publication network drawings;
+\code{\link[=summary.cooccurrence]{summary.cooccurrence()}} for the numbers behind the degree plot.
 }

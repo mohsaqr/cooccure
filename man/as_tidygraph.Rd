@@ -3,32 +3,52 @@
 \name{as_tidygraph}
 \alias{as_tidygraph}
 \alias{as_tidygraph.cooccurrence}
-\title{Convert to tidygraph}
+\title{Convert a co-occurrence network to a tidygraph}
 \usage{
 as_tidygraph(x, ...)
 
-\method{as_tidygraph}{cooccurrence}(x, ...)
+\method{as_tidygraph}{cooccurrence}(x, group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
-\item{...}{Passed to \code{\link{as_igraph}()}.}
+\item{...}{Passed to \code{\link[=as_igraph]{as_igraph()}}.}
+
+\item{group}{For a result built with \code{split_by}, the name of the group to
+convert. \code{NULL} (default) for an unsplit result.}
 }
 \value{
-A \code{tbl_graph} (which also inherits from \code{igraph}) with
-the same vertices and edges as \code{\link{as_igraph}()}: node column
-\code{name}, edge columns \code{from}, \code{to}, \code{weight},
-\code{count}. Raises an error when \pkg{tidygraph} is not installed.
+A \code{tbl_graph} (which also inherits from \code{igraph}) with node column
+\code{name} and edge columns \code{from}, \code{to}, \code{weight} and \code{count}; directed for
+\code{similarity = "relative"}.
 }
 \description{
-Creates a \code{tbl_graph} from a \code{cooccurrence} edge list, for
-use with \pkg{tidygraph} and \pkg{ggraph}. Requires the \pkg{tidygraph}
-and \pkg{igraph} packages.
+\code{as_tidygraph()} converts a co-occurrence network to a \code{tbl_graph}.
+\pkg{tidygraph} represents a network as two linked tables, nodes and
+edges, that can be manipulated with \pkg{dplyr} verbs and drawn with
+\pkg{ggraph}. It suits analyses that add node or edge measures as columns
+and then plot them.
+
+The conversion goes by way of \code{\link[=as_igraph]{as_igraph()}}, so the vertices, edges,
+attributes and direction are the same as there.
+
+For a result built with \code{split_by}, \code{group} names the network to convert.
+For the plain \pkg{igraph} object, use \code{\link[=as_igraph]{as_igraph()}}.
 }
+\section{Conditions}{
+
+\code{cooccure_missing_package} when \pkg{tidygraph} or \pkg{igraph} is not
+installed; the conditions of \code{\link[=as_igraph]{as_igraph()}} otherwise.
+}
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
 if (requireNamespace("tidygraph", quietly = TRUE) &&
-    requireNamespace("igraph",    quietly = TRUE)) {
-  as_tidygraph(res)
+    requireNamespace("igraph", quietly = TRUE)) {
+  as_tidygraph(net)
 }
+}
+\seealso{
+\code{\link[=as_igraph]{as_igraph()}}; \code{\link[=as_cograph]{as_cograph()}}; \code{\link[=as_matrix]{as_matrix()}}.
 }

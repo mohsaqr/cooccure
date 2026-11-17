@@ -3,7 +3,7 @@
 \docType{data}
 \name{movies}
 \alias{movies}
-\title{IMDB movie metadata (1970-2024)}
+\title{Highly rated films with their genres (IMDb, 1970-2024)}
 \format{
 A data frame with 1,000 rows and 7 variables:
 \describe{
@@ -23,12 +23,17 @@ A data frame with 1,000 rows and 7 variables:
 movies
 }
 \description{
-A sample of 1,000 highly-rated IMDB movies (rating >= 7.0, >= 1,000 votes)
-released between 1970 and 2024. The \code{genres} column is comma-delimited
-and suitable for use as the \code{field} argument to \code{\link{cooccurrence}}.
+\code{movies} is a sample of 1,000 films with an IMDb rating of at least 7.0 and
+at least 1,000 votes, released between 1970 and 2024. Each film lists its
+genres in one comma-delimited column, so the data illustrate co-occurrence
+from a delimited field: genres are linked when they are assigned to the same
+film. The release decade and the rating allow one network per group.
 }
 \examples{
 head(movies)
 cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard")
+}
+\seealso{
+\link{actors} for the casts of these films; \code{\link[=cooccurrence]{cooccurrence()}}.
 }
 \keyword{datasets}

@@ -1,11 +1,13 @@
 Package: cooccure
 Title: Co-Occurrence Network Construction and Manipulation
-Version: 0.4.3
+Version: 0.4.5
 Authors@R: c(
     person("Mohammed", "Saqr", email = "saqr@saqr.me",
-           role = c("aut", "cre", "cph")),
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0001-5881-3109")),
     person("Sonsoles", "López-Pernas", email = "sonsoles.lopez@uef.fi",
-           role = c("aut", "cph")),
+           role = c("aut", "cph"),
+           comment = c(ORCID = "0000-0002-9621-1392")),
     person("Kamila", "Misiejuk", role = c("aut", "cph")))
 Description: Constructs co-occurrence networks from several types of input
     data, such as delimited fields, long/bipartite tables, binary
@@ -21,9 +23,9 @@ Encoding: UTF-8
 Language: en-US
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 Imports:
     graphics,
+    grDevices,
     Matrix,
     methods,
     stats,
@@ -43,3 +45,4 @@ VignetteBuilder: knitr
 Depends: R (>= 3.5.0)
 URL: https://github.com/mohsaqr/cooccure, https://pak.dynasite.org/cooccure/
 BugReports: https://github.com/mohsaqr/cooccure/issues
+Config/roxygen2/version: 8.1.1

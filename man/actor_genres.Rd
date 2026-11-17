@@ -3,7 +3,7 @@
 \docType{data}
 \name{actor_genres}
 \alias{actor_genres}
-\title{IMDB actor-genre long table (1970-2024)}
+\title{Actors and the genres of their films (IMDb, 1970-2024)}
 \format{
 A data frame with 2,502 rows and 2 variables:
 \describe{
@@ -18,14 +18,16 @@ A data frame with 2,502 rows and 2 variables:
 actor_genres
 }
 \description{
-Long-format table mapping each of the 624 actors in \code{\link{actors}}
-to every genre of every movie they appeared in. Use this to build an
-actor co-occurrence network grouped by genre: which actors share the
-same genres? Pass \code{field = "actor"} and \code{by = "genre"} to
-\code{\link{cooccurrence}}.
+\code{actor_genres} is a dataset of the genres the 624 actors of \link{actors} work in:
+every genre of every film they appeared in, one row per actor and genre. Used
+with \code{field = "actor"} and \code{by = "genre"}, it links actors who work in the
+same genres; with the roles reversed, it links genres that share actors.
 }
 \examples{
 head(actor_genres)
 cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")
+}
+\seealso{
+\link{actors}; \code{\link[=cooccurrence]{cooccurrence()}}.
 }
 \keyword{datasets}

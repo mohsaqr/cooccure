@@ -2,32 +2,39 @@
 % Please edit documentation in R/methods.R
 \name{print.cooccurrence}
 \alias{print.cooccurrence}
-\title{Print a cooccurrence edge list}
+\title{Print a co-occurrence network}
 \usage{
 \method{print}{cooccurrence}(x, n = 10L, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
-\item{n}{Integer. Number of edge rows to show. Default 10.}
+\item{n}{Number of edges to show (default 10).}
 
 \item{...}{Ignored.}
 }
 \value{
-Invisibly returns \code{x}, unchanged. Called for the side effect
-of printing.
+\code{x}, invisibly and unchanged. Called for the printed output.
 }
 \description{
-Prints a compact network diagnostic header followed by an edge preview.
-The header gives the number of nodes, edges, and transactions, the
-density and mean degree, the similarity, counting, and scaling used, the
-number of isolates, and the five highest-degree nodes, so the size and
-sparsity of a network can be judged before any edge is read. For a
-\code{split_by} result the pooled density and degree are omitted, since
-they are undefined when several networks are stacked; use
-\code{\link[=summary.cooccurrence]{summary}} for per-group metrics.
+\code{print()} shows a co-occurrence network as a short diagnostic header
+followed by the strongest edges. The header reports what is first looked
+at in any network before its edges are read: how many items and edges
+it has, how dense it is, which similarity, counting and scaling produced
+the weights, how many items are isolated, and which items are the hubs.
+
+For a network built with \code{split_by}, the pooled density and degree are
+omitted, since they are undefined when several networks are stacked; use
+\code{\link[=summary.cooccurrence]{summary.cooccurrence()}} for one row of metrics per group. A directed
+network (\code{similarity = "relative"}) is marked as such and its density is
+computed over ordered pairs.
 }
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-print(res)
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard")
+print(net, n = 5)
+}
+\seealso{
+\code{\link[=summary.cooccurrence]{summary.cooccurrence()}} for network, node and group metrics;
+\code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}} for the edge and node tables.
 }

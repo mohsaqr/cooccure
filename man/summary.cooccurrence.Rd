@@ -2,43 +2,52 @@
 % Please edit documentation in R/methods.R
 \name{summary.cooccurrence}
 \alias{summary.cooccurrence}
-\title{Summarize a cooccurrence network}
+\title{Summarize a co-occurrence network}
 \usage{
 \method{summary}{cooccurrence}(object, ...)
 }
 \arguments{
-\item{object}{A \code{cooccurrence} data frame.}
+\item{object}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
 \item{...}{Ignored.}
 }
 \value{
-Invisibly, a list of class \code{summary.cooccurrence} holding the
-scalar network metrics, the parameters used, a node table, and (for
-\code{split_by} results) a group table. The summary is also printed
-via \code{\link{print.summary.cooccurrence}} as a side effect. Get the
-tables with \code{as.data.frame(summary(x))} (one row per node) and
-\code{as.data.frame(summary(x), what = "groups")} (one row per group).
+An object of class \code{summary.cooccurrence}: a list of network
+metrics (\code{n_nodes}, \code{n_edges}, \code{possible_edges}, \code{density},
+\code{mean_degree}, \code{isolates}), the parameters used, five-number summaries
+of the weights and counts, a node table and, for \code{split_by} results, a
+group table. Read the tables with \code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame.summary.cooccurrence()}}.
 }
 \description{
-Computes network-level metrics (nodes, edges, possible edges, density,
-mean degree, isolates, weight and count distribution), node-level metrics
-(degree, strength, count strength, frequency), and, for a
-\code{split_by} result, one row of metrics per group. The summary is
-printed when computed. Node- and group-level metrics are available as
-tidy data frames via
-\code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame}}.
-}
-\details{
-For a network built with \code{split_by}, the returned frame stacks one
-network per group, so a node pair can occur once per group. Pooled
-simple-graph metrics (\code{density}, \code{mean_degree},
-\code{possible_edges}) are undefined in that case and reported as
-\code{NA}; the per-group table carries the correct values.
+\code{summary()} computes the metrics of a co-occurrence network at three
+levels: the network as a whole (size, density, mean degree, isolates and
+the distribution of edge weights and counts), each item in it (degree,
+strength and frequency), and, for a network built with \code{split_by}, each
+group. Together these show whether the network is sparse or saturated,
+which items are hubs, and how groups differ in size and density.
+
+The metrics are returned as an object; printing it shows the
+network-level block. The node and group tables are returned
+as tidy data frames by \code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame.summary.cooccurrence()}}, or directly
+from the network with \code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}}.
+
+For a network built with \code{split_by}, the frame stacks one network per
+group, so a pair can occur once per group. Pooled simple-graph metrics
+(\code{density}, \code{mean_degree}, \code{possible_edges}) are undefined and reported
+as \code{NA}; the node table has one row per node per group and the group
+table carries the per-group values. For the directed
+\code{similarity = "relative"} network, density is computed over ordered pairs
+and degree counts in- and out-edges.
 }
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-summary(res)
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard")
+summary(net)
 
-# Node-level metrics as a tidy data frame
-as.data.frame(summary(res))
+# The node table as a data frame
+as.data.frame(summary(net), what = "nodes")
+}
+\seealso{
+\code{\link[=print.summary.cooccurrence]{print.summary.cooccurrence()}}; \code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}};
+\code{\link[=plot.cooccurrence]{plot.cooccurrence()}} for the degree distribution.
 }

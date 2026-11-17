@@ -1,10 +1,13 @@
 # ---- Package datasets ----
 
-#' IMDB movie metadata (1970-2024)
+#' Highly rated films with their genres (IMDb, 1970-2024)
 #'
-#' A sample of 1,000 highly-rated IMDB movies (rating >= 7.0, >= 1,000 votes)
-#' released between 1970 and 2024. The \code{genres} column is comma-delimited
-#' and suitable for use as the \code{field} argument to \code{\link{cooccurrence}}.
+#' @description
+#' `movies` is a sample of 1,000 films with an IMDb rating of at least 7.0 and
+#' at least 1,000 votes, released between 1970 and 2024. Each film lists its
+#' genres in one comma-delimited column, so the data illustrate co-occurrence
+#' from a delimited field: genres are linked when they are assigned to the same
+#' film. The release decade and the rating allow one network per group.
 #'
 #' @format A data frame with 1,000 rows and 7 variables:
 #' \describe{
@@ -17,19 +20,20 @@
 #'   \item{numVotes}{Number of IMDB user votes.}
 #' }
 #' @source \url{https://data.imdb.com/non-commercial-datasets/}
+#' @seealso [actors] for the casts of these films; [cooccurrence()].
 #' @examples
 #' head(movies)
 #' cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard")
 "movies"
 
 
-#' IMDB actor-movie long table (1970-2024)
+#' Actors and the films they appeared in (IMDb, 1970-2024)
 #'
-#' Long-format bipartite table linking actors to movies in
-#' \code{\link{movies}}. Pre-filtered to the 624 actors who appear in at
-#' least two movies, so all similarity measures compute instantly.
-#' Pass \code{field = "actor"} and \code{by = "tconst"} to
-#' \code{\link{cooccurrence}} to build an actor co-appearance network.
+#' @description
+#' `actors` is a dataset of the 624 actors who appear in at least two of the
+#' films in [movies], with one row per actor and film. The data illustrate
+#' co-occurrence from a long (item, transaction) table: actors are linked when
+#' they appear in the same film, which gives a collaboration network.
 #'
 #' @format A data frame with 1,267 rows and 7 variables:
 #' \describe{
@@ -42,19 +46,20 @@
 #'   \item{averageRating}{IMDB average user rating for the linked movie.}
 #' }
 #' @source \url{https://data.imdb.com/non-commercial-datasets/}
+#' @seealso [movies]; [actor_genres]; [cooccurrence()].
 #' @examples
 #' head(actors)
 #' cooccurrence(actors, field = "actor", by = "tconst", similarity = "jaccard")
 "actors"
 
 
-#' IMDB actor-genre long table (1970-2024)
+#' Actors and the genres of their films (IMDb, 1970-2024)
 #'
-#' Long-format table mapping each of the 624 actors in \code{\link{actors}}
-#' to every genre of every movie they appeared in. Use this to build an
-#' actor co-occurrence network grouped by genre: which actors share the
-#' same genres? Pass \code{field = "actor"} and \code{by = "genre"} to
-#' \code{\link{cooccurrence}}.
+#' @description
+#' `actor_genres` is a dataset of the genres the 624 actors of [actors] work in:
+#' every genre of every film they appeared in, one row per actor and genre. Used
+#' with `field = "actor"` and `by = "genre"`, it links actors who work in the
+#' same genres; with the roles reversed, it links genres that share actors.
 #'
 #' @format A data frame with 2,502 rows and 2 variables:
 #' \describe{
@@ -62,20 +67,21 @@
 #'   \item{genre}{Genre label (one row per actor-genre combination).}
 #' }
 #' @source \url{https://data.imdb.com/non-commercial-datasets/}
+#' @seealso [actors]; [cooccurrence()].
 #' @examples
 #' head(actor_genres)
 #' cooccurrence(actor_genres, field = "actor", by = "genre", similarity = "jaccard")
 "actor_genres"
 
 
-#' Demo actor-movie-genre table
+#' A small cast table of ten films
 #'
-#' A small hand-crafted dataset of 30 well-known actors across 10 classic
-#' films, with each film carrying its full genre list. Designed for quick
-#' exploration in the Shiny app. One row per movie-actor-genre triple, so
-#' every pairing of \code{field} and \code{by} yields a network: actors
-#' linked by shared films, genres linked by shared films, or actors linked
-#' by shared genres.
+#' @description
+#' `demo` is a hand-built dataset of 30 actors in 10 well-known films, each film
+#' carrying its full genre list, with one row per film, actor and genre. Every
+#' pairing of two columns gives a network: actors linked by shared films, genres
+#' linked by shared films, or actors linked by shared genres. It is small enough
+#' to check a network by hand and is the default data of [launch_app()].
 #'
 #' @format A data frame with 89 rows and 3 variables:
 #' \describe{
@@ -84,6 +90,7 @@
 #'   \item{genre}{Genre label. Films carry every genre they belong to, so a
 #'     movie contributes several rows per actor.}
 #' }
+#' @seealso [actors] for a larger cast table; [cooccurrence()].
 #' @examples
 #' head(demo)
 #' # Actors linked by the films they share

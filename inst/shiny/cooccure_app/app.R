@@ -18,6 +18,10 @@ data("demo",         package = "cooccure", envir = environment())
 #   "empty"   — no rows survived the weight filter
 #   "error"   — as_cograph() failed; message has the reason
 .filtered_cograph <- function(result, min_w) {
+  if ("group" %in% names(result))
+    return(list(status = "error", value = NULL,
+                message = paste("the network view draws one network;",
+                                "clear 'Split by' to draw it.")))
   r <- result[result$weight >= min_w, ]
   if (nrow(r) == 0L)
     return(list(status = "empty", value = NULL, message = NULL))
@@ -177,7 +181,7 @@ ui <- fluidPage(
       div(class = "section-header", "Filters"),
       fluidRow(
         column(6, numericInput("min_occur", "Min freq",  value = 1, min = 1, step = 1)),
-        column(6, numericInput("threshold", "Threshold", value = 0, min = 0, step = 0.01))
+        column(6, numericInput("threshold", "Threshold", value = 0, step = 0.01))
       ),
       numericInput("top_n", "Top N edges (0 = all)", value = 0, min = 0, step = 25),
 
@@ -624,6 +628,11 @@ server <- function(input, output, session) {
         showNotification("igraph is required for GraphML export.", type = "error")
         return(NULL)
       }
+      if ("group" %in% names(result())) {
+        showNotification("GraphML export holds one network; clear 'Split by'.",
+                         type = "error")
+        return(NULL)
+      }
       igraph::write_graph(as_igraph(result()), f, format = "graphml")
     }
   )
@@ -663,6 +672,11 @@ server <- function(input, output, session) {
       req(result())
       if (!requireNamespace("igraph", quietly = TRUE)) {
         showNotification("igraph is required for GraphML export.", type = "error")
+        return(NULL)
+      }
+      if ("group" %in% names(result())) {
+        showNotification("GraphML export holds one network; clear 'Split by'.",
+                         type = "error")
         return(NULL)
       }
       igraph::write_graph(as_igraph(result()), f, format = "graphml")

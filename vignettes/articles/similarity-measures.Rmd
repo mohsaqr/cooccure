@@ -1,0 +1,302 @@
+---
+title: "Choosing a similarity measure"
+author: "Written by [Mohammed Saqr](https://saqr.me) and [Sonsoles López-Pernas](https://sonsoles.me)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Choosing a similarity measure}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.5, fig.align = "center", dpi = 96)
+old_options <- options(digits = 3, width = 90)
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+```
+
+A raw co-occurrence count mixes two things: how strongly two items are
+associated, and how frequent each of them is. An item that appears in most
+transactions co-occurs with nearly everything, so the heaviest edges of a
+count network tend to join the most frequent items whatever their
+association. Similarity measures separate the two by comparing the observed
+count with the frequencies of the items involved. van Eck and Waltman (2009)
+distinguish set-theoretic measures, which relate the count to the sizes of
+the two item sets (Jaccard, cosine, inclusion, Dice), from probabilistic
+measures, which relate it to the count expected if the items occurred
+independently (association strength). They argue that only the probabilistic
+measure removes the effect of item frequency, and recommend it for
+normalizing co-occurrence data.
+
+The measures differ in which pairs they bring to the top, and the choice
+changes the substantive reading of a network. This guide compares the eight
+measures offered by `cooccurrence()` on one data set, works through one pair
+by hand, treats the directed `relative` measure separately, and closes with
+rescaling and guidance on choosing.
+
+```{r package}
+library(cooccure)
+```
+
+## Data
+
+`movies` holds 1,000 films with an IMDb rating of at least 7.0, released
+between 1970 and 2024. In the analyses below:
+
+- **Transaction:** a film (one row, identified by `tconst`).
+- **Items:** its genres, listed in the comma-delimited `genres` column.
+- **Grouping variables (not used here):** `decade` and `averageRating`.
+
+```{r data}
+head(movies, 3)
+```
+
+## How are the measures defined?
+
+Write \(C_{ij}\) for the number of films that carry both genre \(i\) and
+genre \(j\), and \(f_i\) for the number of films that carry genre \(i\). The
+measures are:
+
+| `similarity` | Weight of the edge between \(i\) and \(j\) |
+|---|---|
+| `"none"` | \(C_{ij}\) |
+| `"jaccard"` | \(C_{ij} / (f_i + f_j - C_{ij})\) |
+| `"cosine"` | \(C_{ij} / \sqrt{f_i f_j}\) |
+| `"inclusion"` | \(C_{ij} / \min(f_i, f_j)\) |
+| `"association"` | \(C_{ij} / (f_i f_j)\) |
+| `"dice"` | \(2 C_{ij} / (f_i + f_j)\) |
+| `"equivalence"` | \(C_{ij}^2 / (f_i f_j)\) |
+| `"relative"` | \(C_{ij} / \sum_k C_{ik}\) |
+
+The first seven are symmetric and give an undirected network. `"relative"`
+divides each row by its own sum, so the weight from \(i\) to \(j\) differs
+from the weight from \(j\) to \(i\) and the network is directed.
+
+The frequencies \(f_i\) are the `frequency` column of the node table, which
+`as.data.frame()` returns with `what = "nodes"`.
+
+```{r frequencies}
+genre_counts <- cooccurrence(movies, field = "genres", sep = ",")
+genre_nodes <- as.data.frame(genre_counts, what = "nodes")
+subset(genre_nodes, node %in% c("Adventure", "Animation", "Drama"))
+```
+
+*Drama* is on 634 of the 1,000 films, *Adventure* on 101 and *Animation* on
+75. *Adventure* and *Animation* share 39 films. That one pair is followed
+through the measures below: its Jaccard weight is
+\(39 / (101 + 75 - 39) = 39 / 137 = 0.285\), its cosine weight
+\(39 / \sqrt{101 \times 75} = 0.448\), its Dice weight
+\(78 / 176 = 0.443\), and its equivalence weight \(0.448^2 = 0.201\).
+
+## Which pairs rank highest under each measure?
+
+The raw counts rank pairs by volume. With `top_n = 3` only the three
+heaviest edges are kept.
+
+```{r sim-none}
+co(movies, field = "genres", sep = ",", similarity = "none", top_n = 3)
+```
+
+All three edges involve *Drama*, the most frequent genre: *Comedy*–*Drama*
+(159 films), *Drama*–*Romance* (131) and *Crime*–*Drama* (91). The ranking
+says more about how common *Drama* is than about which genres belong
+together.
+
+Jaccard divides the count by the number of films carrying either genre.
+
+```{r sim-jaccard}
+co(movies, field = "genres", sep = ",", similarity = "jaccard", top_n = 3)
+```
+
+*Adventure*–*Animation* moves to the top with 0.285, the value computed by
+hand above, followed by *Action*–*Crime* (0.237). *Comedy*–*Drama* keeps
+third place (0.211) despite having the largest count, because both genres
+are common and appear apart as often as together.
+
+Cosine divides by the geometric mean of the two frequencies, which penalizes
+a pair of unequal frequencies less than Jaccard does.
+
+```{r sim-cosine}
+co(movies, field = "genres", sep = ",", similarity = "cosine", top_n = 3)
+```
+
+*Adventure*–*Animation* leads again (0.448), and *Drama*–*Romance* (0.411)
+replaces *Comedy*–*Drama* in the top three, reflecting cosine's more lenient
+treatment of a frequent genre paired with a less frequent one.
+
+Inclusion (the Simpson coefficient) divides by the frequency of the rarer
+genre, so it measures how far the rarer genre is contained in the more
+common one.
+
+```{r sim-inclusion}
+co(movies, field = "genres", sep = ",", similarity = "inclusion", top_n = 3)
+```
+
+*Documentary*–*News*, *History*–*News* and *Drama*–*Western* all score 1
+with a count of 1. *News* and *Western* each appear on a single film, so any
+genre sharing that film includes them completely. Inclusion rewards rare
+items and needs a `min_occur` filter before a score of 1 can be read as a
+subset relation.
+
+Association strength divides by the product of the frequencies, which is
+proportional to the count expected under independence.
+
+```{r sim-association}
+co(movies, field = "genres", sep = ",", similarity = "association", top_n = 3)
+```
+
+*History*–*News*, *Horror*–*Sci-Fi* and *Documentary*–*News* top the list,
+each resting on one or two films. The measure compares observed with
+expected co-occurrence, and for rare genres the expected count is so small
+that one shared film is far above it. The next section returns to this.
+
+Dice divides twice the count by the sum of the two frequencies.
+
+```{r sim-dice}
+co(movies, field = "genres", sep = ",", similarity = "dice", top_n = 3)
+```
+
+The ranking matches Jaccard (*Adventure*–*Animation*, *Action*–*Crime*,
+*Comedy*–*Drama*), with higher weights (0.443 for the first pair). Dice is a
+monotone function of Jaccard, \(D = 2J / (1 + J)\), so the two measures
+always rank pairs in the same order.
+
+Equivalence is the square of cosine.
+
+```{r sim-equivalence}
+co(movies, field = "genres", sep = ",", similarity = "equivalence", top_n = 3)
+```
+
+The order is the cosine order, and only the spread changes. The top pair is
+1.17 times the third under cosine (0.448 against 0.383) and 1.37 times under
+equivalence (0.201 against 0.147), so equivalence lets weak pairs fade from
+a weighted drawing.
+
+## How do rare items distort the probabilistic measure?
+
+Association strength and inclusion both reach their highest values for
+pairs of rare items. Dropping genres that appear on fewer than 20 films with
+`min_occur` removes pairs resting on one or two films.
+
+```{r association-min-occur}
+co(movies, field = "genres", sep = ",", similarity = "association",
+   min_occur = 20, top_n = 5)
+```
+
+Five genres fall below 20 films and two films carried only those genres, so
+the network has 17 genres and 998 films. The top pairs are now
+*Adventure*–*Animation* (0.00515, or \(39 / (101 \times 75)\)),
+*History*–*War*, *Mystery*–*Thriller*, *Documentary*–*Music* and
+*Animation*–*Fantasy*. None involves *Drama*: once frequency is discounted,
+the strongest associations are between genres that rarely appear apart.
+Association weights are small numbers because they are ratios to a product
+of frequencies; their order, not their size, is what they convey.
+
+## What does the directed relative measure show?
+
+`similarity = "relative"` divides each row of the count matrix by its sum.
+The weight from genre \(i\) to genre \(j\) is the share of all of \(i\)'s
+co-occurrences that are with \(j\), so the rows sum to 1 and the two
+directions of a pair differ. The edge list therefore has one row per
+direction. To keep the example small, genres on fewer than 100 films are
+dropped.
+
+```{r relative}
+genre_shares <- cooccurrence(movies, field = "genres", sep = ",",
+                             similarity = "relative", min_occur = 100)
+print(genre_shares, n = 8)
+```
+
+The header reports 8 genres and 52 directed edges out of 56 possible
+ordered pairs. The heaviest edge runs from *Documentary* to *Biography*
+(0.688): about two thirds of *Documentary*'s co-occurrences in this set are
+with *Biography*. The reverse edge, *Biography* to *Documentary*, weighs
+0.317, because *Biography* is also often paired with *Drama*. Both
+directions carry the same count, 44 films.
+
+The row sums behind these shares are the count strengths of the unnormalized
+network on the same genres.
+
+```{r relative-rowsums}
+as.data.frame(cooccurrence(movies, field = "genres", sep = ",",
+                           min_occur = 100),
+              what = "nodes")
+```
+
+*Documentary* has a count strength of 64 and *Biography* 139, so the two
+weights are \(44 / 64 = 0.688\) and \(44 / 139 = 0.317\).
+
+Because the network is directed, the converters keep the direction.
+
+```{r relative-igraph, eval = has_igraph}
+igraph::is_directed(as_igraph(genre_shares))
+```
+
+`as_igraph()` returns a directed graph; [Exporting networks](exporting.html)
+shows the other formats.
+
+## When should weights be rescaled?
+
+Scaling is applied after the similarity measure and changes the spread of
+the weights, not which pairs are linked. `scale = "minmax"` maps the weights
+to the range 0 to 1.
+
+```{r scale-minmax}
+co(movies, field = "genres", sep = ",", similarity = "jaccard",
+   scale = "minmax", top_n = 5)
+```
+
+*Adventure*–*Animation*, the strongest Jaccard pair, scores 1 and the other
+weights are fractions of it: *Action*–*Crime* is at 0.831 of the top pair.
+The order is the Jaccard order.
+
+`scale = "zscore"` expresses each weight in standard deviations from the
+mean weight, so weights below the mean are negative. A `threshold` of 1 keeps
+the edges at least one standard deviation above the mean.
+
+```{r scale-zscore}
+co(movies, field = "genres", sep = ",", similarity = "jaccard",
+   scale = "zscore", threshold = 1)
+```
+
+Fifteen genre pairs are at least one standard deviation above the mean
+Jaccard weight, the strongest being *Adventure*–*Animation* at 4.35. A
+negative threshold keeps edges above a point below the mean; the default
+`threshold = 0` keeps every edge. The other scalings (`"log"`, `"log10"`,
+`"sqrt"`, `"binary"`, `"proportion"`) are described in `?cooccurrence`.
+
+## Which measure to use?
+
+- **Describing the data:** `"none"` shows the counts as they are, and its
+  heaviest edges show where most co-occurrence lies.
+- **Bibliometric and scientometric maps:** `"association"`, as recommended
+  by van Eck and Waltman (2009), because it removes the effect of item
+  frequency. Pair it with `min_occur` so that pairs of rare items do not
+  dominate.
+- **Overlap of two items' transactions:** `"jaccard"` or `"dice"`, which
+  rank pairs identically; Jaccard gives lower weights.
+- **Pairs of unequal frequency:** `"cosine"` penalizes a frequent item
+  paired with a rare one less than Jaccard does; `"equivalence"` keeps the
+  cosine order and widens the gaps.
+- **Containment:** `"inclusion"` shows when a rare item appears mostly with
+  a common one, again with `min_occur`.
+- **Composition of each item's ties:** `"relative"` gives, for each item, the
+  share of its co-occurrences going to each other item, as a directed
+  network.
+
+Counting choices are covered in [Counting methods](counting.html), and
+group comparisons in [Comparing groups](comparing-groups.html).
+
+## Reference
+
+van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence data? An
+analysis of some well-known similarity measures. *Journal of the American
+Society for Information Science and Technology, 60*(8), 1635–1651.
+<https://doi.org/10.1002/asi.21075>
+
+```{r restore, include = FALSE}
+options(old_options)
+```

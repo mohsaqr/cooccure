@@ -3,34 +3,61 @@
 \name{as_igraph}
 \alias{as_igraph}
 \alias{as_igraph.cooccurrence}
-\title{Convert to igraph}
+\title{Convert a co-occurrence network to an igraph graph}
 \usage{
 as_igraph(x, ...)
 
-\method{as_igraph}{cooccurrence}(x, ...)
+\method{as_igraph}{cooccurrence}(x, group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame (default or \code{"gephi"}
-column names).}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}, with default or
+\code{"gephi"} column names.}
 
 \item{...}{Passed to \code{igraph::graph_from_data_frame()}, apart from
 \code{directed} and \code{vertices}, which are set here.}
+
+\item{group}{For a result built with \code{split_by}, the name of the group to
+convert. \code{NULL} (default) for an unsplit result.}
 }
 \value{
-An undirected \code{igraph} object with one vertex per item
-(vertex attribute \code{name}, isolated items included) and one edge
-per row of \code{x} (edge attributes \code{weight} and \code{count}).
-Raises an error when \pkg{igraph} is not installed.
+An \code{igraph} object with one vertex per item (vertex attribute
+\code{name}) and one edge per row of the edge list (edge attributes \code{weight}
+and \code{count}). Directed for \code{similarity = "relative"}, undirected
+otherwise.
 }
 \description{
-Creates an undirected, weighted \code{igraph} graph from a
-\code{cooccurrence} edge list, so the result can be analyzed with any
-\pkg{igraph} function. Requires the \pkg{igraph} package.
+\code{as_igraph()} converts a co-occurrence network to an \code{igraph} object.
+\pkg{igraph} is the most widely used general-purpose network library in R,
+with functions for centrality, community detection, paths and layouts;
+the conversion makes all of them available without re-entering the edges.
+
+The result is a weighted graph with one vertex per item, isolates
+included, and one edge per row of the edge list, carrying the edge
+attributes \code{weight} and \code{count}. The graph is undirected, except for
+\code{similarity = "relative"}, where each row is a directed edge and the
+graph is directed.
+
+A result built with \code{split_by} holds several networks; \code{group} names the
+one to convert, since stacking them would create one parallel edge per
+group. For a \code{tbl_graph}, use \code{\link[=as_tidygraph]{as_tidygraph()}}.
 }
+\section{Conditions}{
+
+\code{cooccure_missing_package} when \pkg{igraph} is not installed;
+\code{cooccure_grouped_input} when \code{x} was built with \code{split_by} and \code{group}
+is \code{NULL}; \code{cooccure_bad_input} for an unknown \code{group}.
+}
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
 if (requireNamespace("igraph", quietly = TRUE)) {
-  g <- as_igraph(res)
-  igraph::vcount(g)
+  g <- as_igraph(net)
+  igraph::strength(g)
 }
+}
+\seealso{
+\code{\link[=as_tidygraph]{as_tidygraph()}} for a \code{tbl_graph}; \code{\link[=as_cograph]{as_cograph()}} and
+\code{\link[=as_netobject]{as_netobject()}} for the \pkg{cograph} and \pkg{Nestimate} classes;
+\code{\link[=as_matrix]{as_matrix()}} for the weight matrix.
 }

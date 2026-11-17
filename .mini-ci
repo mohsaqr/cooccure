@@ -1,0 +1,12 @@
+# How cooccure is tested on the Mac mini (ci VM). Run in the repo: mini-ci [job]
+#   job NAME COMMAND (first = default) · env KEY=VALUE · sibling ../DIR · include PATH
+#   fetch PATH · report cvs · node mac|X.Y.Z|system (mac = the same Node version as this Mac)
+node system
+
+# R package: dependencies (incl. Suggests) come from DESCRIPTION. A local package this one
+# needs unreleased goes in as: sibling ../DIR
+job test   Rscript -e 'testthat::test_local(stop_on_failure = TRUE)'
+job check  Rscript -e 'r <- rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "never"); print(r); if (r$status != 0 || length(r$errors) || length(r$warnings)) quit(status = 1)'
+# Cross-implementation equivalence with Nestimate::cooccurrence(); build-ignored, so it
+# never runs in R CMD check. Add `sibling ../Nestimate` to run it against local Nestimate.
+job equivalence NOT_CRAN=true Rscript -e 'pkgload::load_all(".", quiet = TRUE); testthat::test_dir("tests/equivalence", stop_on_failure = TRUE, load_package = "none")'

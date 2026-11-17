@@ -1,3 +1,85 @@
 url: https://pak.dynasite.org/cooccure/
+
 template:
   bootstrap: 5
+
+authors:
+  Mohammed Saqr:
+    href: https://saqr.me
+  Sonsoles López-Pernas:
+    href: https://sonsoles.me
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [search, github]
+
+reference:
+- title: Overview
+  contents:
+  - cooccure-package
+
+- title: Building networks
+  desc: Co-occurrence networks from delimited columns, long tables, one-hot
+    tables, sequences and event logs, with similarity, counting, scaling,
+    filtering and groups.
+  contents:
+  - cooccurrence
+
+- title: Results
+  desc: Printing, summarizing and plotting a network, and its edge, node and
+    group tables.
+  contents:
+  - print.cooccurrence
+  - summary.cooccurrence
+  - print.summary.cooccurrence
+  - as.data.frame.cooccurrence
+  - as.data.frame.summary.cooccurrence
+  - plot.cooccurrence
+
+- title: Conversion
+  desc: The weight matrix and the network classes of igraph, tidygraph,
+    cograph and Nestimate.
+  contents:
+  - as_matrix
+  - as_igraph
+  - as_tidygraph
+  - as_cograph
+  - as_netobject
+
+- title: Data
+  desc: Films, casts and genres from the IMDb non-commercial datasets, and a
+    small cast table.
+  contents:
+  - movies
+  - actors
+  - actor_genres
+  - demo
+
+- title: Explorer
+  desc: An interactive application for building networks.
+  contents:
+  - launch_app
+
+articles:
+- title: Vignettes
+  navbar: Vignettes
+  contents:
+  - cooccure
+
+- title: Guides
+  navbar: Guides
+  contents:
+  - articles/input-formats
+  - articles/similarity-measures
+  - articles/counting
+  - articles/sequences
+  - articles/comparing-groups
+  - articles/exporting
+  - articles/verification
+
+- title: Case studies
+  navbar: Case studies
+  contents:
+  - articles/case-imdb-genres
+  - articles/case-actor-collaboration

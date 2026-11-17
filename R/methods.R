@@ -1,29 +1,36 @@
 # ---- S3 methods for cooccurrence ----
 
-#' Print a cooccurrence edge list
+#' Print a co-occurrence network
 #'
-#' Prints a compact network diagnostic header followed by an edge preview.
-#' The header gives the number of nodes, edges, and transactions, the
-#' density and mean degree, the similarity, counting, and scaling used, the
-#' number of isolates, and the five highest-degree nodes, so the size and
-#' sparsity of a network can be judged before any edge is read. For a
-#' \code{split_by} result the pooled density and degree are omitted, since
-#' they are undefined when several networks are stacked; use
-#' \code{\link[=summary.cooccurrence]{summary}} for per-group metrics.
+#' @description
+#' `print()` shows a co-occurrence network as a short diagnostic header
+#' followed by the strongest edges. The header reports what is first looked
+#' at in any network before its edges are read: how many items and edges
+#' it has, how dense it is, which similarity, counting and scaling produced
+#' the weights, how many items are isolated, and which items are the hubs.
 #'
-#' @param x A \code{cooccurrence} data frame.
-#' @param n Integer. Number of edge rows to show. Default 10.
+#' For a network built with `split_by`, the pooled density and degree are
+#' omitted, since they are undefined when several networks are stacked; use
+#' [summary.cooccurrence()] for one row of metrics per group. A directed
+#' network (`similarity = "relative"`) is marked as such and its density is
+#' computed over ordered pairs.
+#'
+#' @param x A `cooccurrence` edge list from [cooccurrence()].
+#' @param n Number of edges to show (default 10).
 #' @param ... Ignored.
-#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
-#'   of printing.
+#' @return `x`, invisibly and unchanged. Called for the printed output.
+#' @seealso [summary.cooccurrence()] for network, node and group metrics;
+#'   [as.data.frame.cooccurrence()] for the edge and node tables.
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-#' print(res)
+#' net <- cooccurrence(movies, field = "genres", sep = ",",
+#'                     similarity = "jaccard")
+#' print(net, n = 5)
 #' @export
 print.cooccurrence <- function(x, n = 10L, ...) {
   s <- .co_summary_data(x)
 
-  cat(sprintf("# cooccurrence: %d nodes, %d edges", s$n_nodes, s$n_edges))
+  cat(sprintf("# cooccurrence: %d nodes, %d %sedges", s$n_nodes, s$n_edges,
+              if (s$directed) "directed " else ""))
   if (!s$is_split) {
     cat(sprintf(" | density: %.4f | mean degree: %.4f",
                 s$density, s$mean_degree))
@@ -48,7 +55,7 @@ print.cooccurrence <- function(x, n = 10L, ...) {
   if (s$is_split) {
     cat(sprintf("# isolates: %d | per-group metrics: summary()\n", s$isolates))
   } else {
-    cat(sprintf("# possible edges: %d | isolates: %d\n",
+    cat(sprintf("# possible edges: %.0f | isolates: %d\n",
                 s$possible_edges, s$isolates))
     if (s$n_edges > 0L) {
       top <- utils::head(s$nodes[s$nodes$degree > 0L, ], 5L)
@@ -61,7 +68,7 @@ print.cooccurrence <- function(x, n = 10L, ...) {
 
   show <- min(n, s$n_edges)
   if (show > 0L) {
-    print(as.data.frame(x)[seq_len(show), ], row.names = FALSE)
+    print(utils::head(as.data.frame(x), show), row.names = FALSE)
     if (s$n_edges > show)
       cat(sprintf("# ... %d more edges\n", s$n_edges - show))
   } else {
@@ -71,127 +78,42 @@ print.cooccurrence <- function(x, n = 10L, ...) {
 }
 
 
+#' Network, node and group metrics of one cooccurrence object.
+#'
+#' A `split_by` result stacks one network per group, so the same node pair
+#' can appear once per group. Pooled simple-graph metrics are undefined
+#' there (density would exceed 1, degree would exceed n - 1): they are NA,
+#' the node table is computed within each group, and the group table
+#' carries one row of metrics per group.
+#' @noRd
 .co_summary_data <- function(object) {
   cols <- .co_edge_columns(object)
-  items <- attr(object, "items")
-  edge_items <- sort(unique(c(cols$from, cols$to)))
-  if (is.null(items)) {
-    items <- edge_items
-  } else {
-    items <- sort(unique(c(items, edge_items)))
-  }
+  is_split <- .co_is_split(object)
+  directed <- .co_is_directed(object)
+  items <- sort(unique(c(attr(object, "items"), cols$from, cols$to)))
   n_nodes <- length(items)
   n_edges <- nrow(object)
 
-  ## A split_by result stacks one network per group into a single frame, so
-  ## the same node pair can appear once per group. Pooled simple-graph
-  ## metrics are undefined there (density would exceed 1, degree would
-  ## exceed n - 1), so they are reported as NA and the per-group table in
-  ## `groups_summary` carries the real numbers instead.
-  is_split <- "group" %in% names(object)
-
-  possible_edges <- if (is_split) NA_real_ else n_nodes * (n_nodes - 1) / 2
-  density <- if (is_split) {
+  ## Ordered pairs for a directed network, unordered otherwise.
+  possible_edges <- if (is_split) {
     NA_real_
-  } else if (possible_edges > 0) {
+  } else if (directed) {
+    n_nodes * (n_nodes - 1)
+  } else {
+    n_nodes * (n_nodes - 1) / 2
+  }
+  density <- if (is_split || !(possible_edges > 0)) NA_real_ else
     n_edges / possible_edges
+
+  node_stats <- if (is_split) {
+    .co_split_node_table(object)
   } else {
-    NA_real_
+    .co_node_table(cols, items, attr(object, "frequencies"))
   }
-
-  degree <- stats::setNames(integer(n_nodes), items)
-  strength <- stats::setNames(numeric(n_nodes), items)
-  count_strength <- stats::setNames(numeric(n_nodes), items)
-  if (n_edges > 0L) {
-    edge_nodes <- c(cols$from, cols$to)
-    deg_tab <- table(edge_nodes)
-    degree[names(deg_tab)] <- as.integer(deg_tab)
-
-    edge_weight <- rep(cols$weight, 2L)
-    edge_count <- rep(cols$count, 2L)
-    strength_tab <- rowsum(edge_weight, edge_nodes, reorder = FALSE)
-    count_tab <- rowsum(edge_count, edge_nodes, reorder = FALSE)
-    strength[rownames(strength_tab)] <- as.numeric(strength_tab[, 1])
-    count_strength[rownames(count_tab)] <- as.numeric(count_tab[, 1])
-  }
-
-  frequencies <- attr(object, "frequencies")
-  frequency <- if (!is.null(frequencies)) {
-    out <- stats::setNames(rep(NA_real_, n_nodes), items)
-    out[names(frequencies)] <- as.numeric(frequencies)
-    out
+  isolates <- if (is_split) {
+    length(setdiff(items, c(cols$from, cols$to)))
   } else {
-    stats::setNames(rep(NA_real_, n_nodes), items)
-  }
-
-  node_stats <- data.frame(
-    node = items,
-    degree = as.integer(degree),
-    strength = as.numeric(strength),
-    count_strength = as.numeric(count_strength),
-    frequency = as.numeric(frequency),
-    stringsAsFactors = FALSE
-  )
-  node_stats <- node_stats[order(-node_stats$degree, -node_stats$strength,
-                                 node_stats$node), ]
-  rownames(node_stats) <- NULL
-
-  weight_summary <- if (n_edges > 0L) {
-    c(
-      min = min(cols$weight),
-      q1 = unname(stats::quantile(cols$weight, 0.25, names = FALSE)),
-      median = stats::median(cols$weight),
-      mean = mean(cols$weight),
-      q3 = unname(stats::quantile(cols$weight, 0.75, names = FALSE)),
-      max = max(cols$weight)
-    )
-  } else {
-    c(min = NA_real_, q1 = NA_real_, median = NA_real_,
-      mean = NA_real_, q3 = NA_real_, max = NA_real_)
-  }
-
-  count_summary <- if (n_edges > 0L) {
-    c(
-      min = min(cols$count),
-      q1 = unname(stats::quantile(cols$count, 0.25, names = FALSE)),
-      median = stats::median(cols$count),
-      mean = mean(cols$count),
-      q3 = unname(stats::quantile(cols$count, 0.75, names = FALSE)),
-      max = max(cols$count)
-    )
-  } else {
-    c(min = NA_real_, q1 = NA_real_, median = NA_real_,
-      mean = NA_real_, q3 = NA_real_, max = NA_real_)
-  }
-
-  group_stats <- NULL
-  if ("group" %in% names(object)) {
-    ## Per-group support recorded at split time; a node isolated inside its
-    ## group appears in no edge and cannot be recovered from the rows alone.
-    group_items <- attr(object, "group_items")
-    group_stats <- do.call(rbind, lapply(split(object, object$group), function(x) {
-      group_cols <- .co_edge_columns(x)
-      grp <- as.character(x$group[1L])
-      nodes <- if (!is.null(group_items[[grp]])) {
-        group_items[[grp]]
-      } else {
-        sort(unique(c(group_cols$from, group_cols$to)))
-      }
-      n_group_nodes <- length(nodes)
-      n_group_edges <- nrow(x)
-      group_possible <- n_group_nodes * (n_group_nodes - 1L) / 2L
-      data.frame(
-        group = as.character(x$group[1L]),
-        n_nodes = n_group_nodes,
-        n_edges = n_group_edges,
-        possible_edges = group_possible,
-        density = if (group_possible > 0) n_group_edges / group_possible else NA_real_,
-        weight_mean = if (n_group_edges > 0L) mean(group_cols$weight) else NA_real_,
-        count_sum = if (n_group_edges > 0L) sum(group_cols$count) else 0,
-        stringsAsFactors = FALSE
-      )
-    }))
-    rownames(group_stats) <- NULL
+    sum(node_stats$degree == 0L)
   }
 
   out <- list(
@@ -204,8 +126,9 @@ print.cooccurrence <- function(x, n = 10L, ...) {
     } else {
       2 * n_edges / n_nodes
     },
-    isolates = sum(degree == 0L),
+    isolates = isolates,
     is_split = is_split,
+    directed = directed,
     n_transactions = attr(object, "n_transactions"),
     similarity = attr(object, "similarity"),
     counting = attr(object, "counting"),
@@ -216,91 +139,206 @@ print.cooccurrence <- function(x, n = 10L, ...) {
     aggregate_by = attr(object, "aggregate_by"),
     aggregate = attr(object, "aggregate"),
     groups = attr(object, "groups"),
-    weight = weight_summary,
-    count = count_summary,
+    weight = .co_five_numbers(cols$weight),
+    count = .co_five_numbers(cols$count),
     nodes = node_stats,
-    groups_summary = group_stats
+    groups_summary = if (is_split) .co_group_table(object) else NULL
   )
   class(out) <- "summary.cooccurrence"
   out
 }
 
+#' Node table of one network: degree, strength, count strength, frequency.
+#'
+#' Degree counts incident edges; in a directed network an item's in- and
+#' out-edges both count, so degree is the total degree.
+#' @noRd
+.co_node_table <- function(cols, items, frequencies = NULL) {
+  n_nodes <- length(items)
+  degree <- stats::setNames(integer(n_nodes), items)
+  strength <- stats::setNames(numeric(n_nodes), items)
+  count_strength <- stats::setNames(numeric(n_nodes), items)
+  if (length(cols$from) > 0L) {
+    edge_nodes <- c(cols$from, cols$to)
+    deg_tab <- table(edge_nodes)
+    degree[names(deg_tab)] <- as.integer(deg_tab)
+    strength_tab <- rowsum(rep(cols$weight, 2L), edge_nodes, reorder = FALSE)
+    count_tab <- rowsum(rep(cols$count, 2L), edge_nodes, reorder = FALSE)
+    strength[rownames(strength_tab)] <- as.numeric(strength_tab[, 1])
+    count_strength[rownames(count_tab)] <- as.numeric(count_tab[, 1])
+  }
+  frequency <- stats::setNames(rep(NA_real_, n_nodes), items)
+  if (!is.null(frequencies)) {
+    known <- intersect(names(frequencies), items)
+    frequency[known] <- as.numeric(frequencies[known])
+  }
+  node_stats <- data.frame(
+    node = items,
+    degree = as.integer(degree),
+    strength = as.numeric(strength),
+    count_strength = as.numeric(count_strength),
+    frequency = as.numeric(frequency),
+    stringsAsFactors = FALSE
+  )
+  node_stats <- node_stats[order(-node_stats$degree, -node_stats$strength,
+                                 node_stats$node), ]
+  rownames(node_stats) <- NULL
+  node_stats
+}
+
+#' Node table of a split result: one row per node per group.
+#' @noRd
+.co_split_node_table <- function(object) {
+  groups <- unique(as.character(object$group))
+  tables <- lapply(groups, function(g) {
+    rows <- as.character(object$group) == g
+    sub_cols <- lapply(.co_edge_columns(object), function(v) v[rows])
+    items <- sort(unique(c(attr(object, "group_items")[[g]],
+                           sub_cols$from, sub_cols$to)))
+    tab <- .co_node_table(sub_cols, items,
+                          attr(object, "group_frequencies")[[g]])
+    cbind(group = rep(g, nrow(tab)), tab, stringsAsFactors = FALSE)
+  })
+  out <- do.call(rbind, tables)
+  rownames(out) <- NULL
+  out
+}
+
+#' Group table of a split result: one row of network metrics per group.
+#' @noRd
+.co_group_table <- function(object) {
+  group_items <- attr(object, "group_items")
+  directed <- .co_is_directed(object)
+  groups <- unique(as.character(object$group))
+  rows <- lapply(groups, function(g) {
+    in_group <- as.character(object$group) == g
+    group_cols <- lapply(.co_edge_columns(object), function(v) v[in_group])
+    ## Per-group support recorded at split time; a node isolated inside its
+    ## group appears in no edge and cannot be recovered from the rows alone.
+    nodes <- sort(unique(c(group_items[[g]], group_cols$from, group_cols$to)))
+    n_group_nodes <- length(nodes)
+    n_group_edges <- sum(in_group)
+    group_possible <- n_group_nodes * (n_group_nodes - 1) /
+      (if (directed) 1 else 2)
+    data.frame(
+      group = g,
+      n_nodes = n_group_nodes,
+      n_edges = n_group_edges,
+      possible_edges = group_possible,
+      density = if (group_possible > 0) n_group_edges / group_possible else
+        NA_real_,
+      weight_mean = if (n_group_edges > 0L) mean(group_cols$weight) else
+        NA_real_,
+      count_sum = if (n_group_edges > 0L) sum(group_cols$count) else 0,
+      stringsAsFactors = FALSE
+    )
+  })
+  out <- do.call(rbind, rows)
+  rownames(out) <- NULL
+  out
+}
+
+#' Minimum, quartiles, mean and maximum (NA for an empty vector).
+#' @noRd
+.co_five_numbers <- function(v) {
+  if (length(v) == 0L) {
+    return(c(min = NA_real_, q1 = NA_real_, median = NA_real_,
+             mean = NA_real_, q3 = NA_real_, max = NA_real_))
+  }
+  c(min = min(v),
+    q1 = stats::quantile(v, 0.25, names = FALSE),
+    median = stats::median(v),
+    mean = mean(v),
+    q3 = stats::quantile(v, 0.75, names = FALSE),
+    max = max(v))
+}
+
 
 .co_edge_columns <- function(x) {
   if (all(c("from", "to", "weight", "count") %in% names(x))) {
-    return(list(from = x$from, to = x$to,
+    return(list(from = as.character(x$from), to = as.character(x$to),
                 weight = as.numeric(x$weight), count = as.numeric(x$count)))
   }
   if (all(c("Source", "Target", "Weight", "Count") %in% names(x))) {
-    return(list(from = x$Source, to = x$Target,
+    return(list(from = as.character(x$Source), to = as.character(x$Target),
                 weight = as.numeric(x$Weight), count = as.numeric(x$Count)))
   }
-  stop("Cannot identify edge columns in this cooccurrence object.",
-       call. = FALSE)
+  .co_abort("Cannot identify edge columns in this cooccurrence object: ",
+            "expected from/to/weight/count or Source/Target/Weight/Count.",
+            class = "cooccure_bad_input")
 }
 
 
 `%||%` <- function(x, y) if (is.null(x)) y else x
 
 
-#' Summarize a cooccurrence network
+#' Summarize a co-occurrence network
 #'
-#' Computes network-level metrics (nodes, edges, possible edges, density,
-#' mean degree, isolates, weight and count distribution), node-level metrics
-#' (degree, strength, count strength, frequency), and, for a
-#' \code{split_by} result, one row of metrics per group. The summary is
-#' printed when computed. Node- and group-level metrics are available as
-#' tidy data frames via
-#' \code{\link[=as.data.frame.summary.cooccurrence]{as.data.frame}}.
+#' @description
+#' `summary()` computes the metrics of a co-occurrence network at three
+#' levels: the network as a whole (size, density, mean degree, isolates and
+#' the distribution of edge weights and counts), each item in it (degree,
+#' strength and frequency), and, for a network built with `split_by`, each
+#' group. Together these show whether the network is sparse or saturated,
+#' which items are hubs, and how groups differ in size and density.
 #'
-#' For a network built with \code{split_by}, the returned frame stacks one
-#' network per group, so a node pair can occur once per group. Pooled
-#' simple-graph metrics (\code{density}, \code{mean_degree},
-#' \code{possible_edges}) are undefined in that case and reported as
-#' \code{NA}; the per-group table carries the correct values.
+#' The metrics are returned as an object; printing it shows the
+#' network-level block. The node and group tables are returned
+#' as tidy data frames by [as.data.frame.summary.cooccurrence()], or directly
+#' from the network with [as.data.frame.cooccurrence()].
 #'
-#' @param object A \code{cooccurrence} data frame.
+#' For a network built with `split_by`, the frame stacks one network per
+#' group, so a pair can occur once per group. Pooled simple-graph metrics
+#' (`density`, `mean_degree`, `possible_edges`) are undefined and reported
+#' as `NA`; the node table has one row per node per group and the group
+#' table carries the per-group values. For the directed
+#' `similarity = "relative"` network, density is computed over ordered pairs
+#' and degree counts in- and out-edges.
+#'
+#' @param object A `cooccurrence` edge list from [cooccurrence()].
 #' @param ... Ignored.
-#' @return Invisibly, a list of class \code{summary.cooccurrence} holding the
-#'   scalar network metrics, the parameters used, a node table, and (for
-#'   \code{split_by} results) a group table. The summary is also printed
-#'   via \code{\link{print.summary.cooccurrence}} as a side effect. Get the
-#'   tables with \code{as.data.frame(summary(x))} (one row per node) and
-#'   \code{as.data.frame(summary(x), what = "groups")} (one row per group).
+#' @return An object of class `summary.cooccurrence`: a list of network
+#'   metrics (`n_nodes`, `n_edges`, `possible_edges`, `density`,
+#'   `mean_degree`, `isolates`), the parameters used, five-number summaries
+#'   of the weights and counts, a node table and, for `split_by` results, a
+#'   group table. Read the tables with [as.data.frame.summary.cooccurrence()].
+#' @seealso [print.summary.cooccurrence()]; [as.data.frame.cooccurrence()];
+#'   [plot.cooccurrence()] for the degree distribution.
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-#' summary(res)
+#' net <- cooccurrence(movies, field = "genres", sep = ",",
+#'                     similarity = "jaccard")
+#' summary(net)
 #'
-#' # Node-level metrics as a tidy data frame
-#' as.data.frame(summary(res))
+#' # The node table as a data frame
+#' as.data.frame(summary(net), what = "nodes")
 #' @export
 summary.cooccurrence <- function(object, ...) {
-  out <- .co_summary_data(object)
-  print(out)
-  invisible(out)
+  .co_summary_data(object)
 }
 
 
-#' Print a cooccurrence summary
+#' Print a co-occurrence network summary
 #'
-#' Prints the network-level metrics, the parameters used, the weight and
-#' count ranges, the top nodes by degree, and the largest groups by edge
-#' count. For a \code{split_by} result the pooled possible edges, density,
-#' mean degree, and top-node line are omitted, since they are undefined for
-#' stacked networks.
+#' @description
+#' `print()` shows the network-level block of a [summary.cooccurrence()]
+#' object: the numbers of nodes, edges and possible edges, density, mean
+#' degree, isolates, transactions, the parameters used, the range and mean of
+#' the weights and counts, the top nodes by degree, and the largest groups by
+#' number of edges. For a `split_by` result the pooled metrics and the
+#' top-node line are omitted, since they are undefined for stacked networks.
 #'
-#' @param x A \code{summary.cooccurrence} object.
-#' @param n Integer. Number of top nodes and groups to show. Default 5.
+#' @param x A `summary.cooccurrence` object.
+#' @param n Number of top nodes and groups to show (default 5).
 #' @param ... Ignored.
-#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
-#'   of printing.
+#' @return `x`, invisibly and unchanged. Called for the printed output.
+#' @seealso [summary.cooccurrence()]; [as.data.frame.summary.cooccurrence()].
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-#' s <- summary(res)
-#' print(s, n = 2)
+#' net <- cooccurrence(movies, field = "genres", sep = ",")
+#' print(summary(net), n = 3)
 #' @export
 print.summary.cooccurrence <- function(x, n = 5L, ...) {
-  cat("cooccurrence network\n")
+  cat(sprintf("cooccurrence network%s\n",
+              if (isTRUE(x$directed)) " (directed)" else ""))
   cat(rep("-", 30), "\n", sep = "")
   cat(sprintf("Nodes          : %d\n", x$n_nodes))
   cat(sprintf("Edges          : %d%s\n", x$n_edges,
@@ -308,13 +346,13 @@ print.summary.cooccurrence <- function(x, n = 5L, ...) {
   ## Pooled simple-graph metrics are undefined for a split_by result; the
   ## per-group block below reports them correctly instead.
   if (!x$is_split) {
-    cat(sprintf("Possible edges : %d\n", x$possible_edges))
+    cat(sprintf("Possible edges : %.0f\n", x$possible_edges))
     cat(sprintf("Density        : %.4f\n", x$density))
     cat(sprintf("Mean degree    : %.4f\n", x$mean_degree))
   }
   cat(sprintf("Isolates       : %d\n", x$isolates))
   if (!is.null(x$n_transactions)) {
-    cat(sprintf("Transactions   : %d\n", x$n_transactions))
+    cat(sprintf("Transactions   : %d\n", as.integer(x$n_transactions)))
   }
   if (!is.null(x$split_by)) {
     cat(sprintf("Split by       : %s (%d groups)\n",
@@ -342,8 +380,8 @@ print.summary.cooccurrence <- function(x, n = 5L, ...) {
                 x$count[["min"]], x$count[["max"]]))
     cat(sprintf("Count mean     : %.4g\n", x$count[["mean"]]))
 
-    ## Node degree pools across groups when split_by is used, so it is not a
-    ## simple-graph degree; suppress rather than report a misleading number.
+    ## Node degree is per group when split_by is used, so a pooled top-node
+    ## line would mix groups; the group block below is shown instead.
     if (!x$is_split) {
       top <- utils::head(x$nodes[x$nodes$degree > 0L, ], as.integer(n))
       if (nrow(top) > 0L) {
@@ -356,7 +394,8 @@ print.summary.cooccurrence <- function(x, n = 5L, ...) {
   }
 
   if (!is.null(x$groups_summary) && nrow(x$groups_summary) > 0L) {
-    show <- utils::head(x$groups_summary[order(-x$groups_summary$n_edges), ],
+    show <- utils::head(x$groups_summary[order(-x$groups_summary$n_edges,
+                                               x$groups_summary$group), ],
                         as.integer(n))
     cat("Groups         : ")
     cat(paste(sprintf("%s(%d nodes, %d edges, %.4f density)",
@@ -369,42 +408,36 @@ print.summary.cooccurrence <- function(x, n = 5L, ...) {
 }
 
 
-#' Tidy node or group table from a cooccurrence summary
+#' Extract the tables of a co-occurrence network summary
 #'
-#' Returns the summary's node-level metrics (one row per node) or its
-#' group-level metrics (one row per group) as a plain \code{data.frame},
-#' so callers never have to reach into the summary object's internals.
+#' @description
+#' `as.data.frame()` returns the node table or the group table of a
+#' [summary.cooccurrence()] object as a plain data frame, so the metrics can
+#' be sorted, filtered, joined or plotted with ordinary data-frame tools.
 #'
-#' @param x A \code{summary.cooccurrence} object.
-#' @param row.names Passed to \code{\link[base]{as.data.frame}}; unused.
-#' @param optional Passed to \code{\link[base]{as.data.frame}}; unused.
-#' @param what Character. \code{"nodes"} (default) for one row per node with
-#'   degree, strength, count strength, and frequency; \code{"groups"} for one
-#'   row per group when the network was built with \code{split_by}.
+#' @param x A `summary.cooccurrence` object.
+#' @param row.names,optional Unused; present for compatibility with the
+#'   [base::as.data.frame()] generic.
+#' @param what `"nodes"` (default) for the node table, or `"groups"` for the
+#'   group table of a `split_by` result.
 #' @param ... Ignored.
-#' @return A base \code{data.frame}.
-#'   For \code{what = "nodes"}, one row per node, sorted by degree, then
-#'   strength (both decreasing), then name, with columns \code{node}
-#'   (character), \code{degree} (integer, number of incident edges),
-#'   \code{strength} (sum of incident edge weights), \code{count_strength}
-#'   (sum of incident raw counts), and \code{frequency} (number of
-#'   transactions containing the node; \code{NA} when not stored, as for
-#'   \code{split_by} and \code{aggregate_by} results).
-#'   For \code{what = "groups"}, one row per group with columns
-#'   \code{group}, \code{n_nodes}, \code{n_edges}, \code{possible_edges},
-#'   \code{density}, \code{weight_mean}, and \code{count_sum}; zero rows
-#'   when the network was not split.
+#' @return A base `data.frame`.
+#'   For `what = "nodes"`, one row per node (per node and group for a
+#'   `split_by` result, with a leading `group` column), sorted by degree and
+#'   strength (both decreasing) and then name, with columns `node`, `degree`
+#'   (number of incident edges), `strength` (sum of incident edge weights),
+#'   `count_strength` (sum of incident raw counts) and `frequency` (number of
+#'   transactions containing the node; `NA` when not stored, as for
+#'   `aggregate_by` and weighted results).
+#'   For `what = "groups"`, one row per group with columns `group`,
+#'   `n_nodes`, `n_edges`, `possible_edges`, `density`, `weight_mean` and
+#'   `count_sum`; zero rows when the network was not split.
+#' @seealso [summary.cooccurrence()]; [as.data.frame.cooccurrence()], which
+#'   returns the same tables directly from the network.
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-#' as.data.frame(summary(res))
-#'
-#' # One row per group for a split network
-#' df <- data.frame(
-#'   keywords = c("a; b", "b; c", "a; c", "a; b; c"),
-#'   year = c(2020, 2020, 2021, 2021)
-#' )
-#' by_year <- cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
-#' as.data.frame(summary(by_year), what = "groups")
+#' by_decade <- cooccurrence(movies, field = "genres", sep = ",",
+#'                           split_by = "decade", similarity = "jaccard")
+#' as.data.frame(summary(by_decade), what = "groups")
 #' @export
 as.data.frame.summary.cooccurrence <- function(x, row.names = NULL,
                                                optional = FALSE,
@@ -422,62 +455,131 @@ as.data.frame.summary.cooccurrence <- function(x, row.names = NULL,
 }
 
 
-#' Plot a cooccurrence network
+#' Extract the tables of a co-occurrence network
 #'
-#' Plots the co-occurrence matrix as a heatmap, an \pkg{igraph} network, or a
-#' base-R degree distribution. The heatmap shows which item pairs carry the
-#' heaviest weights; the degree distribution shows whether connectivity is
-#' concentrated on a few hub items or spread evenly. For publication-quality
-#' network drawings, convert with \code{\link{as_cograph}} and use
-#' \code{cograph::splot()}.
+#' @description
+#' `as.data.frame()` returns a table of a co-occurrence network as a plain
+#' data frame without the network's attributes, ready for sorting, joining,
+#' plotting or writing to a file. A co-occurrence network is described by
+#' two tables: its edges, one row per pair of items with a weight and a raw
+#' count, and its nodes, one row per item with degree, strength and
+#' frequency. A network built with `split_by` adds a third, one row of
+#' metrics per group.
 #'
-#' @param x A \code{cooccurrence} data frame.
-#' @param type Character. \code{"heatmap"} (default), \code{"network"}
-#'   (requires \pkg{igraph}), or \code{"degree"} for a base-R degree
-#'   distribution bar plot.
-#' @param ... Passed to the plotting function: \code{graphics::image()} for
-#'   the heatmap, \code{plot()} on the \code{igraph} object for the network,
-#'   and \code{graphics::barplot()} for the degree distribution (where they
-#'   override the default labels and colors).
-#' @return Invisibly returns \code{x}, unchanged. Called for the side effect
-#'   of drawing on the current graphics device.
+#' `what` selects the table. The edge table is the printed network; the node
+#' and group tables are those of [summary.cooccurrence()].
+#'
+#' @param x A `cooccurrence` edge list from [cooccurrence()].
+#' @param row.names,optional Unused; present for compatibility with the
+#'   [base::as.data.frame()] generic.
+#' @param what `"edges"` (default), `"nodes"` or `"groups"`.
+#' @param ... Ignored.
+#' @return A base `data.frame`.
+#'   For `what = "edges"`, one row per edge with columns `from`, `to`,
+#'   `weight` and `count` (and `group` for a `split_by` result), in the order
+#'   printed. An undirected network has one row per pair; the directed
+#'   `similarity = "relative"` network has one row per direction.
+#'   For `what = "nodes"` and `what = "groups"`, the tables described in
+#'   [as.data.frame.summary.cooccurrence()].
+#' @seealso [summary.cooccurrence()]; [as_matrix()] for the weight matrix.
 #' @examples
-#' res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C"), c("C","D")))
-#' plot(res)
-#' plot(res, type = "degree")
+#' net <- cooccurrence(movies, field = "genres", sep = ",",
+#'                     similarity = "jaccard", min_occur = 50)
+#' as.data.frame(net)
+#' as.data.frame(net, what = "nodes")
 #' @export
-plot.cooccurrence <- function(x, type = c("heatmap", "network", "degree"), ...) {
+as.data.frame.cooccurrence <- function(x, row.names = NULL, optional = FALSE,
+                                       what = c("edges", "nodes", "groups"),
+                                       ...) {
+  what <- match.arg(what)
+  if (what != "edges")
+    return(as.data.frame(.co_summary_data(x), what = what))
+  out <- data.frame(unclass(x)[names(x)], stringsAsFactors = FALSE,
+                    check.names = FALSE)
+  rownames(out) <- NULL
+  out
+}
+
+
+#' Plot a co-occurrence network
+#'
+#' @description
+#' `plot()` draws one of three displays of a co-occurrence network: a heatmap
+#' of the weight matrix (default), a network drawing through \pkg{igraph}, or
+#' the degree distribution as a bar chart. The heatmap shows which item pairs
+#' carry the heaviest weights and which never co-occur. The network drawing
+#' places linked items near one another. The degree distribution shows
+#' whether connectivity is concentrated on a few hub items or spread evenly.
+#'
+#' The heatmap uses
+#' a white-to-blue scale for non-negative weights and a red-white-blue scale
+#' centered on zero when weights can be negative (`scale = "zscore"`); rows
+#' are the source items, which matters for the directed
+#' `similarity = "relative"` network.
+#'
+#' For a result built with `split_by`, `group` names the network to draw.
+#' For publication-quality network drawings, convert with [as_cograph()] and
+#' use `cograph::splot()`.
+#'
+#' @param x A `cooccurrence` edge list from [cooccurrence()].
+#' @param type `"heatmap"` (default), `"network"` (requires \pkg{igraph}), or
+#'   `"degree"`.
+#' @param group For a result built with `split_by`, the name of the group to
+#'   draw. `NULL` (default) for an unsplit result.
+#' @param ... Passed to `graphics::image()` for the heatmap, `plot()` on the
+#'   `igraph` object for the network, and `graphics::barplot()` for the
+#'   degree distribution, where they override the defaults (for instance
+#'   `col` or `main`).
+#' @return `x`, invisibly and unchanged. Called for the plot drawn on the
+#'   current graphics device.
+#' @section Conditions:
+#'   `cooccure_grouped_input` when `x` was built with `split_by` and `group`
+#'   is `NULL`; `cooccure_missing_package` for `type = "network"` without
+#'   \pkg{igraph}.
+#' @seealso [as_cograph()] for publication network drawings;
+#'   [summary.cooccurrence()] for the numbers behind the degree plot.
+#' @examples
+#' net <- cooccurrence(movies, field = "genres", sep = ",",
+#'                     similarity = "jaccard", min_occur = 50)
+#' plot(net)
+#' plot(net, type = "degree")
+#' @export
+plot.cooccurrence <- function(x, type = c("heatmap", "network", "degree"),
+                              group = NULL, ...) {
   type <- match.arg(type)
+  net <- .co_select_group(x, group)
 
   if (type == "network") {
-    if (!requireNamespace("igraph", quietly = TRUE))
-      stop("Package 'igraph' is required for network plots.", call. = FALSE)
-    g <- as_igraph(x)
-    plot(g, ...)
+    .co_need("igraph", "for network plots")
+    plot(as_igraph(net), ...)
   } else if (type == "degree") {
-    s <- .co_summary_data(x)
+    s <- .co_summary_data(net)
     degree_counts <- table(factor(s$nodes$degree,
-                                  levels = seq.int(0L, max(s$nodes$degree))))
+                                  levels = seq.int(0L, max(c(0L, s$nodes$degree)))))
     args <- list(
       height = as.numeric(degree_counts),
       names.arg = names(degree_counts),
       xlab = "Degree",
       ylab = "Number of nodes",
       main = "Degree distribution",
-      col = "grey70",
-      border = "grey30"
+      col = "#56B4E9",
+      border = "#000000"
     )
     dots <- list(...)
     args[names(dots)] <- dots
     do.call(graphics::barplot, args)
   } else {
     ## Go through as_matrix() so sparse attributes get densified consistently.
-    mat <- as_matrix(x)
+    mat <- as_matrix(net)
     n <- nrow(mat)
-    graphics::image(
-      seq_len(n), seq_len(n), t(mat[n:1, ]),
-      xlab = "", ylab = "", axes = FALSE, ...
+    args <- list(
+      x = seq_len(n), y = seq_len(n), z = t(mat[rev(seq_len(n)), , drop = FALSE]),
+      xlab = "", ylab = "", axes = FALSE
     )
+    args <- c(args, .co_heatmap_scale(mat))
+    dots <- list(...)
+    args[names(dots)] <- dots
+    do.call(graphics::image, args)
     graphics::axis(1, at = seq_len(n), labels = colnames(mat),
                    las = 2, cex.axis = 0.7)
     graphics::axis(2, at = seq_len(n), labels = rev(rownames(mat)),
@@ -485,4 +587,23 @@ plot.cooccurrence <- function(x, type = c("heatmap", "network", "degree"), ...) 
   }
 
   invisible(x)
+}
+
+#' Colors and limits for the heatmap.
+#'
+#' Non-negative weights run from white (absent) to blue; weights that can be
+#' negative get the house diverging scale, red (#D33F6A) through white to
+#' blue (#4A6FE3), with limits symmetric about zero so white means zero.
+#' @noRd
+.co_heatmap_scale <- function(mat) {
+  rng <- range(c(0, mat), finite = TRUE)
+  if (rng[1] < 0) {
+    lim <- max(abs(rng))
+    list(col = grDevices::colorRampPalette(c("#D33F6A", "#FFFFFF",
+                                             "#4A6FE3"))(101),
+         zlim = c(-lim, lim))
+  } else {
+    list(col = grDevices::colorRampPalette(c("#FFFFFF", "#4A6FE3"))(100),
+         zlim = c(0, if (rng[2] > 0) rng[2] else 1))
+  }
 }

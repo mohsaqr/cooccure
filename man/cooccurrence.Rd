@@ -66,300 +66,229 @@ co(
 )
 }
 \arguments{
-\item{data}{Input data. Accepts:
+\item{data}{Input data, one of:
 \itemize{
-\item A \code{data.frame} with a delimited column (\code{field} + \code{sep}).
-\item A \code{data.frame} in long/bipartite format (\code{field} + \code{by}).
-\item A binary (0/1 or \code{TRUE}/\code{FALSE}) \code{data.frame} or
-\code{matrix} (auto-detected).
-\item A one-hot or count table with \code{vars} naming the indicator
-columns; other columns (ids, metadata) are ignored.
-\item A wide sequence \code{data.frame} or \code{matrix} (non-binary).
-\item A \code{list} of character vectors (each element is a transaction).
-\item A \code{nestimate_data} object from
-\code{Nestimate::prepare()}; its \code{sequence_data} is used, so
-event logs can be sessionized there and networked here.
+\item a data frame with a delimited column (\code{field} and \code{sep});
+\item a long data frame with one row per item and transaction (\code{field} and
+\code{by}), optionally weighted (\code{weight_by});
+\item a binary (0/1 or \code{TRUE}/\code{FALSE}) data frame or matrix, detected
+automatically;
+\item a one-hot or count table, with \code{vars} naming the indicator columns;
+\item a wide sequence data frame or matrix, one row per sequence
+(\code{field = "all"});
+\item a list of character vectors, one per transaction;
+\item a raw event log (\code{action}, with \code{actor}, \code{time}, \code{session});
+\item a \code{nestimate_data} object from \code{Nestimate::prepare()}.
 }}
 
-\item{field}{Character. The entity column --- determines what the nodes are.
-For delimited format, a single column split by \code{sep}. For
-long/bipartite, the item column. For multi-column delimited, a vector
-of column names pooled per row. Use \code{field = "all"} for wide
-sequence data (e.g. TraMineR / tna format) where every column is a
-time point and cell values are the items.}
+\item{field}{The item column. For delimited input, the column split by
+\code{sep} (several columns are pooled per row); for long input, the item
+column; \code{"all"} for wide sequence data, where every column is a time
+point.}
 
-\item{by}{Character or \code{NULL}. Grouping column for long/bipartite
-format. Each unique value defines one transaction.}
+\item{by}{For long input, the column identifying the transaction.}
 
-\item{sep}{Character or \code{NULL}. Separator for splitting delimited
-fields.}
+\item{sep}{Separator for delimited input.}
 
-\item{weight_by}{Character or \code{NULL}. Column name containing a numeric
-association strength for each entity-transaction pair. Only accepted for
-long format (\code{field} + \code{by}). When supplied, each entity
-contributes its weight rather than 1, so
-\eqn{C_{ij} = \sum_d w_{id} \cdot w_{jd}}.
-Typical use: topic-document probability matrices from LDA or similar
-models.}
+\item{weight_by}{For long input, a numeric column giving each item's
+weight in its transaction, so that \eqn{C_{ij} = \sum_d w_{id} w_{jd}}
+(for instance topic probabilities per document). Requires
+\code{counting = "full"}.}
 
-\item{split_by}{Character or \code{NULL}. Column name to split the data
-by before computing co-occurrence. A separate network is computed per
-group and the results are combined into a single data frame with an
-additional \code{group} column. Only works with data.frame inputs.}
+\item{split_by}{A column of \code{data}. One network is built per group and the
+edge lists are stacked with a \code{group} column.}
 
-\item{similarity}{Character. Similarity measure:
-\describe{
-\item{\code{"none"}}{Raw co-occurrence counts.}
-\item{\code{"jaccard"}}{\eqn{C_{ij} / (f_i + f_j - C_{ij})}.}
-\item{\code{"cosine"}}{Salton's cosine:
-\eqn{C_{ij} / \sqrt{f_i \cdot f_j}}.}
-\item{\code{"inclusion"}}{Simpson coefficient:
-\eqn{C_{ij} / \min(f_i, f_j)}.}
-\item{\code{"association"}}{Association strength:
-\eqn{C_{ij} / (f_i \cdot f_j)}
-(van Eck & Waltman, 2009).}
-\item{\code{"dice"}}{\eqn{2 C_{ij} / (f_i + f_j)}.}
-\item{\code{"equivalence"}}{Salton's cosine squared:
-\eqn{C_{ij}^2 / (f_i \cdot f_j)}.}
-\item{\code{"relative"}}{Row-normalized: each row of the stored
-matrix sums to 1. This is the only asymmetric measure. The edge
-data frame holds one row per pair, carrying the \code{from} to
-\code{to} direction; the stored matrix (\code{\link{as_matrix}})
-holds both directions.}
+\item{similarity}{Normalization of the counts \eqn{C_{ij}} by the item
+frequencies \eqn{f_i}:
+\itemize{
+\item \code{"none"} (default): the counts;
+\item \code{"jaccard"}: \eqn{C_{ij} / (f_i + f_j - C_{ij})};
+\item \code{"cosine"} (Salton): \eqn{C_{ij} / \sqrt{f_i f_j}};
+\item \code{"inclusion"} (Simpson): \eqn{C_{ij} / \min(f_i, f_j)};
+\item \code{"association"} (association strength): \eqn{C_{ij} / (f_i f_j)};
+\item \code{"dice"}: \eqn{2 C_{ij} / (f_i + f_j)};
+\item \code{"equivalence"}: \eqn{C_{ij}^2 / (f_i f_j)};
+\item \code{"relative"}: \eqn{C_{ij} / \sum_k C_{ik}}, each row summing to 1.
+The only asymmetric measure: the network is directed and the edge
+list holds one row per direction.
 }}
 
-\item{counting}{Character. Counting method:
-\describe{
-\item{\code{"full"}}{Each co-occurring pair adds 1 regardless of
-transaction size. Default.}
-\item{\code{"fractional"}}{Each pair adds \eqn{1 / (n_i - 1)}
-where \eqn{n_i} is the number of items in transaction \eqn{i}.
-Transactions with many items contribute less per pair
-(Perianes-Rodriguez et al., 2016).}
-\item{\code{"attention"}}{Each pair within a transaction
-contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)}, so closer
-positions give a stronger edge and distant pairs decay. Requires
-ordered transactions (list / wide / delimited / windowed
-input). The decay rate \eqn{\lambda} is controlled by the
-\code{lambda} argument.}
+\item{counting}{How each transaction contributes to a pair:
+\itemize{
+\item \code{"full"} (default): 1 per transaction containing both items;
+\item \code{"fractional"}: \eqn{1 / (n - 1)} for a transaction of \eqn{n}
+items, so large transactions weigh less per pair;
+\item \code{"attention"}: \eqn{\exp(-|p_i - p_j| / \lambda)}, decaying with the
+distance between the two items' positions in an ordered transaction.
+A repeated item keeps the position of its first occurrence.
 }}
 
-\item{scale}{Character or \code{NULL}. Optional scaling applied to weights
-after similarity normalization:
-\describe{
-\item{\code{NULL} or \code{"none"}}{No scaling.}
-\item{\code{"minmax"}}{Min-max to \eqn{[0, 1]}.}
-\item{\code{"log"}}{Natural log: \eqn{\log(1 + w)}.}
-\item{\code{"log10"}}{Log base 10: \eqn{\log_{10}(1 + w)}.}
-\item{\code{"binary"}}{Binary: 1 if \eqn{w > 0}, else 0.}
-\item{\code{"zscore"}}{Z-score standardization.}
-\item{\code{"sqrt"}}{Square root.}
-\item{\code{"proportion"}}{Divide by sum of all weights.}
-}}
+\item{scale}{Rescaling of the weights after similarity: \code{NULL} or
+\code{"none"} (default), \code{"minmax"} (to \eqn{[0, 1]}), \code{"log"}
+(\eqn{\log(1 + w)}), \code{"log10"}, \code{"binary"} (1 for every edge),
+\code{"zscore"}, \code{"sqrt"}, or \code{"proportion"} (divided by the sum).}
 
-\item{threshold}{Numeric. Minimum edge weight to retain, applied after
-similarity and scaling. The default \code{0} means no filtering rather
-than "drop negative weights", so centering scalings such as
-\code{scale = "zscore"} keep their negative half. Pass a positive
-value to filter.}
+\item{threshold}{Minimum edge weight to keep, applied after similarity
+and scaling, to each direction separately for \code{"relative"}. The default
+\code{0} keeps every edge. A negative value keeps weights at or above it,
+which is useful with \code{scale = "zscore"}.}
 
-\item{min_occur}{Integer. Minimum entity frequency. Entities appearing in
-fewer than \code{min_occur} transactions are dropped. Default 1.}
+\item{min_occur}{Items in fewer than \code{min_occur} transactions are dropped
+before counting (default 1).}
 
-\item{top_n}{Integer or \code{NULL}. Keep only the top \code{top_n} edges
-by weight. Ties at the cut are truncated, so exactly \code{top_n} edges
-are returned. When \code{split_by} is used, applied per group.
-Default \code{NULL} (all edges).}
+\item{top_n}{Keep the \code{top_n} heaviest edges (default \code{NULL}, all). Ties
+at the cut are truncated. Applied per group with \code{split_by}.}
 
-\item{output}{Character. Column naming convention for the output:
-\describe{
-\item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
-\item{\code{"gephi"}}{\code{Source}, \code{Target}, \code{Weight},
-\code{Type} (= \code{"Undirected"}), \code{Count}. Ready for Gephi
-import.}
-\item{\code{"igraph"}}{Returns an \code{igraph} graph object directly.}
-\item{\code{"cograph"}}{Returns a \code{cograph_network} object directly.}
-\item{\code{"matrix"}}{Returns the square co-occurrence matrix.}
-}}
+\item{output}{\code{"default"} for the edge list; \code{"gephi"} for the same edges
+with Gephi column names; \code{"igraph"}, \code{"cograph"} or \code{"matrix"} for the
+result of \code{\link[=as_igraph]{as_igraph()}}, \code{\link[=as_cograph]{as_cograph()}} or \code{\link[=as_matrix]{as_matrix()}}. The last three
+need an unsplit network.}
 
-\item{vars}{Column specification or \code{NULL}. The indicator (one-hot)
-columns, one column per item. Resolved like \code{select} in
-\code{\link[base]{subset}}, so all of these work: a bare range
-(\code{vars = A:D}), bare names (\code{vars = c(A, B, C)}), positions
-(\code{vars = 2:5}), negative selection (\code{vars = -c(id, note)}),
-a logical mask, or a character vector. Every other column --- ids,
-timestamps, metadata --- is ignored, so a one-hot table that also
-carries identifier columns needs no pre-processing. Cell values are
-read as presence: any non-zero, non-\code{NA} value marks the item
-present, so count tables such as document-term matrices work as well
-as \code{0}/\code{1} and \code{TRUE}/\code{FALSE}. \code{NA} counts as
-absent. Cannot be combined with \code{field}, \code{by}, or
-\code{sep}. A purely binary table with no extra columns is still
-auto-detected without \code{vars}.}
+\item{vars}{The indicator columns of a one-hot or count table, given like
+\code{select} in \code{\link[base:subset]{base::subset()}}: names, a range (\code{A:D}), positions, a
+negative selection (\code{-c(id, note)}) or a logical mask. Other columns are
+ignored. Any non-zero, non-missing value counts as presence.}
 
-\item{actor}{Character vector or \code{NULL}. Column(s) identifying who
-performed the action. When \code{NULL}, all rows are treated as one
-actor. Only used with \code{action}.}
+\item{actor, action, time, session, order}{Columns of a raw event log: who
+acted, the event, its timestamp, an explicit session, and a tie-breaking
+order. With \code{action}, the log is cut into sessions by
+\code{Nestimate::prepare()} and each session becomes an ordered transaction.}
 
-\item{action}{Character or \code{NULL}. Column holding the event/state
-for raw event-log input. When supplied, the log is sessionized into
-ordered sequences first and each session becomes one transaction, so
-\code{window} and \code{counting = "attention"} apply. Requires the
-\pkg{Nestimate} package, which performs the sessionization.}
+\item{time_threshold}{Gap in seconds that starts a new session (default
+900). \code{Inf} keeps one sequence per actor.}
 
-\item{time}{Character or \code{NULL}. Timestamp column. Accepts ISO8601,
-Unix time, and common date/time formats. When \code{NULL}, row order
-defines the sequence. Only used with \code{action}.}
+\item{group}{Alias for \code{split_by}.}
 
-\item{session}{Character vector or \code{NULL}. Column(s) giving an
-explicit session grouping. Combined with \code{time}, sessions are
-further split on time gaps. Only used with \code{action}.}
+\item{aggregate_by}{A column of \code{data}. One network is built per group
+and the edge weights are combined by \code{aggregate} into one network.
+\code{threshold} and \code{top_n} apply after combining. Cannot be combined with
+\code{split_by}.}
 
-\item{order}{Character or \code{NULL}. Column used to break ties when
-timestamps are identical. Only used with \code{action}.}
+\item{aggregate}{\code{"sum"} (default), \code{"mean"}, \code{"min"} or \code{"max"}: how
+\code{aggregate_by} combines weights. Counts are always summed.}
 
-\item{time_threshold}{Numeric. Maximum gap in seconds between consecutive
-events before a new session starts. Use \code{Inf} to keep each actor
-as a single sequence regardless of gaps. Default 900 (15 minutes).
-Only used with \code{action} and \code{time}.}
+\item{window}{Sliding-window size (an integer of at least 2) for ordered
+input (wide sequences, a list of vectors, an event log): each window of
+\code{window} consecutive positions is a transaction. \code{NULL} (default) uses
+the whole sequence.}
 
-\item{group}{Character or \code{NULL}. Alias for \code{split_by}.}
+\item{lambda}{Decay rate for \code{counting = "attention"} (default 1); larger
+values decay more slowly.}
 
-\item{aggregate_by}{Character or \code{NULL}. Column name to group
-the data by before computing co-occurrence. For each unique value,
-the per-group network is computed (with the chosen
-\code{similarity}, \code{counting}, \code{scale}, \code{window});
-the per-group edge weights are then combined across groups via
-\code{aggregate} into ONE final network. Differs from
-\code{split_by}, which keeps groups separate. Cannot be combined
-with \code{split_by}. Only applies to data frame inputs.}
-
-\item{aggregate}{Character. How to combine edge weights across
-groups when \code{aggregate_by} is used: \code{"sum"} (default),
-\code{"mean"}, \code{"min"}, or \code{"max"}. The \code{count}
-column is always summed. \code{threshold} and \code{top_n} are
-applied AFTER aggregation.}
-
-\item{window}{Integer or \code{NULL}. Sliding-window size for
-categorical time-series / ordered-sequence input. When set to an
-integer \eqn{w \ge 2}, every window of \code{w} consecutive
-positions in a sequence becomes a mini-transaction; states inside
-the same window co-occur. Sequences shorter than \code{w}
-contribute no transactions. Only applies to ordered formats:
-wide (\code{field = "all"}), \code{list}, and event logs given with
-\code{action}. Default \code{NULL} (whole sequence treated as one
-transaction --- bag of states).}
-
-\item{lambda}{Numeric. Decay rate for \code{counting = "attention"}.
-A higher \code{lambda} gives slower decay, so distant pairs still
-contribute. Default \code{1.0}, matching the \pkg{tna} package.
-Ignored for other counting methods.}
-
-\item{...}{Must be empty. Any argument passed here, named or not, raises
-an error, so a misspelled argument name (e.g. \code{simliarity}) fails
-loudly instead of being ignored.}
+\item{...}{Must be empty: an unknown or misspelled argument raises an
+error.}
 }
 \value{
-Depends on \code{output}:
-\itemize{
-\item \code{"default"}: A data frame of class
-\code{c("cooccurrence", "data.frame")} with one row per undirected
-edge (item pair with non-zero weight) and columns \code{from},
-\code{to} (character item names), \code{weight} (numeric, after
-similarity and scaling), and \code{count} (number of transactions
-containing both items). With \code{split_by}, one row per edge per
-group, plus a character \code{group} column. With
-\code{aggregate_by}, one row per edge of the combined network, and
-\code{count} is summed across groups.
-\item \code{"gephi"}: The same edges, still of class
-\code{cooccurrence}, with columns \code{Source}, \code{Target},
-\code{Weight}, \code{Type} (always \code{"Undirected"}),
-\code{Count} (and \code{group} when split). Ready for Gephi CSV
-import.
-\item \code{"igraph"}: An undirected \code{igraph} graph, as returned
-by \code{\link{as_igraph}}.
-\item \code{"cograph"}: A \code{cograph_network} object, as returned
-by \code{\link{as_cograph}}.
-\item \code{"matrix"}: A square numeric base matrix with items as row
-and column names and a zero diagonal, as returned by
-\code{\link{as_matrix}}.
-}
-For the data frame outputs, rows are sorted by weight, largest first.
-The weight matrix, raw count matrix, items, item frequencies, and the
-parameters used are kept as attributes; read them through
-\code{\link{as_matrix}}, \code{\link[=summary.cooccurrence]{summary}},
-and \code{\link{as.data.frame.summary.cooccurrence}} rather than
-directly. Printing shows a one-line network header (nodes, edges,
-density, mean degree, transactions), the method, and the strongest
-edges.
+With \code{output = "default"}, a data frame of class
+\code{c("cooccurrence", "data.frame")} with one row per edge, sorted by
+weight (largest first), and columns \code{from} and \code{to} (item names),
+\code{weight} (after similarity, scaling and filtering) and \code{count}
+(transactions containing both items; summed over groups for
+\code{aggregate_by}). An undirected network has one row per pair; the
+directed \code{"relative"} network has one row per direction. With
+\code{split_by}, one row per edge per group and a \code{group} column. Read the
+tables with \code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}} and the matrix with
+\code{\link[=as_matrix]{as_matrix()}}.
 
-Errors are raised for unknown arguments in \code{...}, for
-\code{split_by} combined with \code{aggregate_by}, for \code{window}
-combined with \code{weight_by}, for \code{vars} combined with
-\code{field}, \code{by}, or \code{sep}, and when no non-empty
-transaction remains. A \code{split_by} group that fails for another
-reason is dropped with a warning naming the group.
+\code{output = "gephi"} gives the same edges with columns \code{Source},
+\code{Target}, \code{Weight}, \code{Type} (\code{"Undirected"} or \code{"Directed"}) and
+\code{Count}. \code{"igraph"}, \code{"cograph"} and \code{"matrix"} return the converter's
+result.
 }
 \description{
-Constructs an undirected co-occurrence network from various input formats
-and returns a tidy edge data frame. Two items are linked when they occur
-in the same transaction (a document, a basket, a session, a window of a
-sequence); the edge weight is the number of shared transactions, optionally
-normalized by one of eight similarity measures and rescaled. Argument names
-follow the citenets convention. \code{co()} is a short alias.
+\code{cooccurrence()} builds a co-occurrence network; \code{co()} is a short alias.
+In a co-occurrence network two items are linked when they appear in the
+same transaction: keywords assigned to the same article, genres of the
+same film, actors in the same cast, states visited in the same session or
+the same window of a sequence. The edge weight starts as the number of
+transactions shared by the two items. Because frequent items co-occur
+with almost everything, the counts are usually normalized by a similarity
+measure that compares the observed co-occurrence with the items' own
+frequencies (van Eck & Waltman, 2009), and transactions with many items
+can be down-weighted by fractional counting (Perianes-Rodriguez et al.,
+2016).
+
+The transactions are read from a delimited column, a long (item,
+transaction) table, a binary or one-hot table, wide sequences, a list of
+vectors, or a raw event log. Eight similarity measures, three counting
+methods, eight scalings, sliding windows over ordered sequences, and
+per-group networks (\code{split_by}) or pooled ones (\code{aggregate_by}) are
+available. Every measure except \code{"relative"} gives an undirected network;
+\code{"relative"} divides each row by its sum, so its edges have a direction.
+
+The network is returned as a tidy edge list with the weight (after
+similarity, scaling and filtering) and the raw count of each pair: it
+shows which items go together, how strongly, and, with \code{split_by}, how
+this differs across groups.
+
+The edge list converts to a matrix with \code{\link[=as_matrix]{as_matrix()}} and to graph objects
+with \code{\link[=as_igraph]{as_igraph()}}, \code{\link[=as_tidygraph]{as_tidygraph()}}, \code{\link[=as_cograph]{as_cograph()}} and \code{\link[=as_netobject]{as_netobject()}};
+\code{\link[=summary.cooccurrence]{summary.cooccurrence()}} and \code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}} give network,
+node and group metrics.
 }
+\section{Conditions}{
+
+Errors inherit from \code{cooccure_error}:
+\itemize{
+\item \code{cooccure_bad_input} for an invalid argument value, a missing column,
+or an input whose format cannot be detected;
+\item \code{cooccure_incompatible_args} for arguments that cannot be combined:
+\code{split_by} with \code{aggregate_by}, \code{weight_by} with \code{window} or with
+\code{counting} other than \code{"full"}, \code{vars} with \code{field}, \code{by} or \code{sep},
+\code{window} with unordered input, event-log columns without \code{action};
+\item \code{cooccure_grouped_input} for \code{output = "igraph"}, \code{"cograph"} or
+\code{"matrix"} with \code{split_by};
+\item \code{cooccure_empty_input} when no transaction or item remains, or when
+no group produces an edge;
+\item \code{cooccure_missing_package} for event-log input without
+\pkg{Nestimate}.
+}
+
+With \code{split_by} or \code{aggregate_by}, a group left with no transaction is
+dropped; any other error in a group is raised with the group named.
+}
+
 \examples{
-# Delimited keywords
-df <- data.frame(
-  id = 1:4,
-  keywords = c("network; graph", "graph; matrix; network",
-               "matrix; algebra", "network; algebra; graph")
-)
-cooccurrence(df, field = "keywords", sep = ";")
+# Genres linked by the films they share (delimited column)
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard")
 
-# Split by a grouping variable
-df$year <- c(2020, 2020, 2021, 2021)
-cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
-cooccurrence(df, field = "keywords", sep = ";", group = "year")
+# Actors linked by shared films (long table)
+co(actors, field = "actor", by = "tconst", min_occur = 3)
 
-# List of transactions with Jaccard similarity
-cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),
-             similarity = "jaccard")
+# One network per decade
+cooccurrence(movies, field = "genres", sep = ",", split_by = "decade",
+             similarity = "jaccard", top_n = 3)
 
-# Short alias
-co(df, field = "keywords", sep = ";", similarity = "cosine")
+# A directed network: the share of each genre's links going to each other
+cooccurrence(movies, field = "genres", sep = ",", similarity = "relative",
+             min_occur = 100)
 
-# Windowed co-occurrence on a categorical time series. With
-# window = 2 only adjacent states co-occur; window = 3 also pairs
-# states two positions apart, etc.
-seqs <- list(
-  c("focus", "focus", "distract", "focus", "confused"),
-  c("focus", "distract", "distract", "focus")
-)
+# Adjacent states of ordered sequences
+seqs <- list(c("plan", "read", "write", "read", "review"),
+             c("read", "write", "write", "review"))
 cooccurrence(seqs, window = 2)
 
-# Weighted long format (e.g. LDA topic-document probabilities)
+# Weighted long table (topic probabilities per document)
 theta <- data.frame(
-  doc   = c("d1","d1","d1","d2","d2","d3","d3"),
-  topic = c("T1","T2","T3","T1","T3","T2","T3"),
+  doc   = c("d1", "d1", "d1", "d2", "d2", "d3", "d3"),
+  topic = c("T1", "T2", "T3", "T1", "T3", "T2", "T3"),
   prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
 )
 cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
 
-# One-hot / indicator table: name the indicator columns, ignore the rest
-onehot <- data.frame(
-  doc = c("d1", "d2", "d3"),
-  A = c(1, 0, 1), B = c(1, 1, 0), C = c(0, 1, 1)
-)
-cooccurrence(onehot, vars = c("A", "B", "C"))
+# One-hot table with an id column
+onehot <- data.frame(doc = c("d1", "d2", "d3"),
+                     A = c(1, 0, 1), B = c(1, 1, 0), C = c(0, 1, 1))
+cooccurrence(onehot, vars = A:C)
 
-# Raw event log: sessionized on a 15-minute gap, then windowed
+# Raw event log, cut into sessions by Nestimate
 \donttest{
 if (requireNamespace("Nestimate", quietly = TRUE)) {
   events <- data.frame(
     student = rep(c("s1", "s2"), each = 3),
     code    = c("read", "write", "read", "test", "write", "read"),
-    stamp   = as.POSIXct("2026-01-01 09:00:00") + c(0, 60, 120, 0, 30, 90)
+    stamp   = as.POSIXct("2026-01-01 09:00:00", tz = "UTC") +
+      c(0, 60, 120, 0, 30, 90)
   )
   cooccurrence(events, actor = "student", action = "code", time = "stamp")
 }
@@ -367,7 +296,7 @@ if (requireNamespace("Nestimate", quietly = TRUE)) {
 
 }
 \references{
-van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
+van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence
 data? An analysis of some well-known similarity measures. \emph{Journal of
 the American Society for Information Science and Technology}, 60(8),
 1635--1651. \doi{10.1002/asi.21075}
@@ -379,7 +308,12 @@ fractional counting. \emph{Journal of Informetrics}, 10(4), 1178--1195.
 
 Saqr, M., Lopez-Pernas, S., Conde, M. A., & Hernandez-Garcia, A. (2024).
 Social network analysis: A primer, a guide and a tutorial in R. In M. Saqr
-& S. Lopez-Pernas (Eds.), \emph{Learning Analytics Methods and Tutorials:
-A Practical Guide Using R}. Springer.
-\doi{10.1007/978-3-031-54464-4_15}
+& S. Lopez-Pernas (Eds.), \emph{Learning Analytics Methods and Tutorials: A
+Practical Guide Using R}. Springer. \doi{10.1007/978-3-031-54464-4_15}
+}
+\seealso{
+\code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}} and \code{\link[=summary.cooccurrence]{summary.cooccurrence()}} for
+tables and metrics; \code{\link[=as_matrix]{as_matrix()}}, \code{\link[=as_igraph]{as_igraph()}}, \code{\link[=as_cograph]{as_cograph()}} and
+\code{\link[=as_netobject]{as_netobject()}} for conversion; \code{\link[=plot.cooccurrence]{plot.cooccurrence()}}; \link{movies} and
+\link{actors} for example data.
 }

@@ -1,0 +1,260 @@
+---
+title: "Comparing groups"
+author: "Written by [Mohammed Saqr](https://saqr.me) and [Sonsoles López-Pernas](https://sonsoles.me)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Comparing groups}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.5, fig.align = "center", dpi = 96)
+old_options <- options(digits = 3, width = 90)
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+```
+
+Co-occurrence data usually come from a population that is not homogeneous:
+articles from several journals, films from several decades, sessions from
+several courses. Pooling all transactions into one network answers how items
+go together overall, but it hides whether the pattern holds in every group,
+and it lets the largest group set the weights. Two other questions are often
+the substantive ones. The first is comparative: does the structure of the
+network differ between groups, and does an item hold the same position in
+each? The second is integrative: what single network describes the groups
+when each group is first analyzed on its own terms, so that differences in
+group size or composition do not distort the combined weights?
+
+`cooccurrence()` answers the first question with `split_by`, which builds
+one network per group and stacks the edge lists with a `group` column, and
+the second with `aggregate_by`, which builds one network per group and then
+combines the edge weights into one network. This guide applies both to film
+genres across decades, shows how to read per-group network and node metrics,
+and how to extract, convert or plot a single group's network.
+
+```{r package}
+library(cooccure)
+```
+
+## Data
+
+`movies` holds 1,000 films with an IMDb rating of at least 7.0, released
+between 1970 and 2024. In the analyses below:
+
+- **Transaction:** a film (one row).
+- **Items:** its genres, in the comma-delimited `genres` column.
+- **Grouping variable:** `decade`, the release decade (1970s to 2020s).
+- **Second grouping variable:** a rating band derived from `averageRating`.
+
+The decades are of unequal size, which matters for any comparison of network
+density.
+
+```{r data}
+with(movies, table(decade))
+```
+
+The 2010s contribute 327 films and the 1970s 83, so the later networks rest
+on about four times as many transactions.
+
+## Does the genre network change across decades?
+
+`split_by = "decade"` builds a separate Jaccard network for each decade.
+Genres on fewer than five films within a decade are dropped with
+`min_occur = 5`, which is applied within each group.
+
+```{r split-decade}
+by_decade <- cooccurrence(movies, field = "genres", sep = ",",
+                          split_by = "decade", similarity = "jaccard",
+                          min_occur = 5)
+print(by_decade, n = 5)
+```
+
+The result stacks six networks with 306 edges in total over 18 genres. The
+header omits a pooled density and mean degree, which are undefined when the
+same pair can appear once per group. The per-group metrics come from
+`as.data.frame()` with `what = "groups"`.
+
+```{r decade-groups}
+as.data.frame(by_decade, what = "groups")
+```
+
+The 2010s network is the largest, with 17 genres and 85 edges, and the
+densest (0.625); the 1980s network is the sparsest (0.473). The mean Jaccard
+weight falls from 0.133 in the 1970s to 0.0666 in the 2010s. Both trends
+follow the number of films: with more films, more genre pairs co-occur at
+least once, and the added pairs are weak ones. Differences in density
+between groups of unequal size are therefore partly a sample-size effect
+and should not be read as a change in how genres combine without a
+comparison at equal sample size.
+
+## Does a genre hold the same position in every decade?
+
+The node table of a split result has one row per genre per decade, with the
+`group` column first. `subset()` selects one genre from it.
+
+```{r decade-nodes}
+decade_nodes <- as.data.frame(by_decade, what = "nodes")
+subset(decade_nodes, node == "Drama")
+```
+
+*Drama* is linked to 10 of the other 11 genres in the 1970s and to 16 of the
+other 16 in the 2010s, so it is connected to almost every genre in every
+decade. Its strength, the sum of its Jaccard weights, stays between 0.949
+(2020s) and 1.256 (1980s): the number of its ties grows with the number of
+genres, but its total association changes little.
+
+## Which genre pairs lead within each decade?
+
+With `split_by`, `top_n` is applied within each group, so `top_n = 3` keeps
+the three strongest pairs of every decade.
+
+```{r decade-top}
+decade_top <- cooccurrence(movies, field = "genres", sep = ",",
+                           split_by = "decade", similarity = "jaccard",
+                           min_occur = 5, top_n = 3)
+print(decade_top, n = 18)
+```
+
+*Adventure*–*Animation* is among the three strongest pairs in four of the
+six decades, with a Jaccard weight between 0.250 (2020s) and 0.500
+(1970s). *Action*–*Crime* is among them in the 1980s, 2000s and 2010s, and
+*Comedy*–*Drama* in the 1990s and 2000s. *Documentary*–*Music* leads in the
+1980s (0.444) and returns in the 2020s.
+
+## Do the highest-rated films combine genres differently?
+
+A grouping variable can be derived before the call. `transform()` adds a
+rating band, `split_by` builds one network per band, and `table()` gives the
+number of films in each band.
+
+```{r rating-band}
+rated <- transform(movies,
+                   rating_band = ifelse(averageRating >= 8, "8+", "7-7.9"))
+cooccurrence(rated, field = "genres", sep = ",", split_by = "rating_band",
+             similarity = "jaccard", min_occur = 10, top_n = 3)
+with(rated, table(rating_band))
+```
+
+Among films rated 7 to 7.9, the strongest pairs are *Adventure*–*Animation*,
+*Action*–*Crime* and *Comedy*–*Drama*, as in the full data. Among films
+rated 8 or higher, *Documentary*–*Music* leads (0.333, on 10 films) and
+*Biography*–*Documentary* enters the top three. The 8+ band has 139 films
+against 861, so its network rests on few transactions.
+
+## How is one group's network extracted?
+
+A split result holds several networks and has no single weight matrix or
+graph. A converter called on it without a group stops with a condition of
+class `cooccure_grouped_input` that lists the groups.
+
+```{r no-group, error = TRUE}
+as_matrix(by_decade)
+```
+
+Passing `group =` converts that group's network, with its own items,
+isolates included.
+
+```{r one-group-igraph, eval = has_igraph}
+decade_2010s <- as_igraph(by_decade, group = "2010s")
+decade_2010s
+```
+
+The 2010s graph has 17 vertices and 85 edges, the values in the group
+table. `as_matrix()`, `as_tidygraph()`, `as_cograph()`, `as_netobject()` and
+`plot()` take the same argument.
+
+```{r one-group-plot, fig.height = 5}
+plot(by_decade, group = "1970s")
+```
+
+The heatmap of the 1970s network shows the weight of each pair, from white
+(no co-occurrence) to blue (the strongest pair, *Adventure*–*Animation* at
+0.5). Rows and columns follow the alphabetical order of the 12 genres of
+that decade.
+
+## How are groups combined into one network?
+
+`aggregate_by` also builds one network per decade, with the chosen
+similarity and `min_occur` applied within each decade, and then combines the
+weights of each pair across decades. The edge list has one row per pair;
+`count` is always summed. For comparison, the pooled network ignores the
+decades.
+
+```{r pooled}
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard",
+             top_n = 4)
+```
+
+Pooled over all films, *Adventure*–*Animation* has a Jaccard weight of 0.285.
+With `aggregate = "mean"`, each decade's Jaccard weight counts equally,
+whatever the number of films in that decade.
+
+```{r aggregate-mean}
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard",
+             aggregate_by = "decade", aggregate = "mean", min_occur = 5,
+             top_n = 4)
+```
+
+*Adventure*–*Animation* keeps the lead at 0.292, and *Documentary*–*Music*
+rises to second (0.242). The mean is taken over the decades in which a pair
+occurs, not over all six. The per-decade weights of this pair show it.
+
+```{r documentary-music}
+subset(as.data.frame(by_decade),
+       from == "Documentary" & to %in% c("Music", "War"))
+```
+
+*Documentary*–*Music* occurs in four decades, with weights 0.444, 0.186,
+0.0946 and 0.243, whose mean is 0.242; its `count` of 28 in the combined
+network is 4 + 8 + 7 + 9. *Documentary*–*War* occurs in the 1990s only. The
+other combiners answer different questions.
+
+```{r aggregate-sum}
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard",
+             aggregate_by = "decade", aggregate = "sum", min_occur = 5,
+             top_n = 4)
+```
+
+With `"sum"`, a pair gains weight from every decade in which it occurs, so
+pairs present throughout lead: *Adventure*–*Animation* reaches 1.75 summed
+over six decades. The sum rewards persistence as well as strength.
+
+```{r aggregate-min-max}
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard",
+             aggregate_by = "decade", aggregate = "max", min_occur = 5,
+             top_n = 4)
+cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard",
+             aggregate_by = "decade", aggregate = "min", min_occur = 5,
+             top_n = 4)
+```
+
+`"max"` keeps each pair's strongest decade, so *Adventure*–*Animation* and
+*Crime*–*Thriller* carry their 1970s weights (0.500 and 0.429). `"min"`
+keeps each pair's weakest decade among those in which it occurs. Its top
+pair, *Documentary*–*War* (0.182, count 2), occurs in the 1990s only, as
+shown above, so its minimum is its single weight. `"min"` is therefore a measure of
+consistency only for pairs present in every group; combine it with a check
+of how many groups contain the pair.
+
+## Which to use?
+
+- `split_by` when the groups are to be compared: per-group networks, the
+  group table and the per-group node table.
+- `aggregate_by` with `"mean"` when one network should give every group the
+  same weight; with `"sum"` when a pair's recurrence across groups should
+  add to its weight; with `"max"` for the strongest group.
+- Neither, when the groups are a nuisance and the pooled network is the
+  object of interest.
+
+Threshold and `top_n` are applied within each group for `split_by` and after
+combining for `aggregate_by`. Exporting a single group is shown in
+[Exporting networks](exporting.html); similarity choices in
+[Choosing a similarity measure](similarity-measures.html).
+
+```{r restore, include = FALSE}
+options(old_options)
+```

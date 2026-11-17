@@ -1,0 +1,264 @@
+---
+title: "Exporting networks"
+author: "Written by [Mohammed Saqr](https://saqr.me) and [Sonsoles López-Pernas](https://sonsoles.me)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Exporting networks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.5, fig.align = "center", dpi = 96)
+old_options <- options(digits = 3, width = 90)
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+has_tidygraph <- requireNamespace("tidygraph", quietly = TRUE) && has_igraph
+has_cograph <- requireNamespace("cograph", quietly = TRUE)
+has_nestimate <- requireNamespace("Nestimate", quietly = TRUE)
+```
+
+Building a co-occurrence network is rarely the last step of an analysis.
+The network is then described with centrality measures, partitioned into
+communities, drawn for publication, compared with networks estimated by
+other methods, or handed to software outside R. Each of these tasks has its
+own established tools and data structures: an edge table for spreadsheet
+software and Gephi, a weight matrix for clustering and matrix algebra, and
+graph objects for the R network libraries. A network that can be moved
+between them without re-entering its edges keeps the analysis reproducible
+and lets each tool be used for what it does best.
+
+`cooccurrence()` returns the network as a tidy edge list. This guide shows
+how to turn it into each of the other forms: a Gephi-ready table, a weight
+matrix, and graph objects for \pkg{igraph}, \pkg{tidygraph}, \pkg{cograph}
+and \pkg{Nestimate}. It ends with the directed `relative` network, which
+every format keeps directed, and with networks built per group.
+
+```{r package}
+library(cooccure)
+```
+
+## Data
+
+`movies` holds 1,000 films with an IMDb rating of at least 7.0, released
+between 1970 and 2024. In the analyses below:
+
+- **Transaction:** a film (one row).
+- **Items:** its genres, in the comma-delimited `genres` column.
+- **Grouping variable:** `decade`, used in the last section.
+
+The network used throughout links genres on at least 20 films by their
+Jaccard similarity.
+
+```{r network}
+genre_net <- cooccurrence(movies, field = "genres", sep = ",",
+                          similarity = "jaccard", min_occur = 20)
+print(genre_net, n = 3)
+```
+
+The network has 17 genres and 102 edges, a density of 0.75: three quarters
+of all genre pairs co-occur on at least one film.
+
+## How is the network written to a file?
+
+The edge table itself is a data frame. `as.data.frame()` drops the network
+attributes and returns the columns `from`, `to`, `weight` and `count`, ready
+for `write.csv()` or any other writer.
+
+```{r edges}
+genre_edges <- as.data.frame(genre_net)
+head(genre_edges, 3)
+```
+
+The node table, with degree, strength and frequency for every genre, is
+returned by the same accessor with `what = "nodes"`.
+
+```{r nodes}
+head(as.data.frame(genre_net, what = "nodes"), 3)
+```
+
+*Drama* and *Comedy* are linked to all 16 other genres, and *Drama* appears
+on 634 films.
+
+## How is the network opened in Gephi?
+
+Gephi imports an edge table with the columns `Source`, `Target`, `Weight`
+and `Type`. `output = "gephi"` returns the edges under those names, with
+`Type` set to `"Undirected"` and the raw count in `Count`.
+
+```{r gephi}
+genre_gephi <- cooccurrence(movies, field = "genres", sep = ",",
+                            similarity = "jaccard", min_occur = 20,
+                            output = "gephi")
+head(as.data.frame(genre_gephi), 3)
+```
+
+The table is written to CSV and opened in Gephi's data laboratory as an edge
+table.
+
+```{r gephi-export}
+gephi_file <- file.path(tempdir(), "genre_network.csv")
+write.csv(as.data.frame(genre_gephi), gephi_file, row.names = FALSE)
+file.exists(gephi_file)
+```
+
+## How is the weight matrix obtained?
+
+Many methods (hierarchical clustering, multidimensional scaling, heatmaps)
+expect a square matrix rather than an edge list. `as_matrix()` returns the
+weight matrix, and `type = "raw"` the matrix of counts.
+
+```{r matrix}
+genre_matrix <- as_matrix(genre_net)
+dim(genre_matrix)
+isSymmetric(genre_matrix)
+```
+
+The matrix has one row and one column for each of the 17 genres and is
+symmetric, because Jaccard similarity is. It agrees with the edge list,
+including any `threshold` or `top_n` filter; `output = "matrix"` returns
+the same matrix from the call that builds the network.
+
+## How is the network analyzed with igraph?
+
+`as_igraph()` creates a weighted \pkg{igraph} graph with one vertex per
+genre and the edge attributes `weight` and `count`.
+
+```{r igraph, eval = has_igraph}
+genre_graph <- as_igraph(genre_net)
+genre_graph
+```
+
+The graph is undirected (`U` in `UNW-`), named and weighted, with 17
+vertices and 102 edges. Any \pkg{igraph} function applies to it; strength
+sums the Jaccard weights of each genre's edges.
+
+```{r igraph-strength, eval = has_igraph}
+sort(igraph::strength(genre_graph), decreasing = TRUE)
+```
+
+*Drama* (1.15) and *Action* (1.01) have the largest total similarity to
+the other genres, and *Sport* (0.198) the smallest. \pkg{igraph} reads the
+`weight` attribute as a distance in path-based measures such as betweenness
+and closeness, so for those a similarity weight should first be inverted.
+
+## How is the network used with tidygraph?
+
+`as_tidygraph()` returns the same graph as a `tbl_graph`, whose node and
+edge tables can be modified with \pkg{dplyr} verbs and drawn with
+\pkg{ggraph}.
+
+```{r tidygraph, eval = has_tidygraph}
+as_tidygraph(genre_net)
+```
+
+The node table holds the 17 genre names and the edge table the 102 edges
+with their weights and counts, the endpoints given as row numbers of the
+node table.
+
+## How is the network drawn with cograph?
+
+\pkg{cograph} draws networks from a weight matrix. `output = "cograph"`
+builds the network directly as a `cograph_network`, which `cograph::splot()`
+draws.
+
+```{r cograph, eval = has_cograph, fig.height = 5.5}
+genre_cograph <- cooccurrence(movies, field = "genres", sep = ",",
+                              similarity = "jaccard", min_occur = 20,
+                              output = "cograph")
+cograph::splot(genre_cograph, layout = "circle", node_fill = "#56B4E9",
+               edge_color = "#0072B2", scale_nodes_by = "degree",
+               label_size = 0.8)
+```
+
+Node size follows degree and edge width follows the Jaccard weight, so the
+thick edges mark the strongest genre pairs, such as *Adventure*–*Animation*.
+
+\pkg{cograph} exports its own `as_cograph()`. When \pkg{cograph} is attached
+after \pkg{cooccure}, a bare `as_cograph(genre_net)` calls the \pkg{cograph}
+version, which reads the edge data frame with its own defaults. Use
+`output = "cograph"` as above or call the function with its namespace,
+`cooccure::as_cograph(genre_net)`.
+
+## How is the network passed to Nestimate?
+
+\pkg{Nestimate} stores estimated networks as `netobject`s. `as_netobject()`
+converts the co-occurrence network, recording the similarity, scale,
+threshold and number of transactions as parameters, so that it can be used
+with \pkg{Nestimate}'s network functions.
+
+```{r nestimate, eval = has_nestimate}
+genre_netobject <- as_netobject(genre_net)
+head(Nestimate::net_centrality(genre_netobject))
+```
+
+`Nestimate::net_centrality()` returns one row per genre. Its `InStrength`
+column equals the strength computed with \pkg{igraph} above (1.009 for
+*Action*), because in an undirected network a node's in- and out-strength
+coincide. The netobject carries no raw data, so \pkg{Nestimate} functions
+that resample the original transactions, such as bootstrapping, need a
+network built with `Nestimate::cooccurrence()` instead.
+
+## How is a directed network exported?
+
+`similarity = "relative"` gives each genre's share of co-occurrences with
+every other genre. The two directions of a pair differ, so the edge list has
+one row per direction and every export keeps the direction. Genres on fewer
+than 100 films are dropped to keep the network small.
+
+```{r relative}
+genre_shares <- cooccurrence(movies, field = "genres", sep = ",",
+                             similarity = "relative", min_occur = 100)
+genre_shares_gephi <- cooccurrence(movies, field = "genres", sep = ",",
+                                   similarity = "relative", min_occur = 100,
+                                   output = "gephi")
+head(as.data.frame(genre_shares_gephi), 3)
+```
+
+The Gephi table types the edges as `"Directed"`. The \pkg{igraph} graph is
+directed as well, and its strength can be taken over out-going or incoming
+edges.
+
+```{r relative-igraph, eval = has_igraph}
+genre_shares_graph <- as_igraph(genre_shares)
+igraph::is_directed(genre_shares_graph)
+igraph::strength(genre_shares_graph, mode = "out")
+igraph::strength(genre_shares_graph, mode = "in")
+```
+
+Each genre's out-strength is 1, by construction of the measure. The in-strength is the sum
+of the shares that the other genres send to it: *Drama* receives 2.69, the
+equivalent of more than two and a half genres' entire co-occurrence, while
+*Documentary* receives 0.389. In-strength therefore shows which genres the
+others are most often combined with.
+
+The \pkg{cograph} drawing of the same network shows arrows.
+
+```{r relative-cograph, eval = has_cograph, fig.height = 5.5}
+cograph::splot(cooccure::as_cograph(genre_shares), layout = "circle",
+               node_fill = "#E69F00", edge_color = "#0072B2")
+```
+
+## How is one group's network exported?
+
+A network built with `split_by` stacks one network per group. Its edge list
+exports like any other, with a `group` column, but a matrix or graph holds
+one network, so the converters take a `group` argument.
+
+```{r groups, eval = has_igraph}
+by_decade <- cooccurrence(movies, field = "genres", sep = ",",
+                          split_by = "decade", similarity = "jaccard",
+                          min_occur = 5)
+as_igraph(by_decade, group = "1970s")
+```
+
+The 1970s network has 12 genres and 34 edges. Without `group`, the
+converters stop with a condition of class `cooccure_grouped_input`; see
+[Comparing groups](comparing-groups.html).
+
+```{r restore, include = FALSE}
+options(old_options)
+```

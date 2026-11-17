@@ -2,7 +2,7 @@
 % Please edit documentation in R/launch_app.R
 \name{launch_app}
 \alias{launch_app}
-\title{Launch the cooccure Shiny explorer}
+\title{Open the interactive co-occurrence explorer}
 \usage{
 launch_app(...)
 }
@@ -11,14 +11,31 @@ launch_app(...)
 \code{launch.browser}).}
 }
 \value{
-Called for its side effect (launches the app). No return value.
+No return value; called to run the application, which blocks
+the session until it is closed.
 }
 \description{
-Opens an interactive Shiny application for building and exploring
-co-occurrence networks. Requires the \pkg{shiny} and \pkg{DT} packages.
+\code{launch_app()} opens an interactive co-occurrence explorer: a \pkg{shiny}
+application in which a data set (the bundled \link{demo} table or an uploaded
+file) is turned into a network with \code{\link[=cooccurrence]{cooccurrence()}} and shown as a table
+and a plot. The explorer is a quick way to see how the choice of items,
+transactions, similarity measure and filters changes a co-occurrence
+network before writing the analysis as code.
+
+It requires the \pkg{shiny} and \pkg{DT} packages and an interactive
+session.
 }
+\section{Conditions}{
+
+\code{cooccure_missing_package} when \pkg{shiny} or \pkg{DT} is not
+installed.
+}
+
 \examples{
 if (interactive()) {
   launch_app()
 }
+}
+\seealso{
+\code{\link[=cooccurrence]{cooccurrence()}}; \link{demo}.
 }

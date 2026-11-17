@@ -1,0 +1,263 @@
+---
+title: "Case study: actor collaboration networks"
+author: "Written by [Mohammed Saqr](https://saqr.me) and [Sonsoles López-Pernas](https://sonsoles.me)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Case study: actor collaboration networks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.5, fig.align = "center", dpi = 96)
+old_options <- options(digits = 3, width = 90)
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+```
+
+Collaboration networks are among the oldest objects of network science.
+Linking two people when they have worked on the same project, whether a
+scientific paper or a film, turns a record of projects into a social
+structure in which one can ask who works with whom, who bridges otherwise
+separate groups, and how tightly knit a field is. Film casts were one of the
+first large collaboration networks studied in this way (Watts & Strogatz,
+1998), because every film credits its cast and every credit is public.
+
+A collaboration network is a co-occurrence network with people as items and
+projects as transactions. Its construction raises the questions that any
+co-occurrence network raises. A film with a large cast links every pair of
+its members, so a single production can create hundreds of links that say
+little about repeated collaboration; fractional counting gives such a film
+the same total weight as a film with two actors (Perianes-Rodriguez et al.,
+2016). And a single shared film is weak evidence of a working relationship,
+while a pair who share several films have chosen, or been chosen, to work
+together again. This case study builds the collaboration network of the
+actors in a sample of IMDb films and asks how connected it is, which actors
+hold it together, which pairs work together repeatedly, how the choice of
+counting changes the picture, and how actors' genres are related.
+
+```{r package}
+library(cooccure)
+```
+
+## Data
+
+`actors` is a long table with one row per actor and film, drawn from the
+IMDb non-commercial datasets for the films in `movies`. It is limited to the
+624 actors who appear in at least two of those films. The roles of its
+columns are:
+
+- **Item:** `actor`, the actor's name.
+- **Transaction:** `tconst`, the film identifier, with `primaryTitle` its
+  title.
+- **Grouping variable:** `decade`, the film's release decade.
+- **Not used here:** `startYear`, `genres` and `averageRating`, which
+  describe the film.
+
+A second table, `actor_genres`, lists each of the 624 actors with every genre
+of every film they appeared in, one row per actor and genre.
+
+```{r data}
+head(actors)
+```
+
+Because only actors with at least two films are kept, the casts in this
+table are fragments of the full casts.
+
+```{r casts}
+with(actors, table(cast_size = table(tconst)))
+```
+
+Of the 401 films, 177 keep a single actor from the sample and contribute no
+link; a few keep many, up to 38 actors in one film.
+
+## How connected is the collaboration network?
+
+Actors are the items and films the transactions, so `field` names the actor
+column and `by` the film column.
+
+```{r network}
+collaboration <- cooccurrence(actors, field = "actor", by = "tconst")
+summary(collaboration)
+```
+
+The 624 actors share 4,353 links, a density of 0.0224: each actor is linked
+to 13.9519 others on average, out of 623 possible.
+Every weight lies between 1 and 3 films, with a mean of 1.078, so most pairs
+have shared a single film. Thirty-four actors have no link: each of their
+films kept no other actor from the sample.
+
+Whether the links join the actors into one connected network is a question
+for **igraph**.
+
+```{r components, eval = has_igraph}
+collaboration_graph <- as_igraph(collaboration)
+igraph::count_components(collaboration_graph)
+igraph::vcount(igraph::largest_component(collaboration_graph))
+```
+
+The network falls into 57 components, of which 34 are the isolated actors. A
+single large component holds 495 of the 624 actors; the remaining components
+are small groups linked only to each other.
+
+## Which actors hold the network together?
+
+The node table ranks actors by degree, the number of actors they share a
+film with.
+
+```{r central}
+head(as.data.frame(collaboration, what = "nodes"), 8)
+```
+
+The highest degrees belong to actors with only two films each
+(`frequency`): Brad Rea, Dawn Michelle King, Kevin LaRosa II, Michael
+Runyard and Ricki Lander are each linked to 66 actors. Their two films have
+large casts within the sample, and every cast member is linked to every
+other. Degree in a collaboration network therefore measures how large an
+actor's casts were as much as how widely the actor works.
+
+Betweenness centrality measures something else: how often an actor lies on
+the shortest path between two others, and so how far the network depends on
+that actor to connect its parts. Edge weights are ignored here, so a path is
+counted in films rather than in weights.
+
+```{r betweenness, eval = has_igraph}
+head(sort(igraph::betweenness(collaboration_graph, weights = NA),
+          decreasing = TRUE), 6)
+```
+
+None of the six actors with the highest betweenness is among the actors with
+the highest degree. Tony Martin, Hayley Joanne Bacon and the others connect
+casts that would otherwise be separate, which large casts alone do not do.
+
+## Which pairs work together repeatedly?
+
+A weight of 2 or more means that two actors share at least two films.
+`threshold` keeps those pairs.
+
+```{r repeated}
+repeated <- cooccurrence(actors, field = "actor", by = "tconst",
+                         threshold = 2)
+print(repeated, n = 6)
+```
+
+Of the 4,353 links, 338 are repeated collaborations, and only one pair,
+Julia Bache-Wiig and Robin Ottersen, shares three films. With the filter, 388
+actors have no repeated partner.
+
+The Jaccard index asks a stricter question: of all the films either actor
+appears in, what share do they appear in together? Actors with at least three
+films in the sample are kept, so that a score rests on more than two films.
+
+```{r jaccard}
+regulars <- cooccurrence(actors, field = "actor", by = "tconst",
+                         similarity = "jaccard", min_occur = 3)
+regulars
+```
+
+Only 19 actors have three films in the sample, and they form 7 links.
+Julia Bache-Wiig and Robin Ottersen score 1: each appears in the sample only
+in the three films they share. Seven of the 19 actors have no link to another
+actor with three films.
+
+## Does fractional counting change the network?
+
+Under full counting, a film adds 1 to every pair in its cast. Under
+fractional counting, each pair in a film of *n* actors adds 1/(*n* - 1), so
+every actor receives a total weight of 1 from each film whatever the size of
+the cast.
+
+```{r fractional}
+fractional <- cooccurrence(actors, field = "actor", by = "tconst",
+                           counting = "fractional")
+print(fractional, n = 5)
+```
+
+The edges are the same 4,353, but their weights now reflect the size of the
+casts. The heaviest pairs, with a weight of 2, are pairs who form the whole
+sampled cast of two films each. The actors with the highest degree have a
+strength of 2, the same as any actor whose two films each include another
+sampled actor, so fractional counting
+removes the advantage that large casts gave them under full counting.
+
+For the network of actors with three films, fractional counting changes
+nothing.
+
+```{r fractional-regulars}
+regulars_fractional <- cooccurrence(actors, field = "actor", by = "tconst",
+                                    similarity = "jaccard", min_occur = 3,
+                                    counting = "fractional")
+all.equal(as_matrix(regulars), as_matrix(regulars_fractional))
+```
+
+The two matrices are equal because, once `min_occur = 3` has removed the
+other actors, no film keeps more than two of the 19, and for a film of two
+actors 1/(*n* - 1) = 1. Fractional counting changes a network only when the
+transactions differ in how many items they keep.
+
+## Has collaboration changed across decades?
+
+`split_by` builds one network per decade. Repeated collaborations within a
+decade are kept with `threshold = 2`.
+
+```{r decades}
+decade_pairs <- cooccurrence(actors, field = "actor", by = "tconst",
+                             split_by = "decade", threshold = 2)
+as.data.frame(decade_pairs, what = "groups")
+```
+
+The number of sampled actors grows from 43 in the 1970s to 353 in the 2010s,
+as the sample itself grows from decade to decade. Repeated pairs are most common
+relative to the number of actors in the 1970s and 1980s (17 among 43 actors,
+47 among 87) and rare in the 1990s and 2020s (6 each). Together the decades
+hold 251 repeated pairs (17 + 47 + 6 + 90 + 85 + 6), fewer than the 338 of
+the pooled network: 87 pairs repeated their collaboration in a different
+decade, and splitting by decade hides them.
+
+## Which genres share actors?
+
+`actor_genres` links actors to genres. Read with genres as items and actors
+as transactions, it gives a genre network in which two genres are linked by
+the actors who have worked in both.
+
+```{r genres}
+career_genres <- cooccurrence(actor_genres, field = "genre", by = "actor",
+                              similarity = "jaccard")
+print(career_genres, n = 6)
+```
+
+The strongest link is between Action and Adventure (0.518, 221 actors),
+followed by Action and Drama and by Adventure and Sci-Fi. In the film-level
+genre network of the [genre case study](case-imdb-genres.html) the strongest
+pair is Adventure and Animation; at the level of careers, the action
+adventure dominates. The two networks answer different questions, which
+genres are combined in one film and which genres one actor moves between.
+
+## Summary
+
+The actor network is sparse and fragmented into 57 components, with one
+large component holding 495 of the 624 actors. High degree in it reflects
+large casts, which fractional counting neutralizes, while betweenness picks
+out a different set of actors who connect separate casts. Most links rest on
+a single film; 338 pairs share two or more, and splitting by decade hides
+the 87 pairs whose films fall in different decades. For the counting
+methods, see the [guide to counting](counting.html); for per-group networks,
+the [guide to comparing groups](comparing-groups.html); and for igraph and
+other formats, the [guide to exporting](exporting.html).
+
+## References
+
+Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016). Constructing
+bibliometric networks: A comparison between full and fractional counting.
+*Journal of Informetrics*, 10(4), 1178–1195.
+<https://doi.org/10.1016/j.joi.2016.10.006>
+
+Watts, D. J., & Strogatz, S. H. (1998). Collective dynamics of 'small-world'
+networks. *Nature*, 393(6684), 440–442. <https://doi.org/10.1038/30918>
+
+```{r restore, include = FALSE}
+options(old_options)
+```

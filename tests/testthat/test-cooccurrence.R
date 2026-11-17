@@ -740,10 +740,11 @@ test_that("summary.cooccurrence shows network stats", {
   expect_true(any(grepl("Top nodes", out)))
 })
 
-test_that("summary.cooccurrence returns structured summary invisibly", {
+test_that("summary.cooccurrence returns a summary object without printing", {
   res <- cooccurrence(.test_list)
-  capture.output(vis <- withVisible(ret <- summary(res)))
-  expect_false(vis$visible)
+  expect_silent(ret <- summary(res))
+  vis <- withVisible(summary(res))
+  expect_true(vis$visible)
   expect_s3_class(ret, "summary.cooccurrence")
   expect_equal(ret$n_nodes, 3L)
   expect_equal(ret$n_edges, 3L)
@@ -768,7 +769,8 @@ test_that("summary.cooccurrence omits scale when 'none'", {
 
 test_that("summary.cooccurrence handles zero edges", {
   res <- cooccurrence(list(c("A"), c("B"), c("C")))
-  out <- capture.output(s <- summary(res))
+  s <- summary(res)
+  out <- capture.output(print(s))
   expect_true(any(grepl("Edges.*: 0", out)))
   expect_equal(s$n_nodes, 3L)
   expect_equal(s$n_edges, 0L)
@@ -785,7 +787,8 @@ test_that("summary.cooccurrence reports group summaries", {
     stringsAsFactors = FALSE
   )
   res <- cooccurrence(df, field = "kw", sep = ";", group = "grp")
-  out <- capture.output(s <- summary(res))
+  s <- summary(res)
+  out <- capture.output(print(s))
 
   expect_true(any(grepl("Split by.*grp", out)))
   expect_true(any(grepl("Groups", out)))
@@ -1060,11 +1063,11 @@ test_that("as_matrix on split_by falls back to rebuild from edges", {
     stringsAsFactors = FALSE
   )
   res <- cooccurrence(df, field = "kw", sep = ";", split_by = "grp")
-  # split_by does not store per-group matrices in attr, but the combined
-  # result may not have a matrix attr → rebuild path
-  mat <- as_matrix(res)
+  # A split result has no single matrix: one group is rebuilt from its edges
+  mat <- as_matrix(res, group = "X")
   expect_true(is.matrix(mat))
   expect_true(isSymmetric(mat))
+  expect_equal(dimnames(mat), list(c("A", "B"), c("A", "B")))
 })
 
 # ========================================
@@ -1327,7 +1330,7 @@ test_that("window composes with similarity normalisation", {
 test_that("window=1 is rejected", {
   expect_error(
     cooccurrence(list(c("A", "B", "C")), window = 1L),
-    "window >= 2"
+    class = "cooccure_bad_input"
   )
 })
 
@@ -1430,11 +1433,11 @@ test_that("attention aggregates pair contributions across transactions", {
 test_that("attention rejects non-positive lambda", {
   expect_error(
     cooccurrence(list(c("A", "B")), counting = "attention", lambda = 0),
-    "lambda > 0"
+    class = "cooccure_bad_input"
   )
   expect_error(
     cooccurrence(list(c("A", "B")), counting = "attention", lambda = -1),
-    "lambda > 0"
+    class = "cooccure_bad_input"
   )
 })
 
@@ -2087,7 +2090,7 @@ test_that("gephi output works with the converters", {
   expect_equal(igraph::ecount(as_igraph(gph)), nrow(gph))
 })
 
-test_that("a failing group warns instead of vanishing silently", {
+test_that("an edgeless group is dropped quietly", {
   ## An edgeless group is expected and stays quiet.
   g <- data.frame(grp = c("x", "x", "y"), kw = c("A,B", "A,B", "Q"),
                   stringsAsFactors = FALSE)

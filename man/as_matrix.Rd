@@ -3,38 +3,69 @@
 \name{as_matrix}
 \alias{as_matrix}
 \alias{as_matrix.cooccurrence}
-\title{Extract the co-occurrence matrix}
+\title{Extract the weight matrix of a co-occurrence network}
 \usage{
 as_matrix(x, ...)
 
-\method{as_matrix}{cooccurrence}(x, type = c("normalized", "raw"), ...)
+\method{as_matrix}{cooccurrence}(x, type = c("normalized", "raw"), group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
 \item{...}{Ignored.}
 
-\item{type}{Character. \code{"normalized"} (default) for the weights, or
-\code{"raw"} for the number of transactions in which each pair
-co-occurs.}
+\item{type}{\code{"normalized"} (default) for the edge weights, or \code{"raw"} for
+the co-occurrence counts.}
+
+\item{group}{For a result built with \code{split_by}, the name of the group to
+extract. \code{NULL} (default) for an unsplit result.}
 }
 \value{
-A dense base numeric matrix, one row and one column per item,
-with item names as row and column names and a zero diagonal. It is
-symmetric for every similarity except \code{"relative"}, where row
-\code{i} holds the weights from item \code{i} and each row sums to 1.
-Results built with \code{split_by} store no single matrix, so the
-matrix is rebuilt from the edge list.
+A dense base numeric matrix with one row and one column per item,
+item names as row and column names, and a zero diagonal. Items that
+co-occur with nothing (isolates) keep a row of zeros. For
+\code{similarity = "relative"} the weight matrix is asymmetric: row \code{i} holds
+the weights of the edges from item \code{i}, and each non-empty row sums to 1
+before filtering. The raw matrix is always symmetric.
 }
 \description{
-Returns the full square co-occurrence matrix: the edge weights after
-similarity normalization, scaling, and filtering, or with
-\code{type = "raw"} the raw co-occurrence counts. Use it when a method
-downstream (clustering, a heatmap, another network package) expects a
-matrix rather than an edge list.
+\code{as_matrix()} returns the weight matrix of a co-occurrence network built
+by \code{\link[=cooccurrence]{cooccurrence()}}. The weight matrix is the network written as a square
+matrix with one row and one column per item, where a cell holds the
+weight of the edge between two items and the diagonal is zero. This form
+is what clustering, heatmaps, matrix algebra and many network packages
+expect, and it shows at once which item pairs never co-occur.
+
+The cells hold the edge weights after similarity, scaling and filtering,
+or, with \code{type = "raw"}, the number of transactions in which each pair
+co-occurs. The matrix agrees with the printed edge list,
+including any \code{threshold} or \code{top_n} filter. It is symmetric for every
+similarity except \code{"relative"}, whose network is directed.
+
+A result built with \code{split_by} stacks one network per group and has no
+single matrix, so \code{group} names the network to extract. For a graph object
+rather than a matrix, use \code{\link[=as_igraph]{as_igraph()}}, \code{\link[=as_tidygraph]{as_tidygraph()}},
+\code{\link[=as_cograph]{as_cograph()}} or \code{\link[=as_netobject]{as_netobject()}}.
 }
+\section{Conditions}{
+
+\code{cooccure_grouped_input} when \code{x} was built with \code{split_by} and \code{group}
+is \code{NULL}; \code{cooccure_bad_input} when \code{group} names no group of \code{x}, or
+is given for an unsplit result.
+}
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-as_matrix(res)
-as_matrix(res, type = "raw")
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
+as_matrix(net)
+as_matrix(net, type = "raw")
+
+# One network of a split result
+by_decade <- cooccurrence(movies, field = "genres", sep = ",",
+                          split_by = "decade", min_occur = 50)
+as_matrix(by_decade, group = "2010s")
+}
+\seealso{
+\code{\link[=cooccurrence]{cooccurrence()}} to build the network; \code{\link[=as_igraph]{as_igraph()}} for a graph
+object; \code{\link[=as.data.frame.cooccurrence]{as.data.frame.cooccurrence()}} for the edge and node tables.
 }

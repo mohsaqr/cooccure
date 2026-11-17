@@ -5,290 +5,214 @@
 
 #' Build a co-occurrence network
 #'
-#' Constructs an undirected co-occurrence network from various input formats
-#' and returns a tidy edge data frame. Two items are linked when they occur
-#' in the same transaction (a document, a basket, a session, a window of a
-#' sequence); the edge weight is the number of shared transactions, optionally
-#' normalized by one of eight similarity measures and rescaled. Argument names
-#' follow the citenets convention. \code{co()} is a short alias.
+#' @description
+#' `cooccurrence()` builds a co-occurrence network; `co()` is a short alias.
+#' In a co-occurrence network two items are linked when they appear in the
+#' same transaction: keywords assigned to the same article, genres of the
+#' same film, actors in the same cast, states visited in the same session or
+#' the same window of a sequence. The edge weight starts as the number of
+#' transactions shared by the two items. Because frequent items co-occur
+#' with almost everything, the counts are usually normalized by a similarity
+#' measure that compares the observed co-occurrence with the items' own
+#' frequencies (van Eck & Waltman, 2009), and transactions with many items
+#' can be down-weighted by fractional counting (Perianes-Rodriguez et al.,
+#' 2016).
 #'
-#' @param data Input data. Accepts:
-#'   \itemize{
-#'     \item A \code{data.frame} with a delimited column (\code{field} + \code{sep}).
-#'     \item A \code{data.frame} in long/bipartite format (\code{field} + \code{by}).
-#'     \item A binary (0/1 or \code{TRUE}/\code{FALSE}) \code{data.frame} or
-#'       \code{matrix} (auto-detected).
-#'     \item A one-hot or count table with \code{vars} naming the indicator
-#'       columns; other columns (ids, metadata) are ignored.
-#'     \item A wide sequence \code{data.frame} or \code{matrix} (non-binary).
-#'     \item A \code{list} of character vectors (each element is a transaction).
-#'     \item A \code{nestimate_data} object from
-#'       \code{Nestimate::prepare()}; its \code{sequence_data} is used, so
-#'       event logs can be sessionized there and networked here.
-#'   }
-#' @param field Character. The entity column --- determines what the nodes are.
-#'   For delimited format, a single column split by \code{sep}. For
-#'   long/bipartite, the item column. For multi-column delimited, a vector
-#'   of column names pooled per row. Use \code{field = "all"} for wide
-#'   sequence data (e.g. TraMineR / tna format) where every column is a
-#'   time point and cell values are the items.
-#' @param by Character or \code{NULL}. Grouping column for long/bipartite
-#'   format. Each unique value defines one transaction.
-#' @param weight_by Character or \code{NULL}. Column name containing a numeric
-#'   association strength for each entity-transaction pair. Only accepted for
-#'   long format (\code{field} + \code{by}). When supplied, each entity
-#'   contributes its weight rather than 1, so
-#'   \eqn{C_{ij} = \sum_d w_{id} \cdot w_{jd}}.
-#'   Typical use: topic-document probability matrices from LDA or similar
-#'   models.
-#' @param sep Character or \code{NULL}. Separator for splitting delimited
-#'   fields.
-#' @param action Character or \code{NULL}. Column holding the event/state
-#'   for raw event-log input. When supplied, the log is sessionized into
-#'   ordered sequences first and each session becomes one transaction, so
-#'   \code{window} and \code{counting = "attention"} apply. Requires the
-#'   \pkg{Nestimate} package, which performs the sessionization.
-#' @param actor Character vector or \code{NULL}. Column(s) identifying who
-#'   performed the action. When \code{NULL}, all rows are treated as one
-#'   actor. Only used with \code{action}.
-#' @param time Character or \code{NULL}. Timestamp column. Accepts ISO8601,
-#'   Unix time, and common date/time formats. When \code{NULL}, row order
-#'   defines the sequence. Only used with \code{action}.
-#' @param session Character vector or \code{NULL}. Column(s) giving an
-#'   explicit session grouping. Combined with \code{time}, sessions are
-#'   further split on time gaps. Only used with \code{action}.
-#' @param order Character or \code{NULL}. Column used to break ties when
-#'   timestamps are identical. Only used with \code{action}.
-#' @param time_threshold Numeric. Maximum gap in seconds between consecutive
-#'   events before a new session starts. Use \code{Inf} to keep each actor
-#'   as a single sequence regardless of gaps. Default 900 (15 minutes).
-#'   Only used with \code{action} and \code{time}.
-#' @param vars Column specification or \code{NULL}. The indicator (one-hot)
-#'   columns, one column per item. Resolved like \code{select} in
-#'   \code{\link[base]{subset}}, so all of these work: a bare range
-#'   (\code{vars = A:D}), bare names (\code{vars = c(A, B, C)}), positions
-#'   (\code{vars = 2:5}), negative selection (\code{vars = -c(id, note)}),
-#'   a logical mask, or a character vector. Every other column --- ids,
-#'   timestamps, metadata --- is ignored, so a one-hot table that also
-#'   carries identifier columns needs no pre-processing. Cell values are
-#'   read as presence: any non-zero, non-\code{NA} value marks the item
-#'   present, so count tables such as document-term matrices work as well
-#'   as \code{0}/\code{1} and \code{TRUE}/\code{FALSE}. \code{NA} counts as
-#'   absent. Cannot be combined with \code{field}, \code{by}, or
-#'   \code{sep}. A purely binary table with no extra columns is still
-#'   auto-detected without \code{vars}.
-#' @param split_by Character or \code{NULL}. Column name to split the data
-#'   by before computing co-occurrence. A separate network is computed per
-#'   group and the results are combined into a single data frame with an
-#'   additional \code{group} column. Only works with data.frame inputs.
-#' @param group Character or \code{NULL}. Alias for \code{split_by}.
-#' @param similarity Character. Similarity measure:
-#'   \describe{
-#'     \item{\code{"none"}}{Raw co-occurrence counts.}
-#'     \item{\code{"jaccard"}}{\eqn{C_{ij} / (f_i + f_j - C_{ij})}.}
-#'     \item{\code{"cosine"}}{Salton's cosine:
-#'       \eqn{C_{ij} / \sqrt{f_i \cdot f_j}}.}
-#'     \item{\code{"inclusion"}}{Simpson coefficient:
-#'       \eqn{C_{ij} / \min(f_i, f_j)}.}
-#'     \item{\code{"association"}}{Association strength:
-#'       \eqn{C_{ij} / (f_i \cdot f_j)}
-#'       (van Eck & Waltman, 2009).}
-#'     \item{\code{"dice"}}{\eqn{2 C_{ij} / (f_i + f_j)}.}
-#'     \item{\code{"equivalence"}}{Salton's cosine squared:
-#'       \eqn{C_{ij}^2 / (f_i \cdot f_j)}.}
-#'     \item{\code{"relative"}}{Row-normalized: each row of the stored
-#'       matrix sums to 1. This is the only asymmetric measure. The edge
-#'       data frame holds one row per pair, carrying the \code{from} to
-#'       \code{to} direction; the stored matrix (\code{\link{as_matrix}})
-#'       holds both directions.}
-#'   }
-#' @param scale Character or \code{NULL}. Optional scaling applied to weights
-#'   after similarity normalization:
-#'   \describe{
-#'     \item{\code{NULL} or \code{"none"}}{No scaling.}
-#'     \item{\code{"minmax"}}{Min-max to \eqn{[0, 1]}.}
-#'     \item{\code{"log"}}{Natural log: \eqn{\log(1 + w)}.}
-#'     \item{\code{"log10"}}{Log base 10: \eqn{\log_{10}(1 + w)}.}
-#'     \item{\code{"binary"}}{Binary: 1 if \eqn{w > 0}, else 0.}
-#'     \item{\code{"zscore"}}{Z-score standardization.}
-#'     \item{\code{"sqrt"}}{Square root.}
-#'     \item{\code{"proportion"}}{Divide by sum of all weights.}
-#'   }
-#' @param counting Character. Counting method:
-#'   \describe{
-#'     \item{\code{"full"}}{Each co-occurring pair adds 1 regardless of
-#'       transaction size. Default.}
-#'     \item{\code{"fractional"}}{Each pair adds \eqn{1 / (n_i - 1)}
-#'       where \eqn{n_i} is the number of items in transaction \eqn{i}.
-#'       Transactions with many items contribute less per pair
-#'       (Perianes-Rodriguez et al., 2016).}
-#'     \item{\code{"attention"}}{Each pair within a transaction
-#'       contributes \eqn{\exp(-|pos_i - pos_j| / \lambda)}, so closer
-#'       positions give a stronger edge and distant pairs decay. Requires
-#'       ordered transactions (list / wide / delimited / windowed
-#'       input). The decay rate \eqn{\lambda} is controlled by the
-#'       \code{lambda} argument.}
-#'   }
-#' @param lambda Numeric. Decay rate for \code{counting = "attention"}.
-#'   A higher \code{lambda} gives slower decay, so distant pairs still
-#'   contribute. Default \code{1.0}, matching the \pkg{tna} package.
-#'   Ignored for other counting methods.
-#' @param threshold Numeric. Minimum edge weight to retain, applied after
-#'   similarity and scaling. The default \code{0} means no filtering rather
-#'   than "drop negative weights", so centering scalings such as
-#'   \code{scale = "zscore"} keep their negative half. Pass a positive
-#'   value to filter.
-#' @param min_occur Integer. Minimum entity frequency. Entities appearing in
-#'   fewer than \code{min_occur} transactions are dropped. Default 1.
-#' @param top_n Integer or \code{NULL}. Keep only the top \code{top_n} edges
-#'   by weight. Ties at the cut are truncated, so exactly \code{top_n} edges
-#'   are returned. When \code{split_by} is used, applied per group.
-#'   Default \code{NULL} (all edges).
-#' @param aggregate_by Character or \code{NULL}. Column name to group
-#'   the data by before computing co-occurrence. For each unique value,
-#'   the per-group network is computed (with the chosen
-#'   \code{similarity}, \code{counting}, \code{scale}, \code{window});
-#'   the per-group edge weights are then combined across groups via
-#'   \code{aggregate} into ONE final network. Differs from
-#'   \code{split_by}, which keeps groups separate. Cannot be combined
-#'   with \code{split_by}. Only applies to data frame inputs.
-#' @param aggregate Character. How to combine edge weights across
-#'   groups when \code{aggregate_by} is used: \code{"sum"} (default),
-#'   \code{"mean"}, \code{"min"}, or \code{"max"}. The \code{count}
-#'   column is always summed. \code{threshold} and \code{top_n} are
-#'   applied AFTER aggregation.
-#' @param window Integer or \code{NULL}. Sliding-window size for
-#'   categorical time-series / ordered-sequence input. When set to an
-#'   integer \eqn{w \ge 2}, every window of \code{w} consecutive
-#'   positions in a sequence becomes a mini-transaction; states inside
-#'   the same window co-occur. Sequences shorter than \code{w}
-#'   contribute no transactions. Only applies to ordered formats:
-#'   wide (\code{field = "all"}), \code{list}, and event logs given with
-#'   \code{action}. Default \code{NULL} (whole sequence treated as one
-#'   transaction --- bag of states).
-#' @param output Character. Column naming convention for the output:
-#'   \describe{
-#'     \item{\code{"default"}}{\code{from}, \code{to}, \code{weight}, \code{count}.}
-#'     \item{\code{"gephi"}}{\code{Source}, \code{Target}, \code{Weight},
-#'       \code{Type} (= \code{"Undirected"}), \code{Count}. Ready for Gephi
-#'       import.}
-#'     \item{\code{"igraph"}}{Returns an \code{igraph} graph object directly.}
-#'     \item{\code{"cograph"}}{Returns a \code{cograph_network} object directly.}
-#'     \item{\code{"matrix"}}{Returns the square co-occurrence matrix.}
-#'   }
-#' @param ... Must be empty. Any argument passed here, named or not, raises
-#'   an error, so a misspelled argument name (e.g. \code{simliarity}) fails
-#'   loudly instead of being ignored.
+#' The transactions are read from a delimited column, a long (item,
+#' transaction) table, a binary or one-hot table, wide sequences, a list of
+#' vectors, or a raw event log. Eight similarity measures, three counting
+#' methods, eight scalings, sliding windows over ordered sequences, and
+#' per-group networks (`split_by`) or pooled ones (`aggregate_by`) are
+#' available. Every measure except `"relative"` gives an undirected network;
+#' `"relative"` divides each row by its sum, so its edges have a direction.
 #'
-#' @return Depends on \code{output}:
-#'   \itemize{
-#'     \item \code{"default"}: A data frame of class
-#'       \code{c("cooccurrence", "data.frame")} with one row per undirected
-#'       edge (item pair with non-zero weight) and columns \code{from},
-#'       \code{to} (character item names), \code{weight} (numeric, after
-#'       similarity and scaling), and \code{count} (number of transactions
-#'       containing both items). With \code{split_by}, one row per edge per
-#'       group, plus a character \code{group} column. With
-#'       \code{aggregate_by}, one row per edge of the combined network, and
-#'       \code{count} is summed across groups.
-#'     \item \code{"gephi"}: The same edges, still of class
-#'       \code{cooccurrence}, with columns \code{Source}, \code{Target},
-#'       \code{Weight}, \code{Type} (always \code{"Undirected"}),
-#'       \code{Count} (and \code{group} when split). Ready for Gephi CSV
-#'       import.
-#'     \item \code{"igraph"}: An undirected \code{igraph} graph, as returned
-#'       by \code{\link{as_igraph}}.
-#'     \item \code{"cograph"}: A \code{cograph_network} object, as returned
-#'       by \code{\link{as_cograph}}.
-#'     \item \code{"matrix"}: A square numeric base matrix with items as row
-#'       and column names and a zero diagonal, as returned by
-#'       \code{\link{as_matrix}}.
-#'   }
-#'   For the data frame outputs, rows are sorted by weight, largest first.
-#'   The weight matrix, raw count matrix, items, item frequencies, and the
-#'   parameters used are kept as attributes; read them through
-#'   \code{\link{as_matrix}}, \code{\link[=summary.cooccurrence]{summary}},
-#'   and \code{\link{as.data.frame.summary.cooccurrence}} rather than
-#'   directly. Printing shows a one-line network header (nodes, edges,
-#'   density, mean degree, transactions), the method, and the strongest
-#'   edges.
+#' The network is returned as a tidy edge list with the weight (after
+#' similarity, scaling and filtering) and the raw count of each pair: it
+#' shows which items go together, how strongly, and, with `split_by`, how
+#' this differs across groups.
 #'
-#'   Errors are raised for unknown arguments in \code{...}, for
-#'   \code{split_by} combined with \code{aggregate_by}, for \code{window}
-#'   combined with \code{weight_by}, for \code{vars} combined with
-#'   \code{field}, \code{by}, or \code{sep}, and when no non-empty
-#'   transaction remains. A \code{split_by} group that fails for another
-#'   reason is dropped with a warning naming the group.
+#' The edge list converts to a matrix with [as_matrix()] and to graph objects
+#' with [as_igraph()], [as_tidygraph()], [as_cograph()] and [as_netobject()];
+#' [summary.cooccurrence()] and [as.data.frame.cooccurrence()] give network,
+#' node and group metrics.
 #'
+#' @param data Input data, one of:
+#'   * a data frame with a delimited column (`field` and `sep`);
+#'   * a long data frame with one row per item and transaction (`field` and
+#'     `by`), optionally weighted (`weight_by`);
+#'   * a binary (0/1 or `TRUE`/`FALSE`) data frame or matrix, detected
+#'     automatically;
+#'   * a one-hot or count table, with `vars` naming the indicator columns;
+#'   * a wide sequence data frame or matrix, one row per sequence
+#'     (`field = "all"`);
+#'   * a list of character vectors, one per transaction;
+#'   * a raw event log (`action`, with `actor`, `time`, `session`);
+#'   * a `nestimate_data` object from `Nestimate::prepare()`.
+#' @param field The item column. For delimited input, the column split by
+#'   `sep` (several columns are pooled per row); for long input, the item
+#'   column; `"all"` for wide sequence data, where every column is a time
+#'   point.
+#' @param by For long input, the column identifying the transaction.
+#' @param sep Separator for delimited input.
+#' @param weight_by For long input, a numeric column giving each item's
+#'   weight in its transaction, so that \eqn{C_{ij} = \sum_d w_{id} w_{jd}}
+#'   (for instance topic probabilities per document). Requires
+#'   `counting = "full"`.
+#' @param split_by A column of `data`. One network is built per group and the
+#'   edge lists are stacked with a `group` column.
+#' @param similarity Normalization of the counts \eqn{C_{ij}} by the item
+#'   frequencies \eqn{f_i}:
+#'   * `"none"` (default): the counts;
+#'   * `"jaccard"`: \eqn{C_{ij} / (f_i + f_j - C_{ij})};
+#'   * `"cosine"` (Salton): \eqn{C_{ij} / \sqrt{f_i f_j}};
+#'   * `"inclusion"` (Simpson): \eqn{C_{ij} / \min(f_i, f_j)};
+#'   * `"association"` (association strength): \eqn{C_{ij} / (f_i f_j)};
+#'   * `"dice"`: \eqn{2 C_{ij} / (f_i + f_j)};
+#'   * `"equivalence"`: \eqn{C_{ij}^2 / (f_i f_j)};
+#'   * `"relative"`: \eqn{C_{ij} / \sum_k C_{ik}}, each row summing to 1.
+#'     The only asymmetric measure: the network is directed and the edge
+#'     list holds one row per direction.
+#' @param counting How each transaction contributes to a pair:
+#'   * `"full"` (default): 1 per transaction containing both items;
+#'   * `"fractional"`: \eqn{1 / (n - 1)} for a transaction of \eqn{n}
+#'     items, so large transactions weigh less per pair;
+#'   * `"attention"`: \eqn{\exp(-|p_i - p_j| / \lambda)}, decaying with the
+#'     distance between the two items' positions in an ordered transaction.
+#'     A repeated item keeps the position of its first occurrence.
+#' @param scale Rescaling of the weights after similarity: `NULL` or
+#'   `"none"` (default), `"minmax"` (to \eqn{[0, 1]}), `"log"`
+#'   (\eqn{\log(1 + w)}), `"log10"`, `"binary"` (1 for every edge),
+#'   `"zscore"`, `"sqrt"`, or `"proportion"` (divided by the sum).
+#' @param threshold Minimum edge weight to keep, applied after similarity
+#'   and scaling, to each direction separately for `"relative"`. The default
+#'   `0` keeps every edge. A negative value keeps weights at or above it,
+#'   which is useful with `scale = "zscore"`.
+#' @param min_occur Items in fewer than `min_occur` transactions are dropped
+#'   before counting (default 1).
+#' @param top_n Keep the `top_n` heaviest edges (default `NULL`, all). Ties
+#'   at the cut are truncated. Applied per group with `split_by`.
+#' @param output `"default"` for the edge list; `"gephi"` for the same edges
+#'   with Gephi column names; `"igraph"`, `"cograph"` or `"matrix"` for the
+#'   result of [as_igraph()], [as_cograph()] or [as_matrix()]. The last three
+#'   need an unsplit network.
+#' @param vars The indicator columns of a one-hot or count table, given like
+#'   `select` in [base::subset()]: names, a range (`A:D`), positions, a
+#'   negative selection (`-c(id, note)`) or a logical mask. Other columns are
+#'   ignored. Any non-zero, non-missing value counts as presence.
+#' @param actor,action,time,session,order Columns of a raw event log: who
+#'   acted, the event, its timestamp, an explicit session, and a tie-breaking
+#'   order. With `action`, the log is cut into sessions by
+#'   `Nestimate::prepare()` and each session becomes an ordered transaction.
+#' @param time_threshold Gap in seconds that starts a new session (default
+#'   900). `Inf` keeps one sequence per actor.
+#' @param group Alias for `split_by`.
+#' @param aggregate_by A column of `data`. One network is built per group
+#'   and the edge weights are combined by `aggregate` into one network.
+#'   `threshold` and `top_n` apply after combining. Cannot be combined with
+#'   `split_by`.
+#' @param aggregate `"sum"` (default), `"mean"`, `"min"` or `"max"`: how
+#'   `aggregate_by` combines weights. Counts are always summed.
+#' @param window Sliding-window size (an integer of at least 2) for ordered
+#'   input (wide sequences, a list of vectors, an event log): each window of
+#'   `window` consecutive positions is a transaction. `NULL` (default) uses
+#'   the whole sequence.
+#' @param lambda Decay rate for `counting = "attention"` (default 1); larger
+#'   values decay more slowly.
+#' @param ... Must be empty: an unknown or misspelled argument raises an
+#'   error.
+#'
+#' @return With `output = "default"`, a data frame of class
+#'   `c("cooccurrence", "data.frame")` with one row per edge, sorted by
+#'   weight (largest first), and columns `from` and `to` (item names),
+#'   `weight` (after similarity, scaling and filtering) and `count`
+#'   (transactions containing both items; summed over groups for
+#'   `aggregate_by`). An undirected network has one row per pair; the
+#'   directed `"relative"` network has one row per direction. With
+#'   `split_by`, one row per edge per group and a `group` column. Read the
+#'   tables with [as.data.frame.cooccurrence()] and the matrix with
+#'   [as_matrix()].
+#'
+#'   `output = "gephi"` gives the same edges with columns `Source`,
+#'   `Target`, `Weight`, `Type` (`"Undirected"` or `"Directed"`) and
+#'   `Count`. `"igraph"`, `"cograph"` and `"matrix"` return the converter's
+#'   result.
+#' @section Conditions:
+#'   Errors inherit from `cooccure_error`:
+#'   * `cooccure_bad_input` for an invalid argument value, a missing column,
+#'     or an input whose format cannot be detected;
+#'   * `cooccure_incompatible_args` for arguments that cannot be combined:
+#'     `split_by` with `aggregate_by`, `weight_by` with `window` or with
+#'     `counting` other than `"full"`, `vars` with `field`, `by` or `sep`,
+#'     `window` with unordered input, event-log columns without `action`;
+#'   * `cooccure_grouped_input` for `output = "igraph"`, `"cograph"` or
+#'     `"matrix"` with `split_by`;
+#'   * `cooccure_empty_input` when no transaction or item remains, or when
+#'     no group produces an edge;
+#'   * `cooccure_missing_package` for event-log input without
+#'     \pkg{Nestimate}.
+#'
+#'   With `split_by` or `aggregate_by`, a group left with no transaction is
+#'   dropped; any other error in a group is raised with the group named.
 #' @references
-#' van Eck, N. J., & Waltman, L. (2009). How to normalize co-occurrence
-#' data? An analysis of some well-known similarity measures. \emph{Journal of
-#' the American Society for Information Science and Technology}, 60(8),
+#' van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence
+#' data? An analysis of some well-known similarity measures. *Journal of
+#' the American Society for Information Science and Technology*, 60(8),
 #' 1635--1651. \doi{10.1002/asi.21075}
 #'
 #' Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016).
 #' Constructing bibliometric networks: A comparison between full and
-#' fractional counting. \emph{Journal of Informetrics}, 10(4), 1178--1195.
+#' fractional counting. *Journal of Informetrics*, 10(4), 1178--1195.
 #' \doi{10.1016/j.joi.2016.10.006}
 #'
 #' Saqr, M., Lopez-Pernas, S., Conde, M. A., & Hernandez-Garcia, A. (2024).
 #' Social network analysis: A primer, a guide and a tutorial in R. In M. Saqr
-#' & S. Lopez-Pernas (Eds.), \emph{Learning Analytics Methods and Tutorials:
-#' A Practical Guide Using R}. Springer.
-#' \doi{10.1007/978-3-031-54464-4_15}
-#'
+#' & S. Lopez-Pernas (Eds.), *Learning Analytics Methods and Tutorials: A
+#' Practical Guide Using R*. Springer. \doi{10.1007/978-3-031-54464-4_15}
+#' @seealso [as.data.frame.cooccurrence()] and [summary.cooccurrence()] for
+#'   tables and metrics; [as_matrix()], [as_igraph()], [as_cograph()] and
+#'   [as_netobject()] for conversion; [plot.cooccurrence()]; [movies] and
+#'   [actors] for example data.
 #' @examples
-#' # Delimited keywords
-#' df <- data.frame(
-#'   id = 1:4,
-#'   keywords = c("network; graph", "graph; matrix; network",
-#'                "matrix; algebra", "network; algebra; graph")
-#' )
-#' cooccurrence(df, field = "keywords", sep = ";")
+#' # Genres linked by the films they share (delimited column)
+#' cooccurrence(movies, field = "genres", sep = ",", similarity = "jaccard")
 #'
-#' # Split by a grouping variable
-#' df$year <- c(2020, 2020, 2021, 2021)
-#' cooccurrence(df, field = "keywords", sep = ";", split_by = "year")
-#' cooccurrence(df, field = "keywords", sep = ";", group = "year")
+#' # Actors linked by shared films (long table)
+#' co(actors, field = "actor", by = "tconst", min_occur = 3)
 #'
-#' # List of transactions with Jaccard similarity
-#' cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")),
-#'              similarity = "jaccard")
+#' # One network per decade
+#' cooccurrence(movies, field = "genres", sep = ",", split_by = "decade",
+#'              similarity = "jaccard", top_n = 3)
 #'
-#' # Short alias
-#' co(df, field = "keywords", sep = ";", similarity = "cosine")
+#' # A directed network: the share of each genre's links going to each other
+#' cooccurrence(movies, field = "genres", sep = ",", similarity = "relative",
+#'              min_occur = 100)
 #'
-#' # Windowed co-occurrence on a categorical time series. With
-#' # window = 2 only adjacent states co-occur; window = 3 also pairs
-#' # states two positions apart, etc.
-#' seqs <- list(
-#'   c("focus", "focus", "distract", "focus", "confused"),
-#'   c("focus", "distract", "distract", "focus")
-#' )
+#' # Adjacent states of ordered sequences
+#' seqs <- list(c("plan", "read", "write", "read", "review"),
+#'              c("read", "write", "write", "review"))
 #' cooccurrence(seqs, window = 2)
 #'
-#' # Weighted long format (e.g. LDA topic-document probabilities)
+#' # Weighted long table (topic probabilities per document)
 #' theta <- data.frame(
-#'   doc   = c("d1","d1","d1","d2","d2","d3","d3"),
-#'   topic = c("T1","T2","T3","T1","T3","T2","T3"),
+#'   doc   = c("d1", "d1", "d1", "d2", "d2", "d3", "d3"),
+#'   topic = c("T1", "T2", "T3", "T1", "T3", "T2", "T3"),
 #'   prob  = c(0.6, 0.3, 0.1, 0.4, 0.6, 0.5, 0.5)
 #' )
 #' cooccurrence(theta, field = "topic", by = "doc", weight_by = "prob")
 #'
-#' # One-hot / indicator table: name the indicator columns, ignore the rest
-#' onehot <- data.frame(
-#'   doc = c("d1", "d2", "d3"),
-#'   A = c(1, 0, 1), B = c(1, 1, 0), C = c(0, 1, 1)
-#' )
-#' cooccurrence(onehot, vars = c("A", "B", "C"))
+#' # One-hot table with an id column
+#' onehot <- data.frame(doc = c("d1", "d2", "d3"),
+#'                      A = c(1, 0, 1), B = c(1, 1, 0), C = c(0, 1, 1))
+#' cooccurrence(onehot, vars = A:C)
 #'
-#' # Raw event log: sessionized on a 15-minute gap, then windowed
+#' # Raw event log, cut into sessions by Nestimate
 #' \donttest{
 #' if (requireNamespace("Nestimate", quietly = TRUE)) {
 #'   events <- data.frame(
 #'     student = rep(c("s1", "s2"), each = 3),
 #'     code    = c("read", "write", "read", "test", "write", "read"),
-#'     stamp   = as.POSIXct("2026-01-01 09:00:00") + c(0, 60, 120, 0, 30, 90)
+#'     stamp   = as.POSIXct("2026-01-01 09:00:00", tz = "UTC") +
+#'       c(0, 60, 120, 0, 30, 90)
 #'   )
 #'   cooccurrence(events, actor = "student", action = "code", time = "stamp")
 #' }
@@ -325,34 +249,66 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
   counting <- match.arg(counting)
   output <- match.arg(output)
   aggregate <- match.arg(aggregate)
+  ## `threshold` may be negative: a centring scale such as z-score gives
+  ## negative weights, and a negative cut keeps edges above it. Zero keeps
+  ## its documented meaning of "no filtering".
+  if (!(is.numeric(threshold) && length(threshold) == 1L &&
+        is.finite(threshold)))
+    .co_abort("`threshold` must be a single finite number.")
+  if (!(is.numeric(min_occur) && length(min_occur) == 1L &&
+        is.finite(min_occur) && min_occur >= 1))
+    .co_abort("`min_occur` must be a single number of at least 1.")
+  if (!is.null(top_n) && !(is.numeric(top_n) && length(top_n) == 1L &&
+                           is.finite(top_n) && top_n >= 1))
+    .co_abort("`top_n` must be NULL or a single number of at least 1.")
+  if (!(is.numeric(lambda) && length(lambda) == 1L && is.finite(lambda) &&
+        lambda > 0))
+    .co_abort("`lambda` must be a single positive number.")
   threshold <- as.numeric(threshold)
   min_occur <- as.integer(min_occur)
-  stopifnot(threshold >= 0, min_occur >= 1L)
   if (!is.null(group)) {
-    if (!is.null(split_by) && !identical(split_by, group)) {
-      stop("`group` is an alias for `split_by`; supply only one value.",
-           call. = FALSE)
-    }
+    if (!is.null(split_by) && !identical(split_by, group))
+      .co_abort("`group` is an alias for `split_by`; supply only one value.",
+                class = "cooccure_incompatible_args")
     split_by <- group
   }
   if (!is.null(window)) {
-    stopifnot(is.numeric(window), length(window) == 1L, window >= 2L)
+    if (!(is.numeric(window) && length(window) == 1L && is.finite(window) &&
+          window >= 2))
+      .co_abort("`window` must be NULL or a single integer of at least 2.")
     window <- as.integer(window)
   }
   if (!is.null(aggregate_by) && !is.null(split_by))
-    stop("`aggregate_by` and `split_by` cannot be combined.", call. = FALSE)
+    .co_abort("`aggregate_by` and `split_by` cannot be combined.",
+              class = "cooccure_incompatible_args")
   if (!is.null(weight_by) && !is.null(window))
-    stop("`window` is not compatible with `weight_by`.", call. = FALSE)
-  stopifnot(is.numeric(lambda), length(lambda) == 1L, lambda > 0)
+    .co_abort("`window` is not compatible with `weight_by`.",
+              class = "cooccure_incompatible_args")
+  ## Fractional and attention counting reweight each transaction's pairs
+  ## from its item count or item positions; a weighted long table already
+  ## carries its own per-item weights, so the two cannot be combined. They
+  ## used to be ignored silently, giving full-counting weights.
+  if (!is.null(weight_by) && counting != "full")
+    .co_abort("`counting = \"", counting, "\"` cannot be combined with ",
+              "`weight_by`: the weights already define each item's ",
+              "contribution. Use `counting = \"full\"` with `weight_by`.",
+              class = "cooccure_incompatible_args")
+  if (!is.null(split_by) && output %in% c("igraph", "cograph", "matrix"))
+    .co_abort("`output = \"", output, "\"` builds one network, but ",
+              "`split_by` returns one network per group. Build the edge list ",
+              "first and convert one group with `as_", output,
+              "(x, group = ...)`.",
+              class = "cooccure_grouped_input")
   ## `vars` is resolved like base R's subset(select = ): bare ranges
   ## (a:c), positions (1:8), negatives (-id), and character vectors all work.
   vars <- .co_resolve_vars(substitute(vars), data, parent.frame())
   if (!is.null(vars)) {
     if (length(vars) < 2L)
-      stop("`vars` must name at least two indicator columns.", call. = FALSE)
+      .co_abort("`vars` must name at least two indicator columns.")
     if (!is.null(field) || !is.null(by) || !is.null(sep))
-      stop("`vars` names indicator columns directly and cannot be combined ",
-           "with `field`, `by`, or `sep`.", call. = FALSE)
+      .co_abort("`vars` names indicator columns directly and cannot be ",
+                "combined with `field`, `by`, or `sep`.",
+                class = "cooccure_incompatible_args")
   }
 
   ## Raw event-log input: sessionize first, then continue down the ordinary
@@ -364,9 +320,11 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                                time_threshold = time_threshold)
     field <- "all"
   } else if (!is.null(actor) || !is.null(time) || !is.null(session)) {
-    stop("`actor`, `time`, and `session` describe raw event data and ",
-         "require `action` naming the event column.", call. = FALSE)
+    .co_abort("`actor`, `time`, and `session` describe raw event data and ",
+              "require `action` naming the event column.",
+              class = "cooccure_incompatible_args")
   }
+  .co_check_columns(data, field, by, weight_by)
 
   if (is.null(scale) || identical(scale, "none")) {
     scale_method <- "none"
@@ -375,34 +333,23 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
                                        "binary", "zscore", "sqrt",
                                        "proportion"))
   }
+  directed <- identical(similarity, "relative")
+
+  core_args <- list(field = field, by = by, sep = sep, vars = vars,
+                    weight_by = weight_by, similarity = similarity,
+                    counting = counting, scale_method = scale_method,
+                    min_occur = min_occur, window = window, lambda = lambda)
 
   # ---- split_by: compute per group, combine ----
   if (!is.null(split_by)) {
-    stopifnot(is.data.frame(data), split_by %in% names(data))
+    .co_check_group_column(data, split_by, "split_by")
     groups <- split(data, data[[split_by]])
     parts <- lapply(names(groups), function(g) {
       sub <- groups[[g]]
       # Drop the split_by column so it doesn't interfere with format detection
       sub[[split_by]] <- NULL
-      ## A group that genuinely yields no edges is expected and dropped
-      ## quietly; a group that FAILS is not, so its error is surfaced as a
-      ## warning naming the group rather than vanishing into a NULL.
-      edges <- tryCatch(
-        .co_core(sub, field = field, by = by, sep = sep, vars = vars,
-                 weight_by = weight_by,
-                 similarity = similarity, counting = counting,
-                 scale_method = scale_method,
-                 threshold = threshold, min_occur = min_occur,
-                 top_n = top_n, window = window, lambda = lambda),
-        error = function(e) {
-          if (!grepl("No non-empty transactions|No items remain",
-                     conditionMessage(e))) {
-            warning("Group '", g, "' produced no network: ",
-                    conditionMessage(e), call. = FALSE)
-          }
-          NULL
-        }
-      )
+      edges <- .co_core_group(sub, g, core_args, threshold = threshold,
+                              top_n = top_n)
       if (is.null(edges) || nrow(edges) == 0L) return(NULL)
       edges$group <- g
       edges
@@ -412,7 +359,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
     ## that is isolated within its group appears in no edge, so it cannot be
     ## recovered from the combined frame afterwards.
     group_items <- lapply(parts[kept], function(p) attr(p, "items"))
-    names(group_items) <- names(groups)[kept]
+    group_freq <- lapply(parts[kept], function(p) attr(p, "frequencies"))
+    names(group_items) <- names(group_freq) <- names(groups)[kept]
     group_tx <- vapply(parts[kept],
                        function(p) as.integer(attr(p, "n_transactions") %||% NA),
                        integer(1))
@@ -420,7 +368,8 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 
     parts <- parts[kept]
     if (length(parts) == 0L)
-      stop("No groups produced any edges.", call. = FALSE)
+      .co_abort("No group produced any edges.",
+                class = "cooccure_empty_input")
     edges <- do.call(rbind, parts)
     rownames(edges) <- NULL
 
@@ -436,43 +385,42 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
     attr(edges, "scale") <- scale_method
     attr(edges, "threshold") <- threshold
     attr(edges, "min_occur") <- min_occur
-    attr(edges, "counting") <- counting
+    attr(edges, "counting") <- if (is.null(weight_by)) counting else "weighted"
+    attr(edges, "lambda") <- lambda
+    attr(edges, "directed") <- directed
     attr(edges, "split_by") <- split_by
     ## Only groups that actually contributed edges, not every input level.
     attr(edges, "groups") <- names(groups)[kept]
     attr(edges, "group_items") <- group_items
+    attr(edges, "group_frequencies") <- group_freq
     attr(edges, "group_transactions") <- group_tx
     return(.co_format_output(edges, output))
   }
 
   # ---- aggregate_by: per-group compute, then combine into one network ----
   if (!is.null(aggregate_by)) {
-    stopifnot(is.data.frame(data), aggregate_by %in% names(data))
+    .co_check_group_column(data, aggregate_by, "aggregate_by")
     groups <- split(data, data[[aggregate_by]])
     parts <- lapply(names(groups), function(g) {
       sub <- groups[[g]]
       sub[[aggregate_by]] <- NULL
-      tryCatch(
-        ## Defer threshold/top_n to after aggregation; per-group
-        ## filtering would distort the global combine.
-        .co_core(sub, field = field, by = by, sep = sep, vars = vars,
-                 weight_by = weight_by,
-                 similarity = similarity, counting = counting,
-                 scale_method = scale_method,
-                 threshold = 0, min_occur = min_occur,
-                 top_n = NULL, window = window, lambda = lambda),
-        error = function(e) NULL
-      )
+      ## Defer threshold/top_n to after aggregation; per-group filtering
+      ## would distort the global combine.
+      .co_core_group(sub, g, core_args, threshold = 0, top_n = NULL)
     })
-    parts <- parts[!vapply(parts, is.null, logical(1))]
+    kept <- !vapply(parts, is.null, logical(1))
+    parts <- parts[kept]
     if (length(parts) == 0L)
-      stop("No groups produced any edges.", call. = FALSE)
+      .co_abort("No group produced any edges.",
+                class = "cooccure_empty_input")
 
     edges <- .co_aggregate_parts(parts, aggregate, threshold, top_n)
 
-    items <- sort(unique(c(edges$from, edges$to)))
+    items <- sort(unique(unlist(lapply(parts, attr, "items"))))
     n_items <- length(items)
-    M <- .co_edges_to_sparse(edges, items)
+    M <- .co_edges_to_sparse(edges, items, directed = directed)
+    ## The raw matrix holds the summed counts, not the aggregated weights.
+    M_raw <- .co_count_sparse(edges, items)
 
     n_trans <- sum(vapply(parts, function(p) {
       v <- attr(p, "n_transactions")
@@ -481,28 +429,27 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 
     class(edges) <- c("cooccurrence", "data.frame")
     attr(edges, "matrix")         <- M
-    attr(edges, "raw_matrix")     <- M
+    attr(edges, "raw_matrix")     <- M_raw
     attr(edges, "items")          <- items
     attr(edges, "frequencies")    <- NULL
     attr(edges, "similarity")     <- similarity
     attr(edges, "scale")          <- scale_method
     attr(edges, "threshold")      <- threshold
     attr(edges, "min_occur")      <- min_occur
+    attr(edges, "counting")       <- if (is.null(weight_by)) counting else "weighted"
+    attr(edges, "lambda")         <- lambda
+    attr(edges, "directed")       <- directed
     attr(edges, "n_transactions") <- n_trans
     attr(edges, "n_items")        <- n_items
     attr(edges, "aggregate_by")   <- aggregate_by
     attr(edges, "aggregate")      <- aggregate
-    attr(edges, "groups")         <- names(groups)
+    attr(edges, "groups")         <- names(groups)[kept]
     return(.co_format_output(edges, output))
   }
 
   # ---- Single-group path ----
-  result <- .co_core(data, field = field, by = by, sep = sep, vars = vars,
-                     weight_by = weight_by,
-                     similarity = similarity, counting = counting,
-                     scale_method = scale_method,
-                     threshold = threshold, min_occur = min_occur,
-                     top_n = top_n, window = window, lambda = lambda)
+  result <- do.call(.co_core, c(list(data = data), core_args,
+                                list(threshold = threshold, top_n = top_n)))
 
   .co_format_output(result, output)
 }
@@ -511,6 +458,38 @@ cooccurrence <- function(data, field = NULL, by = NULL, sep = NULL,
 #' @rdname cooccurrence
 #' @export
 co <- cooccurrence
+
+
+#' Check a `split_by` / `aggregate_by` column.
+#' @noRd
+.co_check_group_column <- function(data, column, arg) {
+  if (!is.data.frame(data))
+    .co_abort("`", arg, "` requires a data frame input.")
+  if (!(is.character(column) && length(column) == 1L &&
+        column %in% names(data)))
+    .co_abort("`", arg, "` must name one column of `data`.")
+  invisible(NULL)
+}
+
+#' Run the core pipeline on one group of a split or aggregated input.
+#'
+#' A group with no transaction or no item left is a legitimate outcome of
+#' splitting (a small decade, a rare journal) and returns NULL, so the group
+#' is dropped. Any other failure is a real error: it is re-raised with the
+#' group named, keeping its class, rather than turned into an empty network.
+#' @noRd
+.co_core_group <- function(sub, g, core_args, threshold, top_n) {
+  tryCatch(
+    do.call(.co_core, c(list(data = sub), core_args,
+                        list(threshold = threshold, top_n = top_n))),
+    cooccure_empty_input = function(e) NULL,
+    error = function(e) {
+      specific <- if (inherits(e, "cooccure_error")) class(e)[1L] else
+        "cooccure_bad_input"
+      .co_abort("Group '", g, "': ", conditionMessage(e), class = specific)
+    }
+  )
+}
 
 
 # ---- Core pipeline (used by both single and split_by paths) ----
@@ -525,8 +504,8 @@ co <- cooccurrence
   # Weighted path — long format only
   if (!is.null(weight_by)) {
     if (fmt != "long")
-      stop("`weight_by` is only supported for long format (field + by).",
-           call. = FALSE)
+      .co_abort("`weight_by` is only supported for long format (field + by).",
+           class = "cooccure_incompatible_args")
     return(.co_core_weighted(data, field, by, weight_by, similarity,
                              scale_method, threshold, min_occur, top_n))
   }
@@ -538,7 +517,8 @@ co <- cooccurrence
   keep_tx <- vapply(transactions, length, integer(1)) > 0L
   transactions <- transactions[keep_tx]
   if (length(transactions) == 0L)
-    stop("No non-empty transactions found in the input data.", call. = FALSE)
+    .co_abort("No non-empty transactions found in the input data.",
+           class = "cooccure_empty_input")
 
   # min_occur filter
   if (min_occur > 1L) {
@@ -548,7 +528,8 @@ co <- cooccurrence
     keep_tx <- vapply(transactions, length, integer(1)) > 0L
     transactions <- transactions[keep_tx]
     if (length(transactions) == 0L)
-      stop("No transactions remain after min_occur filtering.", call. = FALSE)
+      .co_abort("No transactions remain after min_occur filtering.",
+           class = "cooccure_empty_input")
   }
 
   # Build sparse bipartite matrix (works x items) with counting weights baked in
@@ -609,11 +590,8 @@ co <- cooccurrence
     edges <- data.frame(from = character(0), to = character(0),
                         weight = numeric(0), count = integer(0),
                         stringsAsFactors = FALSE)
-    W_sparse <- Matrix::sparseMatrix(
-      i = integer(0), j = integer(0), x = numeric(0),
-      dims = c(n_items, n_items), symmetric = TRUE,
-      dimnames = list(items, items)
-    )
+    W_sparse <- .co_edges_to_sparse(edges, items,
+                                    directed = similarity == "relative")
   } else {
     ## Raw counts at the same positions. Non-zero pattern of C and C_raw is
     ## identical (both are crossprods of binaries with the same support), so
@@ -623,11 +601,6 @@ co <- cooccurrence
     ## Similarity normalization on triplets.
     if (similarity == "none") {
       W_x <- c_vals
-      W_sparse <- Matrix::sparseMatrix(
-        i = i, j = j, x = W_x,
-        dims = c(n_items, n_items), symmetric = TRUE,
-        dimnames = list(items, items)
-      )
     } else if (similarity == "relative") {
       ## Asymmetric: W[i,j] = C[i,j] / rowSums(C)[i]. Needs both triangles.
       ## C is a symmetric dsCMatrix whose TsparseMatrix form stores only the
@@ -657,11 +630,6 @@ co <- cooccurrence
         c_vals
       )
       W_x <- as.numeric(numer / denom)
-      W_sparse <- Matrix::sparseMatrix(
-        i = i, j = j, x = W_x,
-        dims = c(n_items, n_items), symmetric = TRUE,
-        dimnames = list(items, items)
-      )
     }
 
     ## Scaling operates on the full non-zero population of the stored matrix.
@@ -675,77 +643,50 @@ co <- cooccurrence
       } else {
         population <- c(W_x, W_x)
         W_x <- .co_scale_values(W_x, population, scale_method)
-        W_sparse <- Matrix::sparseMatrix(
-          i = i, j = j, x = W_x,
-          dims = c(n_items, n_items), symmetric = TRUE,
-          dimnames = list(items, items)
-        )
       }
     }
 
-    ## Build the asymmetric W_sparse for 'relative' (post-scaling).
+    ## Edge triplets. Every measure except 'relative' is symmetric, so one
+    ## row per unordered pair describes the network. 'relative' is
+    ## asymmetric (W[i, j] = C[i, j] / rowSums(C)[i]), so it keeps one row
+    ## per DIRECTION: a pair contributes i -> j and j -> i with their own
+    ## weights and the same raw count, and the network is directed.
     if (similarity == "relative") {
-      W_sparse <- Matrix::sparseMatrix(
-        i = ii, j = jj, x = W_full_x,
-        dims = c(n_items, n_items),
-        dimnames = list(items, items)
-      )
+      e_i <- ii; e_j <- jj; e_w <- W_full_x; e_c <- c(raw_vals, raw_vals)
+    } else {
+      e_i <- i; e_j <- j; e_w <- W_x; e_c <- raw_vals
     }
 
-    ## Threshold filter on edge weights. `threshold = 0` is the default and
-    ## means "no filtering", NOT "drop negative weights": scalings such as
-    ## z-score legitimately centre weights on zero, and filtering at the
-    ## default would silently discard half of that network.
-    if (threshold > 0) {
-      keep <- W_x >= threshold
-      W_x <- W_x[keep]; i <- i[keep]; j <- j[keep]; raw_vals <- raw_vals[keep]
+    ## Threshold filter on edge weights, one direction at a time for
+    ## 'relative'. `threshold = 0` is the default and means "no filtering",
+    ## NOT "drop negative weights": scalings such as z-score centre weights
+    ## on zero, and filtering at the default would silently discard half of
+    ## that network. A negative threshold keeps weights at or above it.
+    if (threshold != 0) {
+      keep <- e_w >= threshold
+      e_i <- e_i[keep]; e_j <- e_j[keep]; e_w <- e_w[keep]; e_c <- e_c[keep]
     }
 
     edges <- data.frame(
-      from   = items[i],
-      to     = items[j],
-      weight = W_x,
-      count  = raw_vals,
+      from   = items[e_i],
+      to     = items[e_j],
+      weight = e_w,
+      count  = e_c,
       stringsAsFactors = FALSE
     )
     edges <- edges[order(-edges$weight), ]
 
     if (!is.null(top_n)) {
-      stopifnot(is.numeric(top_n), top_n > 0)
       top_n <- as.integer(top_n)
       if (nrow(edges) > top_n) edges <- edges[seq_len(top_n), ]
     }
 
     ## Rebuild the stored matrix from the surviving edges so that
-    ## as_matrix(), the heatmap, and the cograph/netobject converters agree
-    ## with the edge list. Previously W_sparse was built pre-filter, so
-    ## `top_n = 1` printed one edge while as_matrix() still held all of them.
-    if (similarity != "relative") {
-      ki <- match(edges$from, items)
-      kj <- match(edges$to, items)
-      W_sparse <- .co_sym_sparse(ki, kj, edges$weight, items)
-    } else {
-      ## 'relative' is asymmetric, so each DIRECTION is thresholded on its
-      ## own value: W[i,j] and W[j,i] differ and one can fall below the cut
-      ## while the other survives. Filtering by the undirected pair instead
-      ## would retain a direction that is below threshold.
-      keep_full <- if (threshold > 0) W_full_x >= threshold else
-        rep(TRUE, length(W_full_x))
-      if (!is.null(top_n)) {
-        ## top_n is decided on the undirected edge list; restrict the
-        ## stored directions to pairs that survived it.
-        pair_kept <- paste(pmin(match(edges$from, items),
-                                match(edges$to, items)),
-                           pmax(match(edges$from, items),
-                                match(edges$to, items)))
-        keep_full <- keep_full &
-          paste(pmin(ii, jj), pmax(ii, jj)) %in% pair_kept
-      }
-      W_sparse <- Matrix::sparseMatrix(
-        i = ii[keep_full], j = jj[keep_full], x = W_full_x[keep_full],
-        dims = c(n_items, n_items), dimnames = list(items, items)
-      )
-    }
+    ## as_matrix(), the heatmap, and the converters agree with the edge
+    ## list. Previously W_sparse was built pre-filter, so `top_n = 1`
+    ## printed one edge while as_matrix() still held all of them.
+    W_sparse <- .co_edges_to_sparse(edges, items,
+                                    directed = similarity == "relative")
   }
 
   rownames(edges) <- NULL
@@ -760,6 +701,7 @@ co <- cooccurrence
   attr(edges, "min_occur")      <- min_occur
   attr(edges, "n_transactions") <- n_trans
   attr(edges, "n_items")        <- n_items
+  attr(edges, "directed")       <- identical(similarity, "relative")
 
   edges
 }
@@ -771,8 +713,11 @@ co <- cooccurrence
 .co_core_weighted <- function(data, field, by, weight_by, similarity,
                                scale_method, threshold, min_occur, top_n) {
   stopifnot(
-    is.data.frame(data),
-    field %in% names(data), by %in% names(data), weight_by %in% names(data)
+    "`data` must be a data frame" = is.data.frame(data),
+    "`field`, `by` and `weight_by` must each name one column of `data`" =
+      all(vapply(list(field, by, weight_by),
+                 function(v) length(v) == 1L && v %in% names(data),
+                 logical(1)))
   )
 
   docs      <- as.character(data[[by]])
@@ -820,7 +765,8 @@ co <- cooccurrence
   }
 
   if (ncol(W) == 0L)
-    stop("No items remain after min_occur filtering.", call. = FALSE)
+    .co_abort("No items remain after min_occur filtering.",
+           class = "cooccure_empty_input")
 
   n_trans <- nrow(W)
   n_items <- ncol(W)
@@ -909,11 +855,11 @@ co <- cooccurrence
   ## and columns that are not indicators (ids, timestamps) are simply ignored.
   if (!is.null(vars)) {
     if (!is.data.frame(data) && !is.matrix(data))
-      stop("`vars` requires a data frame or matrix input.", call. = FALSE)
+      .co_abort("`vars` requires a data frame or matrix input.")
     missing_vars <- setdiff(vars, colnames(data))
     if (length(missing_vars))
-      stop("`vars` column(s) not found in the data: ",
-           paste(missing_vars, collapse = ", "), ".", call. = FALSE)
+      .co_abort("`vars` column(s) not found in the data: ",
+           paste(missing_vars, collapse = ", "), ".")
     return("indicator")
   }
 
@@ -950,15 +896,15 @@ co <- cooccurrence
     if (is.logical(mat)) return("binary")
     if (is.numeric(mat) && all(mat[!is.na(mat)] %in% c(0, 1)))
       return("binary")
-    stop("Cannot detect input format. Use `field = \"all\"` for wide ",
+    .co_abort("Cannot detect input format. Use `field = \"all\"` for wide ",
          "sequence data, or `vars = c(...)` to name the indicator columns ",
          "of a one-hot / count table (needed when the table also holds id ",
          "or metadata columns, or when cell values are counts rather than ",
-         "0/1).", call. = FALSE)
+         "0/1).")
   }
 
-  stop("Cannot detect input format. Provide field/by/sep arguments or a ",
-       "recognized data structure (data.frame, matrix, list).", call. = FALSE)
+  .co_abort("Cannot detect input format. Provide field/by/sep arguments or a ",
+       "recognized data structure (data.frame, matrix, list).")
 }
 
 
@@ -1004,19 +950,20 @@ co <- cooccurrence
   if (fmt == "nestimate") {
     seqs <- data$sequence_data
     if (is.null(seqs))
-      stop("This looks like a `nestimate_data` object but it has no ",
-           "`sequence_data` component.", call. = FALSE)
+      .co_abort("This looks like a `nestimate_data` object but it has no ",
+           "`sequence_data` component.")
     return(.co_parse_transactions(seqs, "wide", field, by, sep, window, NULL))
   }
 
   if (!is.null(window)) {
     if (fmt == "indicator")
-      stop("`window` needs ordered sequence input; an indicator table has ",
-           "no within-row order.", call. = FALSE)
+      .co_abort("`window` needs ordered sequence input; an indicator table has ",
+           "no within-row order.",
+           class = "cooccure_incompatible_args")
     if (!fmt %in% c("wide", "list"))
-      stop("`window` only applies to ordered sequence formats: a list of ",
+      .co_abort("`window` only applies to ordered sequence formats: a list of ",
            "vectors, or a wide data frame with field = \"all\".",
-           call. = FALSE)
+           class = "cooccure_incompatible_args")
     return(if (fmt == "wide") {
       .co_parse_wide_windowed(data, window)
     } else {
@@ -1055,14 +1002,13 @@ co <- cooccurrence
   bad <- vars[!vapply(as.data.frame(sub), function(v)
     is.numeric(v) || is.logical(v), logical(1))]
   if (length(bad))
-    stop("`vars` column(s) are not numeric or logical: ",
+    .co_abort("`vars` column(s) are not numeric or logical: ",
          paste(bad, collapse = ", "),
-         ". Indicator columns must hold 0/1, counts, or TRUE/FALSE.",
-         call. = FALSE)
+         ". Indicator columns must hold 0/1, counts, or TRUE/FALSE.")
   mat <- as.matrix(as.data.frame(sub))
   if (any(!is.na(mat) & mat < 0))
-    stop("`vars` columns contain negative values; indicator columns must ",
-         "be non-negative.", call. = FALSE)
+    .co_abort("`vars` columns contain negative values; indicator columns must ",
+         "be non-negative.")
   present <- !is.na(mat) & mat != 0
   lapply(seq_len(nrow(present)), function(i) vars[present[i, ]])
 }
@@ -1092,7 +1038,11 @@ co <- cooccurrence
 
 #' @noRd
 .co_parse_delimited <- function(data, field, sep) {
-  stopifnot(is.data.frame(data), length(field) == 1L, field %in% names(data))
+  stopifnot(
+    "`data` must be a data frame" = is.data.frame(data),
+    "`field` must name one column of `data`" =
+      length(field) == 1L && field %in% names(data)
+  )
   vals <- as.character(data[[field]])
   n <- length(vals)
 
@@ -1113,7 +1063,10 @@ co <- cooccurrence
 
 #' @noRd
 .co_parse_multi_delimited <- function(data, field, sep) {
-  stopifnot(is.data.frame(data), all(field %in% names(data)))
+  stopifnot(
+    "`data` must be a data frame" = is.data.frame(data),
+    "every `field` must be a column of `data`" = all(field %in% names(data))
+  )
   n <- nrow(data)
 
   ## Split each column independently, concatenate with aligned row indices,
@@ -1139,7 +1092,10 @@ co <- cooccurrence
 
 #' @noRd
 .co_parse_field_only <- function(data, field) {
-  stopifnot(is.data.frame(data), all(field %in% names(data)))
+  stopifnot(
+    "`data` must be a data frame" = is.data.frame(data),
+    "every `field` must be a column of `data`" = all(field %in% names(data))
+  )
   lapply(seq_len(nrow(data)), function(i) {
     vals <- as.character(unlist(data[i, field, drop = TRUE]))
     vals <- trimws(vals)
@@ -1150,7 +1106,13 @@ co <- cooccurrence
 
 #' @noRd
 .co_parse_long <- function(data, field, by) {
-  stopifnot(is.data.frame(data), field %in% names(data), by %in% names(data))
+  stopifnot(
+    "`data` must be a data frame" = is.data.frame(data),
+    "`field` must name one column of `data`" =
+      length(field) == 1L && field %in% names(data),
+    "`by` must name one column of `data`" =
+      length(by) == 1L && by %in% names(data)
+  )
   groups <- split(as.character(data[[field]]), data[[by]])
   lapply(groups, function(items) {
     items <- items[nzchar(items) & !is.na(items)]
@@ -1186,50 +1148,48 @@ co <- cooccurrence
   ## Checked here rather than in .co_detect_format() because resolution
   ## needs column names, so it must fail first and with the right message.
   if (!is.data.frame(data) && !is.matrix(data))
-    stop("`vars` requires a data frame or matrix input.", call. = FALSE)
+    .co_abort("`vars` requires a data frame or matrix input.")
   nm <- colnames(data)
   if (is.null(nm))
-    stop("`vars` requires input with column names.", call. = FALSE)
+    .co_abort("`vars` requires input with column names.")
   ## Evaluate with column names bound to positions; unbound symbols fall
   ## through to the caller, so `vars = my_states` still works.
   pos <- as.list(seq_along(nm))
   names(pos) <- nm
   idx <- tryCatch(eval(vars_expr, pos, env),
                   error = function(e)
-                    stop("`vars` could not be resolved to columns: ",
-                         conditionMessage(e), call. = FALSE))
+                    .co_abort("`vars` could not be resolved to columns: ",
+                         conditionMessage(e)))
   if (is.null(idx)) return(NULL)
   if (is.logical(idx)) {
     if (length(idx) != length(nm))
-      stop("A logical `vars` must have one entry per column (", length(nm),
-           ").", call. = FALSE)
+      .co_abort("A logical `vars` must have one entry per column (", length(nm),
+           ").")
     return(nm[idx])
   }
   if (is.numeric(idx)) {
     if (any(idx < 0) && any(idx > 0))
-      stop("`vars` cannot mix positive and negative positions.",
-           call. = FALSE)
+      .co_abort("`vars` cannot mix positive and negative positions.")
     out <- nm[idx]
     if (anyNA(out)) {
       bad <- idx[is.na(out)]
-      stop("`vars` position(s) out of range (data has ", length(nm),
+      .co_abort("`vars` position(s) out of range (data has ", length(nm),
            " columns): ", paste(utils::head(bad, 5L), collapse = ", "),
            if (length(bad) > 5L) paste0(", ... (", length(bad), " total)"),
-           ".", call. = FALSE)
+           ".")
     }
     return(unique(out))
   }
   if (is.character(idx)) {
     missing_vars <- setdiff(idx, nm)
     if (length(missing_vars))
-      stop("`vars` column(s) not found in the data: ",
-           paste(missing_vars, collapse = ", "), ".", call. = FALSE)
+      .co_abort("`vars` column(s) not found in the data: ",
+           paste(missing_vars, collapse = ", "), ".")
     ## A repeated column would be counted twice by the sparse builder,
     ## inflating both weight and count for every pair involving it.
     return(unique(idx))
   }
-  stop("`vars` must resolve to column names, positions, or a logical mask.",
-       call. = FALSE)
+  .co_abort("`vars` must resolve to column names, positions, or a logical mask.")
 }
 
 
@@ -1243,20 +1203,20 @@ co <- cooccurrence
 .co_prepare_events <- function(data, actor, action, time, session, order,
                                time_threshold) {
   if (!requireNamespace("Nestimate", quietly = TRUE))
-    stop("Package 'Nestimate' is required for raw event-log input ",
+    .co_abort("Package 'Nestimate' is required for raw event-log input ",
          "(`action = `). Install it, or sessionize the data yourself and ",
-         "pass wide sequences with `field = \"all\"`.", call. = FALSE)
+         "pass wide sequences with `field = \"all\"`.",
+           class = "cooccure_missing_package")
   if (!is.data.frame(data))
-    stop("`action` requires a data frame of event records.", call. = FALSE)
+    .co_abort("`action` requires a data frame of event records.")
   if (!is.character(action) || length(action) != 1L || !action %in% names(data))
-    stop("`action` must name a single column of `data`.", call. = FALSE)
+    .co_abort("`action` must name a single column of `data`.")
   for (arg in list(c("actor", actor), c("time", time), c("session", session),
                    c("order", order))) {
     val <- arg[-1]
     if (length(val) && !all(val %in% names(data)))
-      stop("`", arg[1], "` column(s) not found in the data: ",
-           paste(setdiff(val, names(data)), collapse = ", "), ".",
-           call. = FALSE)
+      .co_abort("`", arg[1], "` column(s) not found in the data: ",
+           paste(setdiff(val, names(data)), collapse = ", "), ".")
   }
 
   args <- list(data = data, action = action, time = time, session = session,
@@ -1278,11 +1238,11 @@ co <- cooccurrence
   extra <- names(list(...))
   if (length(list(...)) == 0L) return(invisible(NULL))
   if (is.null(extra) || any(!nzchar(extra)))
-    stop("Unnamed arguments passed to `cooccurrence()`. All optional ",
-         "arguments must be named.", call. = FALSE)
-  stop("Unknown argument(s) passed to `cooccurrence()`: ",
+    .co_abort("Unnamed arguments passed to `cooccurrence()`. All optional ",
+         "arguments must be named.")
+  .co_abort("Unknown argument(s) passed to `cooccurrence()`: ",
        paste(extra, collapse = ", "),
-       ". Check for a misspelled argument name.", call. = FALSE)
+       ". Check for a misspelled argument name.")
 }
 
 #' @noRd
@@ -1503,7 +1463,8 @@ co <- cooccurrence
     sum  = sum, mean = mean, min  = min, max  = max
   )
 
-  ## Group by ordered pair (from is already < to within each part).
+  ## Group by ordered pair: within each part `from` < `to` for undirected
+  ## networks, and each direction is its own key for directed ones.
   key <- paste(all_edges$from, all_edges$to, sep = "\037")
   weight_by_pair <- vapply(split(all_edges$weight, key),
                            agg_fn, numeric(1))
@@ -1520,7 +1481,7 @@ co <- cooccurrence
     stringsAsFactors = FALSE
   )
 
-  if (threshold > 0) edges <- edges[edges$weight >= threshold, ]
+  if (threshold != 0) edges <- edges[edges$weight >= threshold, ]
   edges <- edges[order(-edges$weight), ]
   if (!is.null(top_n)) {
     top_n <- as.integer(top_n)
@@ -1530,14 +1491,41 @@ co <- cooccurrence
   edges
 }
 
-#' Build a symmetric sparse matrix from an edge data frame.
+#' Build the weight matrix from an edge data frame.
+#'
+#' Symmetric (one stored triangle) for undirected networks; a general sparse
+#' matrix with one cell per directed edge for `similarity = "relative"`.
 #' @noRd
-.co_edges_to_sparse <- function(edges, items) {
+.co_edges_to_sparse <- function(edges, items, directed = FALSE) {
+  if (!directed) {
+    if (nrow(edges) == 0L)
+      return(.co_sym_sparse(integer(0), integer(0), numeric(0), items))
+    return(.co_sym_sparse(match(edges$from, items),
+                          match(edges$to,   items),
+                          edges$weight, items))
+  }
+  Matrix::sparseMatrix(
+    i = match(edges$from, items), j = match(edges$to, items),
+    x = as.numeric(edges$weight),
+    dims = c(length(items), length(items)),
+    dimnames = list(items, items)
+  )
+}
+
+#' Build the symmetric raw-count matrix from an edge data frame.
+#'
+#' Counts are symmetric even when weights are not, so a directed edge list
+#' (both directions of a pair) is reduced to one entry per unordered pair.
+#' @noRd
+.co_count_sparse <- function(edges, items) {
   if (nrow(edges) == 0L)
     return(.co_sym_sparse(integer(0), integer(0), numeric(0), items))
-  .co_sym_sparse(match(edges$from, items),
-                 match(edges$to,   items),
-                 edges$weight, items)
+  fi <- match(edges$from, items)
+  ti <- match(edges$to, items)
+  lo <- pmin(fi, ti)
+  hi <- pmax(fi, ti)
+  first <- !duplicated(data.frame(lo, hi))
+  .co_sym_sparse(lo[first], hi[first], edges$count[first], items)
 }
 
 
@@ -1554,7 +1542,7 @@ co <- cooccurrence
     names(out)[names(out) == "to"] <- "Target"
     names(out)[names(out) == "weight"] <- "Weight"
     names(out)[names(out) == "count"] <- "Count"
-    out$Type <- "Undirected"
+    out$Type <- if (.co_is_directed(result)) "Directed" else "Undirected"
     # Reorder: Source, Target, Weight, Type, Count, [group]
     cols <- c("Source", "Target", "Weight", "Type", "Count")
     if (has_group) cols <- c(cols, "group")
@@ -1564,7 +1552,9 @@ co <- cooccurrence
     for (a in c("matrix", "raw_matrix", "items", "frequencies",
                 "similarity", "scale", "threshold", "min_occur",
                 "n_transactions", "n_items", "split_by", "groups",
-                "counting", "lambda")) {
+                "group_items", "group_frequencies", "group_transactions",
+                "aggregate_by", "aggregate", "counting", "lambda",
+                "directed")) {
       attr(out, a) <- attr(result, a)
     }
     return(out)

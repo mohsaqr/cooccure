@@ -3,42 +3,59 @@
 \name{as_netobject}
 \alias{as_netobject}
 \alias{as_netobject.cooccurrence}
-\title{Convert to Nestimate netobject}
+\title{Convert a co-occurrence network to a Nestimate netobject}
 \usage{
 as_netobject(x, ...)
 
-\method{as_netobject}{cooccurrence}(x, ...)
+\method{as_netobject}{cooccurrence}(x, group = NULL, ...)
 }
 \arguments{
-\item{x}{A \code{cooccurrence} data frame.}
+\item{x}{A \code{cooccurrence} edge list from \code{\link[=cooccurrence]{cooccurrence()}}.}
 
 \item{...}{Ignored.}
+
+\item{group}{For a result built with \code{split_by}, the name of the group to
+convert. \code{NULL} (default) for an unsplit result.}
 }
 \value{
-A list of class \code{c("netobject", "cograph_network")},
-always undirected, with method \code{"cooccurrence"}. It holds the
-weight matrix from \code{as_matrix(x)}, a node table (one row per
-item), an edge table (one row per edge of the upper triangle), and the
-similarity, scale, threshold, and number of transactions used. Raises
-an error when \pkg{Nestimate} is not installed.
+A list of class \code{c("netobject", "cograph_network")} with method
+\code{"cooccurrence"}, holding the weight matrix, a node table (one row per
+item), an edge table (one row per edge), \code{directed}, and the parameters
+used.
 }
 \description{
-Creates a \code{netobject} from a \code{cooccurrence} edge list, so the
-network can be passed to \pkg{Nestimate} functions that work on an
-estimated weight matrix, such as \code{Nestimate::net_centrality()}.
-Requires the \pkg{Nestimate} package.
+\code{as_netobject()} converts a co-occurrence network to a \pkg{Nestimate}
+\code{netobject}. \pkg{Nestimate} estimates and compares networks of several
+kinds (transition, partial correlation, co-occurrence) and stores them as
+\code{netobject}s, which its centrality and comparison functions accept; the
+conversion lets a co-occurrence network sit beside networks estimated
+there.
+
+The \code{netobject} has method \code{"cooccurrence"} and is built from the weight
+matrix returned by \code{\link[=as_matrix]{as_matrix()}}, with the same node and edge
+tables as \code{\link[=as_cograph]{as_cograph()}} and the similarity, scale, threshold and number
+of transactions recorded as parameters. It is directed only for
+\code{similarity = "relative"}.
+
+The netobject carries no raw data (its \code{data} element is \code{NULL}), so
+\pkg{Nestimate} functions that resample the original observations, such
+as \code{Nestimate::bootstrap_network()}, cannot run on it. Build the network
+with \code{Nestimate::cooccurrence()} for those. For a result built with
+\code{split_by}, \code{group} names the network to convert.
 }
-\details{
-The netobject carries no raw data (its \code{data} element is
-\code{NULL}), so \pkg{Nestimate} functions that resample the original
-observations, such as \code{Nestimate::bootstrap_network()}, cannot run
-on it and stop with an error asking for a network built with
-\code{Nestimate::build_network()}.
+\section{Conditions}{
+
+\code{cooccure_missing_package} when \pkg{Nestimate} is not installed; the
+conditions of \code{\link[=as_matrix]{as_matrix()}} for \code{group}.
 }
+
 \examples{
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
 if (requireNamespace("Nestimate", quietly = TRUE)) {
-  net <- as_netobject(res)
-  Nestimate::net_centrality(net)
+  Nestimate::net_centrality(as_netobject(net))
 }
+}
+\seealso{
+\code{\link[=as_cograph]{as_cograph()}}; \code{\link[=as_igraph]{as_igraph()}}; \code{\link[=as_matrix]{as_matrix()}}.
 }

@@ -4,6 +4,12 @@
 # definitions. These tests pin them to identical numbers so the two cannot
 # drift apart silently.
 #
+# This file is build-ignored (tests/equivalence) so that a change in
+# Nestimate cannot fail cooccure's CRAN check; it runs on the CI VM with
+#   mini-ci equivalence
+# against the installed Nestimate (CRAN), or with `sibling ../Nestimate` in
+# .mini-ci against the local development version.
+#
 # Two conventions must be aligned before comparing:
 #   * Nestimate keeps item frequency on the matrix diagonal
 #     (`diagonal = TRUE`); cooccure always zeroes it. Compare off-diagonal

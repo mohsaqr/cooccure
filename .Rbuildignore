@@ -18,3 +18,11 @@
 ^cooccure?\.Rcheck$
 ^sim_network\.R$
 ^data-raw$
+^\.mini-ci$
+^\.ci$
+^README\.Rmd$
+^vignettes/articles$
+^Project_docs$
+^AGENT-NOTE.*\.md$
+(^|/)Rplots\.pdf$
+^tests/equivalence$

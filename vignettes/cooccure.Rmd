@@ -1,0 +1,215 @@
+---
+title: "Co-occurrence networks"
+author: "Written by [Mohammed Saqr](https://saqr.me) and [Sonsoles López-Pernas](https://sonsoles.me)"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Co-occurrence networks}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r options, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.5, fig.align = "center", dpi = 96)
+old_options <- options(digits = 3, width = 90)
+has_igraph <- requireNamespace("igraph", quietly = TRUE)
+```
+
+Many data sets record which things appear together: the keywords of an
+article, the genres of a film, the members of a team, the codes applied to an
+interview passage, or the activities of a learning session. A co-occurrence
+network turns such records into relations. Each distinct item becomes a node,
+and two items are linked when they appear in the same record, called a
+transaction. The weight of a link is, at its simplest, the number of
+transactions the two items share. The network then shows which items form
+clusters, which act as bridges between clusters, and which are peripheral.
+
+Raw counts mix two things: how strongly two items are associated and how
+common each of them is. A frequent item co-occurs with almost every other
+item because it appears so often. Similarity measures separate the two by
+comparing the observed co-occurrence with the items' own frequencies
+(van Eck & Waltman, 2009), and fractional counting reduces the weight of
+transactions that contain many items (Perianes-Rodriguez et al., 2016).
+Co-occurrence analysis is used in bibliometrics, text analysis and learning
+analytics, where it is one of the standard ways of building networks from
+records (Saqr et al., 2024).
+
+This vignette builds a genre network from a sample of films with one call to
+`cooccurrence()`, normalizes it, summarizes it, draws it, splits it by
+decade, and converts it for other network packages.
+
+```{r package}
+library(cooccure)
+```
+
+## Data
+
+`movies` holds 1,000 films with an IMDb rating of at least 7.0 and at least
+1,000 votes, released between 1970 and 2024:
+
+- **Transaction:** `tconst`, the film; one row per film.
+- **Items:** `genres`, the film's genres in one comma-separated column, such
+  as `"Comedy,Drama,History"`.
+- **Groups:** `decade`, the release decade; `averageRating`, the IMDb rating.
+- **Other:** `primaryTitle`, `startYear`, `numVotes`.
+
+```{r data}
+head(movies)
+```
+
+## Which genres appear together?
+
+The genres of a film are separated by commas, so `field` names the column and
+`sep` the separator. Each film is a transaction, and each pair of its genres
+gains one unit of weight.
+
+```{r counts}
+net <- cooccurrence(movies, field = "genres", sep = ",")
+print(net, n = 5)
+```
+
+The header describes the network before any edge is read: 22 genres, 129 of
+the 231 possible pairs linked (a density of 0.56), and 1,000 films. Drama is
+linked to 20 of the other 21 genres. The strongest edges are all pairs with
+Drama or Comedy, the two most common genres: Comedy and Drama share 159
+films, Drama and Romance 131. These counts describe volume more than
+affinity.
+
+## Which genres belong together?
+
+The Jaccard similarity divides the number of shared films by the number of
+films that carry either genre, so a pair scores high only when the two
+genres rarely appear apart. Genres tagged on fewer than 20 films are dropped
+with `min_occur`, since a similarity built on one or two films is unstable.
+
+```{r jaccard}
+jac <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 20)
+print(jac, n = 8)
+```
+
+Five rare genres and the two films tagged only with them drop out, leaving
+17 genres and 998 films. Under Jaccard, Adventure and Animation become the
+closest pair (0.285, 39 shared films), followed by Action and Crime (0.237).
+Comedy and Drama, the largest pair by count, fall to third place (0.211):
+they share many films, but each also appears in many films without the
+other. The [similarity guide](https://pak.dynasite.org/cooccure/articles/similarity-measures.html)
+compares all eight measures.
+
+## How is the network structured?
+
+`summary()` computes network-level metrics and the parameters used.
+
+```{r summary}
+summary(jac)
+```
+
+Three of every four possible pairs are linked (density 0.75), with a mean
+degree of 12 out of a possible 16. The weights are small, between 0.004 and
+0.285 with a mean of 0.051, so most links are weak and a few carry the
+structure. The node table gives the same metrics per genre.
+
+```{r nodes}
+head(as.data.frame(jac, what = "nodes"))
+```
+
+Drama and Comedy are linked to every other genre (degree 16), but Action has
+nearly the same total Jaccard strength as Drama (1.009 against 1.153) with
+two fewer links, because its links are stronger. The `frequency` column is
+the number of films carrying each genre: 634 for Drama against 155 for
+Action.
+
+## What does the network look like?
+
+The heatmap shows the weight matrix: rows and columns are genres, darker
+cells are stronger links, and white cells are pairs that never co-occur.
+
+```{r heatmap, fig.height = 5}
+plot(jac)
+```
+
+The strongest cells fall in small groups of genres rather than in one
+dominant row: Adventure, Animation and Action are linked pairwise with
+weights between 0.133 and 0.285, and Biography, Documentary and History with
+weights between 0.092 and 0.204. The degree distribution summarizes how
+evenly the links are spread.
+
+```{r degree, fig.height = 3.5}
+plot(jac, type = "degree")
+```
+
+Every genre has between 7 and 16 links, and 9 of the 17 have 12 or more, so
+the network is dense and not organized around a single hub; its structure lies
+in the weights.
+
+## Does the network change over time?
+
+`split_by` builds one network per value of a column, here one per release
+decade, and stacks the edge lists with a `group` column. The group table
+compares the networks.
+
+```{r decades}
+by_decade <- cooccurrence(movies, field = "genres", sep = ",",
+                          split_by = "decade", similarity = "jaccard",
+                          min_occur = 5)
+as.data.frame(by_decade, what = "groups")
+```
+
+The 2010s network is the largest (17 genres, 85 edges) and the densest
+(0.625), and the 1980s network the sparsest (0.473). The mean Jaccard weight
+is highest in the 1970s (0.133), when fewer genres were in use and the ones
+that were combined did so more consistently. The
+[guide on comparing groups](https://pak.dynasite.org/cooccure/articles/comparing-groups.html)
+covers per-group conversion and `aggregate_by`, which pools groups into one
+network.
+
+## How is the network used elsewhere?
+
+The edge list converts to the classes of other network packages. Here the
+Jaccard network becomes an `igraph` graph and the weighted degree (strength)
+of each genre is computed there.
+
+```{r igraph, eval = has_igraph}
+g <- as_igraph(jac)
+g
+```
+
+The graph has the 17 genres as vertices and the 102 edges with their
+`weight` and `count` attributes, so any igraph function can be applied. The
+[export guide](https://pak.dynasite.org/cooccure/articles/exporting.html)
+covers igraph, tidygraph, cograph, Nestimate, matrices and Gephi files.
+
+## Further reading
+
+The guides cover [input formats](https://pak.dynasite.org/cooccure/articles/input-formats.html),
+[counting](https://pak.dynasite.org/cooccure/articles/counting.html),
+[sequences, windows and event logs](https://pak.dynasite.org/cooccure/articles/sequences.html)
+and the [verification against Nestimate](https://pak.dynasite.org/cooccure/articles/verification.html).
+Two case studies analyze [genre co-occurrence](https://pak.dynasite.org/cooccure/articles/case-imdb-genres.html)
+and [actor collaboration](https://pak.dynasite.org/cooccure/articles/case-actor-collaboration.html)
+in the IMDb sample.
+
+## References
+
+Perianes-Rodriguez, A., Waltman, L., & van Eck, N. J. (2016). Constructing
+bibliometric networks: A comparison between full and fractional counting.
+*Journal of Informetrics*, *10*(4), 1178--1195.
+<https://doi.org/10.1016/j.joi.2016.10.006>
+
+Saqr, M., López-Pernas, S., Conde, M. Á., & Hernández-García, Á. (2024).
+Social network analysis: A primer, a guide and a tutorial in R. In M. Saqr &
+S. López-Pernas (Eds.), *Learning analytics methods and tutorials: A
+practical guide using R*. Springer.
+<https://doi.org/10.1007/978-3-031-54464-4_15>
+
+van Eck, N. J., & Waltman, L. (2009). How to normalize cooccurrence data? An
+analysis of some well-known similarity measures. *Journal of the American
+Society for Information Science and Technology*, *60*(8), 1635--1651.
+<https://doi.org/10.1002/asi.21075>
+
+```{r restore, include = FALSE}
+options(old_options)
+```
