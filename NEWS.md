@@ -1,4 +1,4 @@
-# cooccure 0.4.5
+# cooccure 0.5.0
 
 This release collects the changes made since 0.4.0, the current CRAN
 version.
@@ -46,7 +46,7 @@ version.
   (`cooccure_bad_input`, `cooccure_incompatible_args`,
   `cooccure_grouped_input`, `cooccure_empty_input`,
   `cooccure_missing_package`), documented under "Conditions" on each help
-  page. Argument checks name the argument and the expected value.
+  page.
 * `threshold` accepts negative values, which keep weights at or above the
   value; this allows filtering networks scaled with `scale = "zscore"`.
   `threshold = 0` still keeps every edge.
@@ -68,29 +68,11 @@ version.
 
 ## Documentation
 
-* Help pages rewritten: each describes the method, what the function
-  computes, and which function to use instead, documents the structure of
-  the returned object and the conditions raised, and runs its examples on
-  the bundled data. A package overview page (`?cooccure`) is added.
 * New vignette "Co-occurrence networks" and pkgdown guides on input formats,
   similarity measures, counting, sequences and event logs, comparing groups,
   exporting, and the verification against `Nestimate::cooccurrence()`, with
   two case studies on the IMDb data. The earlier IMDb tutorial is divided
-  among them. The README is generated from `README.Rmd`.
-* The dataset help pages point to the current IMDb non-commercial datasets
-  address.
-* `?cooccurrence` documents that `...` rejects unknown arguments, that
-  `top_n` truncates ties at the cut, and that attention counting keeps the
-  first position of a repeated item. `?as_cograph` notes that **cograph**
-  exports its own `as_cograph()`; `?as_netobject` notes that the netobject
-  carries no raw data for resampling.
-
-## Tests
-
-* The Nestimate equivalence test declares `format = "binary"` for 0/1 data,
-  as Nestimate 1.0 requires.
-* New tests cover directed `relative` networks, per-group conversion,
-  classed conditions, the summary object and the heatmap scale.
+  among them.
 
 # cooccure 0.4.0
 
