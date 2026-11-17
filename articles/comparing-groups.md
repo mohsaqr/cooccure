@@ -228,9 +228,9 @@ isolates included.
 
 decade_2010s <- as_igraph(by_decade, group = "2010s")
 decade_2010s
-#> IGRAPH 9032fb1 UNW- 17 85 -- 
+#> IGRAPH ca279ba UNW- 17 85 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 9032fb1 (vertex names):
+#> + edges from ca279ba (vertex names):
 #>  [1] Action     --Crime       Adventure  --Animation   Biography  --Documentary
 #>  [4] Action     --Adventure   Comedy     --Drama       Biography  --History    
 #>  [7] Crime      --Thriller    Animation  --Fantasy     Action     --Thriller   

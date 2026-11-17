@@ -147,9 +147,9 @@ attributes `weight` and `count`.
 
 genre_graph <- as_igraph(genre_net)
 genre_graph
-#> IGRAPH f68b3f8 UNW- 17 102 -- 
+#> IGRAPH a628862 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from f68b3f8 (vertex names):
+#> + edges from a628862 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
@@ -359,9 +359,9 @@ by_decade <- cooccurrence(movies, field = "genres", sep = ",",
                           split_by = "decade", similarity = "jaccard",
                           min_occur = 5)
 as_igraph(by_decade, group = "1970s")
-#> IGRAPH b47007d UNW- 12 34 -- 
+#> IGRAPH dc4a305 UNW- 12 34 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from b47007d (vertex names):
+#> + edges from dc4a305 (vertex names):
 #>  [1] Adventure--Animation Crime    --Thriller  Biography--History   Animation--Family   
 #>  [5] Animation--Comedy    Action   --Crime     Drama    --Romance   Adventure--Comedy   
 #>  [9] Comedy   --Drama     Action   --Thriller  History  --War       Biography--Drama    

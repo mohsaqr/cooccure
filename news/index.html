@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">cooccure</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.5</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,22 +51,22 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.4.5" id="cooccure-045">cooccure 0.4.5<a class="anchor" aria-label="anchor" href="#cooccure-045"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.5.0" id="cooccure-050">cooccure 0.5.0<a class="anchor" aria-label="anchor" href="#cooccure-050"></a></h2>
 <p>This release collects the changes made since 0.4.0, the current CRAN version.</p>
 <div class="section level3">
-<h3 id="directed-networks-for-similarity--relative-0-4-5">Directed networks for <code>similarity = "relative"</code>
-<a class="anchor" aria-label="anchor" href="#directed-networks-for-similarity--relative-0-4-5"></a></h3>
+<h3 id="directed-networks-for-similarity--relative-0-5-0">Directed networks for <code>similarity = "relative"</code>
+<a class="anchor" aria-label="anchor" href="#directed-networks-for-similarity--relative-0-5-0"></a></h3>
 <ul><li>
 <code>similarity = "relative"</code> divides each row of the count matrix by its sum, so the weight from item A to item B differs from the weight from B to A. The edge list now holds one row per direction instead of one row per pair, and <code><a href="../reference/as_igraph.html">as_igraph()</a></code>, <code><a href="../reference/as_tidygraph.html">as_tidygraph()</a></code>, <code><a href="../reference/as_cograph.html">as_cograph()</a></code> and <code><a href="../reference/as_netobject.html">as_netobject()</a></code> return directed networks for it. <code>output = "gephi"</code> marks these edges <code>"Directed"</code>. <code>threshold</code> and <code>top_n</code> apply to each direction. Printing and <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> count ordered pairs for the density of a directed network. The other seven measures are unchanged.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="converting-networks-built-with-split_by-0-4-5">Converting networks built with <code>split_by</code>
-<a class="anchor" aria-label="anchor" href="#converting-networks-built-with-split_by-0-4-5"></a></h3>
+<h3 id="converting-networks-built-with-split_by-0-5-0">Converting networks built with <code>split_by</code>
+<a class="anchor" aria-label="anchor" href="#converting-networks-built-with-split_by-0-5-0"></a></h3>
 <ul><li>A <code>split_by</code> result stacks one network per group. <code><a href="../reference/as_matrix.html">as_matrix()</a></code>, <code><a href="../reference/as_igraph.html">as_igraph()</a></code>, <code><a href="../reference/as_tidygraph.html">as_tidygraph()</a></code>, <code><a href="../reference/as_cograph.html">as_cograph()</a></code>, <code><a href="../reference/as_netobject.html">as_netobject()</a></code> and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> gain a <code>group</code> argument that converts or draws one group’s network, with that group’s items and transaction count. Without <code>group</code> they raise a <code>cooccure_grouped_input</code> error, as does <code>cooccurrence(..., split_by = , output = "igraph" / "cograph" / "matrix")</code>. Previously these calls combined the groups into one network.</li>
 <li>For a <code>split_by</code> result, the node table (<code>as.data.frame(x, what = "nodes")</code> or <code>as.data.frame(summary(x))</code>) has one row per node and group, computed within each group, with a leading <code>group</code> column.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="results-and-accessors-0-4-5">Results and accessors<a class="anchor" aria-label="anchor" href="#results-and-accessors-0-4-5"></a></h3>
+<h3 id="results-and-accessors-0-5-0">Results and accessors<a class="anchor" aria-label="anchor" href="#results-and-accessors-0-5-0"></a></h3>
 <ul><li>
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> returns a <code>summary.cooccurrence</code> object and no longer prints while computing it; printing the object shows the same block as before.</li>
 <li>New <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> method for <code>cooccurrence</code> objects: <code>what = "edges"</code> (default) gives the bare edge table, <code>what = "nodes"</code> the node table and <code>what = "groups"</code> the group table.</li>
@@ -76,8 +76,8 @@
 <code>aggregate_by</code> results store the summed counts as the raw matrix, so <code>as_matrix(x, type = "raw")</code> returns counts; it previously returned the aggregated weights.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="arguments-and-conditions-0-4-5">Arguments and conditions<a class="anchor" aria-label="anchor" href="#arguments-and-conditions-0-4-5"></a></h3>
-<ul><li>User-facing errors are classed conditions inheriting from <code>cooccure_error</code> (<code>cooccure_bad_input</code>, <code>cooccure_incompatible_args</code>, <code>cooccure_grouped_input</code>, <code>cooccure_empty_input</code>, <code>cooccure_missing_package</code>), documented under “Conditions” on each help page. Argument checks name the argument and the expected value.</li>
+<h3 id="arguments-and-conditions-0-5-0">Arguments and conditions<a class="anchor" aria-label="anchor" href="#arguments-and-conditions-0-5-0"></a></h3>
+<ul><li>User-facing errors are classed conditions inheriting from <code>cooccure_error</code> (<code>cooccure_bad_input</code>, <code>cooccure_incompatible_args</code>, <code>cooccure_grouped_input</code>, <code>cooccure_empty_input</code>, <code>cooccure_missing_package</code>), documented under “Conditions” on each help page.</li>
 <li>
 <code>threshold</code> accepts negative values, which keep weights at or above the value; this allows filtering networks scaled with <code>scale = "zscore"</code>. <code>threshold = 0</code> still keeps every edge.</li>
 <li>Columns named in <code>field</code>, <code>by</code>, <code>weight_by</code>, <code>split_by</code> and <code>aggregate_by</code> are checked before any group is computed, so a misspelled column is reported by name. With <code>split_by</code> and <code>aggregate_by</code>, a group left without transactions is dropped; any other error in a group is raised with the group named. <code>aggregate_by</code> previously dropped such groups without a message.</li>
@@ -85,21 +85,12 @@
 <code>weight_by</code> combined with <code>counting = "fractional"</code> or <code>counting = "attention"</code> raises a <code>cooccure_incompatible_args</code> error; the counting method was previously ignored for weighted input.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="plots-0-4-5">Plots<a class="anchor" aria-label="anchor" href="#plots-0-4-5"></a></h3>
+<h3 id="plots-0-5-0">Plots<a class="anchor" aria-label="anchor" href="#plots-0-5-0"></a></h3>
 <ul><li>The heatmap uses a white-to-blue scale for non-negative weights and a red-white-blue scale centered on zero when weights can be negative. The degree distribution uses a color-blind-safe fill.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="documentation-0-4-5">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-4-5"></a></h3>
-<ul><li>Help pages rewritten: each describes the method, what the function computes, and which function to use instead, documents the structure of the returned object and the conditions raised, and runs its examples on the bundled data. A package overview page (<code><a href="../reference/cooccure-package.html">?cooccure</a></code>) is added.</li>
-<li>New vignette “Co-occurrence networks” and pkgdown guides on input formats, similarity measures, counting, sequences and event logs, comparing groups, exporting, and the verification against <code><a href="https://pak.dynasite.org/Nestimate/reference/cooccurrence.html" class="external-link">Nestimate::cooccurrence()</a></code>, with two case studies on the IMDb data. The earlier IMDb tutorial is divided among them. The README is generated from <code>README.Rmd</code>.</li>
-<li>The dataset help pages point to the current IMDb non-commercial datasets address.</li>
-<li>
-<code><a href="../reference/cooccurrence.html">?cooccurrence</a></code> documents that <code>...</code> rejects unknown arguments, that <code>top_n</code> truncates ties at the cut, and that attention counting keeps the first position of a repeated item. <code><a href="../reference/as_cograph.html">?as_cograph</a></code> notes that <strong>cograph</strong> exports its own <code><a href="../reference/as_cograph.html">as_cograph()</a></code>; <code><a href="../reference/as_netobject.html">?as_netobject</a></code> notes that the netobject carries no raw data for resampling.</li>
-</ul></div>
-<div class="section level3">
-<h3 id="tests-0-4-5">Tests<a class="anchor" aria-label="anchor" href="#tests-0-4-5"></a></h3>
-<ul><li>The Nestimate equivalence test declares <code>format = "binary"</code> for 0/1 data, as Nestimate 1.0 requires.</li>
-<li>New tests cover directed <code>relative</code> networks, per-group conversion, classed conditions, the summary object and the heatmap scale.</li>
+<h3 id="documentation-0-5-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-5-0"></a></h3>
+<ul><li>New vignette “Co-occurrence networks” and pkgdown guides on input formats, similarity measures, counting, sequences and event logs, comparing groups, exporting, and the verification against <code><a href="https://pak.dynasite.org/Nestimate/reference/cooccurrence.html" class="external-link">Nestimate::cooccurrence()</a></code>, with two case studies on the IMDb data. The earlier IMDb tutorial is divided among them.</li>
 </ul></div>
 </div>
     <div class="section level2">

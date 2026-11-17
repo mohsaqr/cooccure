@@ -248,9 +248,9 @@ the Jaccard network becomes an `igraph` graph and the weighted degree
 
 g <- as_igraph(jac)
 g
-#> IGRAPH 7e10ba1 UNW- 17 102 -- 
+#> IGRAPH c594546 UNW- 17 102 -- 
 #> + attr: name (v/c), weight (e/n), count (e/n)
-#> + edges from 7e10ba1 (vertex names):
+#> + edges from c594546 (vertex names):
 #>  [1] Adventure  --Animation   Action     --Crime       Comedy     --Drama      
 #>  [4] Action     --Adventure   Biography  --Documentary Drama      --Romance    
 #>  [7] Crime      --Thriller    Comedy     --Romance     Documentary--Music      
