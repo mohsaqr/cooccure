@@ -1,34 +1,120 @@
 # Changelog
 
-## cooccure 0.4.3
+## cooccure 0.4.5
 
+This release collects the changes made since 0.4.0, the current CRAN
+version.
+
+### Directed networks for `similarity = "relative"`
+
+- `similarity = "relative"` divides each row of the count matrix by its
+  sum, so the weight from item A to item B differs from the weight from
+  B to A. The edge list now holds one row per direction instead of one
+  row per pair, and
+  [`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md),
+  [`as_tidygraph()`](https://pak.dynasite.org/cooccure/reference/as_tidygraph.md),
+  [`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md)
+  and
+  [`as_netobject()`](https://pak.dynasite.org/cooccure/reference/as_netobject.md)
+  return directed networks for it. `output = "gephi"` marks these edges
+  `"Directed"`. `threshold` and `top_n` apply to each direction.
+  Printing and [`summary()`](https://rdrr.io/r/base/summary.html) count
+  ordered pairs for the density of a directed network. The other seven
+  measures are unchanged.
+
+### Converting networks built with `split_by`
+
+- A `split_by` result stacks one network per group.
+  [`as_matrix()`](https://pak.dynasite.org/cooccure/reference/as_matrix.md),
+  [`as_igraph()`](https://pak.dynasite.org/cooccure/reference/as_igraph.md),
+  [`as_tidygraph()`](https://pak.dynasite.org/cooccure/reference/as_tidygraph.md),
+  [`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md),
+  [`as_netobject()`](https://pak.dynasite.org/cooccure/reference/as_netobject.md)
+  and [`plot()`](https://rdrr.io/r/graphics/plot.default.html) gain a
+  `group` argument that converts or draws one group’s network, with that
+  group’s items and transaction count. Without `group` they raise a
+  `cooccure_grouped_input` error, as does
+  `cooccurrence(..., split_by = , output = "igraph" / "cograph" / "matrix")`.
+  Previously these calls combined the groups into one network.
+- For a `split_by` result, the node table
+  (`as.data.frame(x, what = "nodes")` or `as.data.frame(summary(x))`)
+  has one row per node and group, computed within each group, with a
+  leading `group` column.
+
+### Results and accessors
+
+- [`summary()`](https://rdrr.io/r/base/summary.html) returns a
+  `summary.cooccurrence` object and no longer prints while computing it;
+  printing the object shows the same block as before.
+- New [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html)
+  method for `cooccurrence` objects: `what = "edges"` (default) gives
+  the bare edge table, `what = "nodes"` the node table and
+  `what = "groups"` the group table.
+- [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) on a
+  `summary.cooccurrence` object returns the node table
+  (`what = "nodes"`) or the group table (`what = "groups"`).
+- `aggregate_by` results store the summed counts as the raw matrix, so
+  `as_matrix(x, type = "raw")` returns counts; it previously returned
+  the aggregated weights.
+
+### Arguments and conditions
+
+- User-facing errors are classed conditions inheriting from
+  `cooccure_error` (`cooccure_bad_input`, `cooccure_incompatible_args`,
+  `cooccure_grouped_input`, `cooccure_empty_input`,
+  `cooccure_missing_package`), documented under “Conditions” on each
+  help page. Argument checks name the argument and the expected value.
+- `threshold` accepts negative values, which keep weights at or above
+  the value; this allows filtering networks scaled with
+  `scale = "zscore"`. `threshold = 0` still keeps every edge.
+- Columns named in `field`, `by`, `weight_by`, `split_by` and
+  `aggregate_by` are checked before any group is computed, so a
+  misspelled column is reported by name. With `split_by` and
+  `aggregate_by`, a group left without transactions is dropped; any
+  other error in a group is raised with the group named. `aggregate_by`
+  previously dropped such groups without a message.
+- `weight_by` combined with `counting = "fractional"` or
+  `counting = "attention"` raises a `cooccure_incompatible_args` error;
+  the counting method was previously ignored for weighted input.
+
+### Plots
+
+- The heatmap uses a white-to-blue scale for non-negative weights and a
+  red-white-blue scale centered on zero when weights can be negative.
+  The degree distribution uses a color-blind-safe fill.
+
+### Documentation
+
+- Help pages rewritten: each describes the method, what the function
+  computes, and which function to use instead, documents the structure
+  of the returned object and the conditions raised, and runs its
+  examples on the bundled data. A package overview page
+  ([`?cooccure`](https://pak.dynasite.org/cooccure/reference/cooccure-package.md))
+  is added.
+- New vignette “Co-occurrence networks” and pkgdown guides on input
+  formats, similarity measures, counting, sequences and event logs,
+  comparing groups, exporting, and the verification against
+  [`Nestimate::cooccurrence()`](https://pak.dynasite.org/Nestimate/reference/cooccurrence.html),
+  with two case studies on the IMDb data. The earlier IMDb tutorial is
+  divided among them. The README is generated from `README.Rmd`.
 - The dataset help pages point to the current IMDb non-commercial
   datasets address.
-- The Nestimate equivalence test declares `format = "binary"` for 0/1
-  data, as Nestimate 1.0 requires.
-
-## cooccure 0.4.2
-
-- Documentation revision. Every exported function and S3 method now
-  documents the structure of its return value (class, columns, one row
-  per what).
-  [`?cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
-  gains references for fractional counting and the tutorial chapter,
-  documents that `...` rejects unknown arguments, and notes that
-  `similarity = "relative"` edges carry one direction per pair.
+- [`?cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
+  documents that `...` rejects unknown arguments, that `top_n` truncates
+  ties at the cut, and that attention counting keeps the first position
+  of a repeated item.
   [`?as_cograph`](https://pak.dynasite.org/cooccure/reference/as_cograph.md)
   notes that **cograph** exports its own
   [`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md);
   [`?as_netobject`](https://pak.dynasite.org/cooccure/reference/as_netobject.md)
-  no longer claims compatibility with
-  [`Nestimate::bootstrap_network()`](https://pak.dynasite.org/Nestimate/reference/bootstrap_network.html),
-  which needs raw data the netobject does not carry. Examples no longer
-  reach into result objects with `$`. The README covers one-hot,
-  windowed, event-log, attention and `aggregate_by` input, uses only
-  defined objects, and shows current printed output. The IMDB vignette
-  guards its **cograph**/**igraph** chunks, replaces a loop and bracket
-  indexing with vectorized base R, and corrects prose that did not match
-  the printed results.
+  notes that the netobject carries no raw data for resampling.
+
+### Tests
+
+- The Nestimate equivalence test declares `format = "binary"` for 0/1
+  data, as Nestimate 1.0 requires.
+- New tests cover directed `relative` networks, per-group conversion,
+  classed conditions, the summary object and the heatmap scale.
 
 ## cooccure 0.4.0
 

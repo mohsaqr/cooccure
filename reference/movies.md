@@ -1,9 +1,11 @@
-# IMDB movie metadata (1970-2024)
+# Highly rated films with their genres (IMDb, 1970-2024)
 
-A sample of 1,000 highly-rated IMDB movies (rating \>= 7.0, \>= 1,000
-votes) released between 1970 and 2024. The `genres` column is
-comma-delimited and suitable for use as the `field` argument to
-[`cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
+`movies` is a sample of 1,000 films with an IMDb rating of at least 7.0
+and at least 1,000 votes, released between 1970 and 2024. Each film
+lists its genres in one comma-delimited column, so the data illustrate
+co-occurrence from a delimited field: genres are linked when they are
+assigned to the same film. The release decade and the rating allow one
+network per group.
 
 ## Usage
 
@@ -46,6 +48,12 @@ A data frame with 1,000 rows and 7 variables:
 ## Source
 
 <https://data.imdb.com/non-commercial-datasets/>
+
+## See also
+
+[actors](https://pak.dynasite.org/cooccure/reference/actors.md) for the
+casts of these films;
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 ## Examples
 

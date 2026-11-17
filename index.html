@@ -27,7 +27,7 @@
 
     <a class="navbar-brand me-2" href="index.html">cooccure</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.5</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,11 +36,26 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
+<li class="nav-item"><a class="nav-link" href="articles/cooccure.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/imdb-tutorial.html">Co-occurrence Networks with IMDB Movie Data</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Vignettes</h6></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Guides</h6></li>
+    <li><a class="dropdown-item" href="articles/input-formats.html">Input formats</a></li>
+    <li><a class="dropdown-item" href="articles/similarity-measures.html">Choosing a similarity measure</a></li>
+    <li><a class="dropdown-item" href="articles/counting.html">Full, fractional and attention counting</a></li>
+    <li><a class="dropdown-item" href="articles/sequences.html">Sequences, windows and event logs</a></li>
+    <li><a class="dropdown-item" href="articles/comparing-groups.html">Comparing groups</a></li>
+    <li><a class="dropdown-item" href="articles/exporting.html">Exporting networks</a></li>
+    <li><a class="dropdown-item" href="articles/verification.html">Verification against Nestimate</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Case studies</h6></li>
+    <li><a class="dropdown-item" href="articles/case-imdb-genres.html">Case study: genre co-occurrence in IMDb films</a></li>
+    <li><a class="dropdown-item" href="articles/case-actor-collaboration.html">Case study: actor collaboration networks</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -62,726 +77,158 @@
 <img src="logo.png" class="logo" alt=""><h1 id="cooccure-">cooccure <a class="anchor" aria-label="anchor" href="#cooccure-"></a>
 </h1>
 </div>
-<p>The <strong>cooccure</strong> R package builds co-occurrence networks: two items are linked when they appear in the same transaction (a document, a basket, a session, a stretch of a sequence). It auto-detects six input formats, also reads one-hot tables, raw event logs, and sliding windows over ordered sequences, and supports eight similarity measures, eight scaling methods, full, fractional, and position-decay counting, per-group or pooled networks, and filtering. Results are returned as a tidy edge data frame (<code>from</code>, <code>to</code>, <code>weight</code>, <code>count</code>) convertible to <strong>igraph</strong>, <strong>tidygraph</strong>, <strong>cograph</strong>, and <strong>Nestimate</strong> objects.</p>
-<p>The main function <code><a href="reference/cooccurrence.html">cooccurrence()</a></code> is also available as the short alias <code><a href="reference/cooccurrence.html">co()</a></code>.</p>
+<!-- badges: start -->
+
 <div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<h2 id="vignettes-and-guides">Vignettes and guides<a class="anchor" aria-label="anchor" href="#vignettes-and-guides"></a>
 </h2>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># CRAN release</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cooccure"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Development version</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"mohsaqr/cooccure"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="input-formats">Input formats<a class="anchor" aria-label="anchor" href="#input-formats"></a>
-</h2>
-<p><strong>cooccure</strong> auto-detects the input format from the arguments provided. Six formats are auto-detected (delimited field, multi-column delimited, long/bipartite, binary matrix, wide sequence, and list of character vectors), covering the most common shapes data comes in. One-hot tables with extra columns, ordered sequences read through a sliding window, and raw event logs are selected with dedicated arguments (sections 7 and 8).</p>
-<div class="section level3">
-<h3 id="id_1-delimited-field">1. Delimited field<a class="anchor" aria-label="anchor" href="#id_1-delimited-field"></a>
-</h3>
-<p>A <em>delimited field</em> is a single column where multiple items are stored as one string, separated by a consistent character such as <code>;</code>, <code>,</code>, <code>|</code>, or a <code>space</code>. This is the most common format in bibliometrics and text analysis, where each row represents a document.</p>
-<p>Use the <code>field</code> argument to specify the column with the relevant values, and <code>sep</code> to specify the delimiter.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  id <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>,</span>
-<span>  keywords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"network; graph; matrix"</span>,</span>
-<span>               <span class="st">"graph; algebra"</span>,</span>
-<span>               <span class="st">"network; algebra; graph"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">df</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span></code></pre></div>
-<p>Whitespace around the separator is automatically trimmed (<code>" network "</code> becomes <code>"network"</code>). Empty strings and NAs are dropped. Duplicate items within a row are de-duplicated.</p>
-</div>
-<div class="section level3">
-<h3 id="id_2-multi-column-delimited">2. Multi-column delimited<a class="anchor" aria-label="anchor" href="#id_2-multi-column-delimited"></a>
-</h3>
-<p>A <em>multi-column delimited</em> format is used when items are spread across multiple columns - for example, author keywords and index keywords in a Scopus export, or authors and affiliations. Values from all specified columns are pooled per row.</p>
-<p>Use the <code>field</code> argument to specify the columns with the relevant values, and <code>sep</code> to specify the delimiter.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  author_kw <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"machine learning; nlp"</span>, <span class="st">"deep learning"</span>, <span class="st">"nlp"</span><span class="op">)</span>,</span>
-<span>  index_kw  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"classification"</span>, <span class="st">"image recognition"</span>, <span class="st">"text mining"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">df</span>, field <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"author_kw"</span>, <span class="st">"index_kw"</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="id_3-long--bipartite">3. Long / bipartite<a class="anchor" aria-label="anchor" href="#id_3-long--bipartite"></a>
-</h3>
-<p>A <em>long</em> or <em>bipartite</em> format has one row per item-document pair, common in relational databases, survey data, and tidy data pipelines.</p>
-<p>Use the <code>field</code> argument to specify the column containing the items, and the <code>by</code> argument to specify which column groups them into transactions.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">citations</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  paper_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span>,</span>
-<span>  reference <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Smith2020"</span>, <span class="st">"Jones2019"</span>, <span class="st">"Lee2021"</span>,</span>
-<span>                <span class="st">"Jones2019"</span>, <span class="st">"Lee2021"</span>,</span>
-<span>                <span class="st">"Smith2020"</span>, <span class="st">"Lee2021"</span>, <span class="st">"Park2022"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">citations</span>, field <span class="op">=</span> <span class="st">"reference"</span>, by <span class="op">=</span> <span class="st">"paper_id"</span><span class="op">)</span></span></code></pre></div>
-<p>Use the <code>weight_by</code> argument to pass a numeric weight column for <em>weighted long</em> format — for example, LDA topic-document probabilities where each document contributes a topic with a given probability:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  doc   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"d1"</span>,<span class="st">"d1"</span>,<span class="st">"d1"</span>,<span class="st">"d2"</span>,<span class="st">"d2"</span>,<span class="st">"d3"</span>,<span class="st">"d3"</span><span class="op">)</span>,</span>
-<span>  topic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"T1"</span>,<span class="st">"T2"</span>,<span class="st">"T3"</span>,<span class="st">"T1"</span>,<span class="st">"T3"</span>,<span class="st">"T2"</span>,<span class="st">"T3"</span><span class="op">)</span>,</span>
-<span>  prob  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>, <span class="fl">0.3</span>, <span class="fl">0.1</span>, <span class="fl">0.4</span>, <span class="fl">0.6</span>, <span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">theta</span>, field <span class="op">=</span> <span class="st">"topic"</span>, by <span class="op">=</span> <span class="st">"doc"</span>, weight_by <span class="op">=</span> <span class="st">"prob"</span><span class="op">)</span></span></code></pre></div>
-<p>In <em>weighted long</em> format, the co-occurrence between items <code>i</code> and <code>j</code> is computed as <code>sum_d w_id * w_jd</code> (the sum of the products of their weights across all shared transactions) rather than a simple binary count. The <code>count</code> column still reports the number of transactions where both items appear together.</p>
-</div>
-<div class="section level3">
-<h3 id="id_4-binary-matrix">4. Binary matrix<a class="anchor" aria-label="anchor" href="#id_4-binary-matrix"></a>
-</h3>
-<p>A <em>binary matrix</em> is a document-term matrix where columns are items and values are 0/1 (absence or presence). This format is auto-detected when all values are 0 or 1 and no <code>field</code>, <code>by</code>, or <code>sep</code> arguments are provided.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dtm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,</span>
-<span>                <span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">1</span>,<span class="fl">0</span>,</span>
-<span>                <span class="fl">1</span>,<span class="fl">0</span>,<span class="fl">1</span>,<span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>              dimnames <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"network"</span>, <span class="st">"graph"</span>, <span class="st">"algebra"</span>, <span class="st">"matrix"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">dtm</span><span class="op">)</span></span></code></pre></div>
-<p>Works with both <code>matrix</code> and <code>data.frame</code> inputs. Columns without names are auto-named <code>V1</code>, <code>V2</code>, etc.</p>
-</div>
-<div class="section level3">
-<h3 id="id_5-wide-sequence">5. Wide sequence<a class="anchor" aria-label="anchor" href="#id_5-wide-sequence"></a>
-</h3>
-<p>A <em>wide sequence</em> format is used for non-binary data frames or matrices where each row is a sequence or record, and the unique values in each row form a transaction. This is the native format for sequence analysis tools like <strong>TraMineR</strong> and <strong>tna</strong>. Pass <code>field = "all"</code> to treat every column as a time point.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sequences</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  t1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"A"</span><span class="op">)</span>,</span>
-<span>  t2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"B"</span>, <span class="st">"C"</span>, <span class="st">"C"</span><span class="op">)</span>,</span>
-<span>  t3 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"C"</span>, <span class="cn">NA</span>,  <span class="cn">NA</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">sequences</span>, field <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span></span></code></pre></div>
-<p>NAs, empty strings, and <strong>TraMineR</strong> void markers (<code>%</code>, <code>*</code>) are automatically removed.</p>
-</div>
-<div class="section level3">
-<h3 id="id_6-list-of-character-vectors">6. List of character vectors<a class="anchor" aria-label="anchor" href="#id_6-list-of-character-vectors"></a>
-</h3>
-<p>A <em>list of character vectors</em> is the most direct format, where each list element is a transaction containing a set of categorical items.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">baskets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bread"</span>, <span class="st">"milk"</span>, <span class="st">"eggs"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bread"</span>, <span class="st">"butter"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"milk"</span>, <span class="st">"eggs"</span>, <span class="st">"butter"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"bread"</span>, <span class="st">"milk"</span>, <span class="st">"eggs"</span>, <span class="st">"butter"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="id_7-one-hot--indicator-table">7. One-hot / indicator table<a class="anchor" aria-label="anchor" href="#id_7-one-hot--indicator-table"></a>
-</h3>
-<p>A <em>one-hot</em> table has one column per item and one row per transaction, often alongside identifier or metadata columns. Name the indicator columns with <code>vars</code>; every other column is ignored. Columns can be given as a bare range, bare names, positions, a negative selection, or a character vector, exactly as <code>select</code> in base <code><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset()</a></code>. Any non-zero, non-<code>NA</code> value counts as present, so count tables such as document-term matrices work too.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">onehot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  doc     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"d1"</span>, <span class="st">"d2"</span>, <span class="st">"d3"</span><span class="op">)</span>,</span>
-<span>  network <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  graph   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
-<span>  algebra <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">onehot</span>, vars <span class="op">=</span> <span class="va">network</span><span class="op">:</span><span class="va">algebra</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="id_8-ordered-sequences-and-event-logs">8. Ordered sequences and event logs<a class="anchor" aria-label="anchor" href="#id_8-ordered-sequences-and-event-logs"></a>
-</h3>
-<p>For a categorical time series, treating a whole sequence as one transaction links every state to every other state it ever shares a sequence with. <code>window = w</code> instead makes every run of <code>w</code> consecutive positions a transaction, so only states that occur close together are linked. It applies to lists of sequences, wide sequence data (<code>field = "all"</code>), and event logs.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">states</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"plan"</span>, <span class="st">"monitor"</span>, <span class="st">"adapt"</span>, <span class="st">"monitor"</span>, <span class="st">"evaluate"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"plan"</span>, <span class="st">"adapt"</span>, <span class="st">"adapt"</span>, <span class="st">"evaluate"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">states</span>, window <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<p>A raw event log (one row per event) is passed with <code>action</code> naming the event column, plus optional <code>actor</code>, <code>time</code>, <code>session</code>, and <code>order</code> columns. The log is split into sessions on time gaps longer than <code>time_threshold</code> seconds (default 900) and each session becomes one transaction. Sessionization is done by <code><a href="https://pak.dynasite.org/Nestimate/reference/prepare.html" class="external-link">Nestimate::prepare()</a></code>, so this input requires the <strong>Nestimate</strong> package.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">events</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  student <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"s1"</span>, <span class="st">"s2"</span><span class="op">)</span>, each <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>,</span>
-<span>  code    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"read"</span>, <span class="st">"write"</span>, <span class="st">"read"</span>, <span class="st">"test"</span>, <span class="st">"write"</span>, <span class="st">"read"</span><span class="op">)</span>,</span>
-<span>  stamp   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2026-01-01 09:00:00"</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">60</span>, <span class="fl">120</span>, <span class="fl">0</span>, <span class="fl">30</span>, <span class="fl">90</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">events</span>, actor <span class="op">=</span> <span class="st">"student"</span>, action <span class="op">=</span> <span class="st">"code"</span>, time <span class="op">=</span> <span class="st">"stamp"</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="similarity-measures">Similarity measures<a class="anchor" aria-label="anchor" href="#similarity-measures"></a>
-</h2>
-<p>The <code>similarity</code> argument controls how raw co-occurrence counts are normalized into a similarity or association measure. All similarity measures are based on two inputs: the co-occurrence count between two items (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">C_{ij}</annotation></semantics></math>), and how frequently each item appears individually across all transactions (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>i</mi></msub><annotation encoding="application/x-tex">f_i</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>j</mi></msub><annotation encoding="application/x-tex">f_j</annotation></semantics></math>).</p>
-<p>The examples from here on use a small keyword table:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">papers</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2020</span>, <span class="fl">2020</span>, <span class="fl">2020</span>, <span class="fl">2021</span>, <span class="fl">2021</span>, <span class="fl">2021</span><span class="op">)</span>,</span>
-<span>  keywords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"network; graph; matrix"</span>, <span class="st">"graph; algebra"</span>,</span>
-<span>               <span class="st">"network; algebra; graph"</span>,</span>
-<span>               <span class="st">"deep learning; nlp"</span>, <span class="st">"nlp; transformers"</span>,</span>
-<span>               <span class="st">"deep learning; transformers; nlp"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Jaccard similarity</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Association strength</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, similarity <span class="op">=</span> <span class="st">"association"</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="which-similarity-to-use">Which similarity to use?<a class="anchor" aria-label="anchor" href="#which-similarity-to-use"></a>
-</h3>
+<p><strong>Vignettes</strong></p>
 <ul>
-<li><p><strong>Exploratory work</strong>: Start with <code>"none"</code> to see raw counts and understand the data, then try <code>"jaccard"</code> or <code>"cosine"</code> for a balanced view.</p></li>
-<li><p><strong>General purpose</strong>: <code>"jaccard"</code> is a good default choice. It normalizes co-occurrences by the union of transactions containing either item, applying a balanced penalty for non-overlap.</p></li>
-<li><p><strong>Bibliometric and scientometric networks</strong>: <code>"association"</code> is recommended by van Eck &amp; Waltman (2009) because it correctly accounts for the expected number of co-occurrences under independence. Two items that are both very frequent will naturally co-occur often; association strength discounts this, revealing which pairs co-occur <em>more than chance alone would predict</em>.</p></li>
-<li><p><strong>Detecting hierarchical/subset structure</strong>: <code>"inclusion"</code> (Simpson coefficient) reveals when one item almost always appears with another, useful for finding items that are subsets of broader categories or dependency relationships.</p></li>
-<li><p><strong>Binary presence/absence networks</strong>: <code>"dice"</code> when you only care <em>whether</em> items co-occur, not <em>how often</em>. Less strict than <code>"jaccard"</code>, it applies a less severe penalty for partial overlap.</p></li>
-<li><p><strong>Scale-invariant comparison</strong>: <code>"cosine"</code> is invariant to absolute frequency, useful when comparing co-occurrence patterns across datasets of different sizes or when frequent items should not dominate the network.</p></li>
-<li><p><strong>Strict filtering</strong>: <code>"equivalence"</code> (cosine squared) amplifies differences, pushing pairs with weak overlap closer to zero and retaining only the strongest associations.</p></li>
-<li><p><strong>Asymmetric tendencies</strong>: <code>"relative"</code> normalizes each row so that edge weights sum to 1, capturing the relative tendency of one item to appear with another rather than absolute co-occurrence counts. It is the only asymmetric measure: the edge data frame carries one direction per pair, and <code><a href="reference/as_matrix.html">as_matrix()</a></code> returns both.</p></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/cooccure.html">Co-occurrence networks</a></li>
+</ul>
+<p><strong>Guides</strong></p>
+<ul>
+<li><a href="https://pak.dynasite.org/cooccure/articles/input-formats.html">Input formats</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/similarity-measures.html">Choosing a similarity measure</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/counting.html">Full, fractional and attention counting</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/sequences.html">Sequences, windows and event logs</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/comparing-groups.html">Comparing groups</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/exporting.html">Exporting networks</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/verification.html">Verification against Nestimate</a></li>
+</ul>
+<p><strong>Case studies</strong></p>
+<ul>
+<li><a href="https://pak.dynasite.org/cooccure/articles/case-imdb-genres.html">Genre co-occurrence in IMDb films</a></li>
+<li><a href="https://pak.dynasite.org/cooccure/articles/case-actor-collaboration.html">Actor collaboration networks</a></li>
 </ul>
 </div>
-<div class="section level3">
-<h3 id="similarity-method-overview">Similarity method overview<a class="anchor" aria-label="anchor" href="#similarity-method-overview"></a>
-</h3>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p><code>cooccure</code> builds co-occurrence networks, in which two items are linked when they appear in the same transaction: the keywords of one article, the genres of one film, the actors of one cast, the codes of one interview passage, or the states of one learning session. The network shows which items tend to go together and how a field, a corpus or a set of sessions is organized around them. The weight of a link starts as the number of shared transactions. Because frequent items co-occur often by chance alone, the weight can be normalized for item frequency by one of eight similarity measures, such as association strength or the Jaccard index (van Eck &amp; Waltman, 2009), and each transaction’s contribution can be counted fractionally (Perianes-Rodriguez et al., 2016). One network can be built per group, for example per decade, and the networks compared.</p>
+<p>All of this is done by one function, <code><a href="reference/cooccurrence.html">cooccurrence()</a></code>. It reads delimited columns, long (item, transaction) tables, binary and one-hot tables, wide sequences, lists of vectors and event logs; sliding windows turn ordered sequences into transactions. It returns a tidy edge list with a weight and a raw count per pair, which converts to the network classes of igraph, tidygraph, cograph and Nestimate.</p>
+</div>
+<div class="section level2">
+<h2 id="method">Method<a class="anchor" aria-label="anchor" href="#method"></a>
+</h2>
+<p>Let <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math> be the transaction-by-item incidence matrix, with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>B</mi><mrow><mi>t</mi><mi>i</mi></mrow></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">B_{ti} = 1</annotation></semantics></math> when item <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math> occurs in transaction <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>. The co-occurrence counts are <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><msup><mi>B</mi><mi>⊤</mi></msup><mi>B</mi></mrow><annotation encoding="application/x-tex">C = B^\top B</annotation></semantics></math>, with the diagonal set to zero, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mi>i</mi></msub><annotation encoding="application/x-tex">f_i</annotation></semantics></math> is the number of transactions containing item <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>. Similarity measures rescale <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">C_{ij}</annotation></semantics></math> by the frequencies (van Eck &amp; Waltman, 2009):</p>
 <table class="table">
-<colgroup>
-<col width="20%">
-<col width="22%">
-<col width="32%">
-<col width="25%">
-</colgroup>
 <thead><tr>
-<th>Method</th>
-<th>Formula</th>
-<th>Description</th>
-<th>Best for</th>
+<th><code>similarity</code></th>
+<th>Weight of the edge <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>–<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>
+</th>
 </tr></thead>
 <tbody>
 <tr>
 <td><code>"none"</code></td>
 <td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><annotation encoding="application/x-tex">C_{ij}</annotation></semantics></math></td>
-<td>Raw co-occurrence count</td>
-<td>Exploratory analysis</td>
 </tr>
 <tr>
 <td><code>"jaccard"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub><mo>−</mo><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{f_i + f_j - C_{ij}}</annotation></semantics></math></td>
-<td>Divides co-occurrences by the total number of transactions containing either item</td>
-<td>General purpose</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub><mo>−</mo><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">C_{ij} / (f_i + f_j - C_{ij})</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"cosine"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><msqrt><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></msqrt></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{\sqrt{f_i \cdot f_j}}</annotation></semantics></math></td>
-<td>Divides co-occurrences by the geometric mean of item frequencies (Salton’s cosine)</td>
-<td>Scale-invariant comparison</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><msqrt><mrow><msub><mi>f</mi><mi>i</mi></msub><msub><mi>f</mi><mi>j</mi></msub></mrow></msqrt></mrow><annotation encoding="application/x-tex">C_{ij} / \sqrt{f_i f_j}</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"inclusion"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>,</mo><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{\min(f_i, f_j)}</annotation></semantics></math></td>
-<td>Divides co-occurrences by the frequency of the rarer item (Simpson coefficient)</td>
-<td>Subset and hierarchical relationships</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><mrow><mi mathvariant="normal">min</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>,</mo><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">C_{ij} / \min(f_i, f_j)</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"association"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}}{f_i \cdot f_j}</annotation></semantics></math></td>
-<td>Divides co-occurrences by the product of item frequencies, discounting chance co-occurrences (van Eck &amp; Waltman, 2009)</td>
-<td>Bibliometric networks</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">C_{ij} / (f_i f_j)</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"dice"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><mrow><mn>2</mn><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub></mrow><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{2 C_{ij}}{f_i + f_j}</annotation></semantics></math></td>
-<td>Divides co-occurrences by the arithmetic mean of item frequencies</td>
-<td>Binary presence/absence networks</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>2</mn><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><mo>+</mo><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">2 C_{ij} / (f_i + f_j)</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"equivalence"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mfrac><msubsup><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mrow><msub><mi>f</mi><mi>i</mi></msub><mo>⋅</mo><msub><mi>f</mi><mi>j</mi></msub></mrow></mfrac><annotation encoding="application/x-tex">\frac{C_{ij}^2}{f_i \cdot f_j}</annotation></semantics></math></td>
-<td>Squares the co-occurrence count before dividing by the product of frequencies (cosine squared)</td>
-<td>Strict filtering</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow><mn>2</mn></msubsup><mi>/</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>f</mi><mi>i</mi></msub><msub><mi>f</mi><mi>j</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">C_{ij}^2 / (f_i f_j)</annotation></semantics></math></td>
 </tr>
 <tr>
 <td><code>"relative"</code></td>
-<td>Row-normalized (each row sums to 1)</td>
-<td>Normalizes each row so that all edge weights from an item sum to 1</td>
-<td>Asymmetric tendencies</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="section level2">
-<h2 id="counting">Counting<a class="anchor" aria-label="anchor" href="#counting"></a>
-</h2>
-<p>The <code>counting</code> argument controls how much each transaction contributes to the co-occurrence count. Under full counting (default), each co-occurring pair adds 1 regardless of how many items are in the transaction. Under fractional counting, each pair adds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">1/(n-1)</annotation></semantics></math> where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> is the number of items in the transaction, preventing large transactions from dominating the network (Perianes-Rodriguez et al., 2016). For example, a document with 10 keywords creates 45 pairs under full counting but contributes only 1/9 per pair under fractional counting. Under attention counting, for ordered transactions, each pair adds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><mo stretchy="false" form="prefix">|</mo><mi>p</mi><mi>o</mi><msub><mi>s</mi><mi>i</mi></msub><mo>−</mo><mi>p</mi><mi>o</mi><msub><mi>s</mi><mi>j</mi></msub><mo stretchy="false" form="prefix">|</mo><mi>/</mi><mi>λ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\exp(-|pos_i - pos_j| / \lambda)</annotation></semantics></math>, so items that occur close together in a sequence are linked more strongly than items far apart; <code>lambda</code> (default 1) sets how fast the weight decays.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Full counting (default): each co-occurring pair adds 1</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Fractional: each pair adds 1/(n-1) where n = items in the transaction</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, counting <span class="op">=</span> <span class="st">"fractional"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Attention: each pair adds exp(-gap / lambda) within an ordered sequence</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">states</span>, counting <span class="op">=</span> <span class="st">"attention"</span>, lambda <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="scaling">Scaling<a class="anchor" aria-label="anchor" href="#scaling"></a>
-</h2>
-<p>The <code>scale</code> argument applies a transformation to the weights after similarity normalization, useful for visualization, thresholding, or feeding into downstream models.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Log-scaled Jaccard similarity</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, scale <span class="op">=</span> <span class="st">"log"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Min-max scaled for visualization</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"cosine"</span>, scale <span class="op">=</span> <span class="st">"minmax"</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="scaling-method-overview">Scaling method overview<a class="anchor" aria-label="anchor" href="#scaling-method-overview"></a>
-</h3>
-<table style="width:100%;" class="table">
-<colgroup>
-<col width="17%">
-<col width="32%">
-<col width="28%">
-<col width="21%">
-</colgroup>
-<thead><tr>
-<th>Method</th>
-<th>Transformation</th>
-<th>Description</th>
-<th>Use case</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>"minmax"</code></td>
-<td>Scale to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
-</td>
-<td>Rescales all weights to the range <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0, 1]</annotation></semantics></math>
-</td>
-<td>Visualization and cross-network comparison</td>
-</tr>
-<tr>
-<td><code>"log"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log(1 + w)</annotation></semantics></math></td>
-<td>Applies a natural log transformation</td>
-<td>Compressing heavy-tailed distributions</td>
-</tr>
-<tr>
-<td><code>"log10"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mn>10</mn></msub><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\log_{10}(1 + w)</annotation></semantics></math></td>
-<td>Same as log but base 10</td>
-<td>When base 10 interpretation is preferred</td>
-</tr>
-<tr>
-<td><code>"sqrt"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mi>w</mi></msqrt><annotation encoding="application/x-tex">\sqrt{w}</annotation></semantics></math></td>
-<td>Square root transformation</td>
-<td>Mild compression of skewed weights</td>
-</tr>
-<tr>
-<td><code>"binary"</code></td>
-<td>1 if <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">w &gt; 0</annotation></semantics></math>, else 0</td>
-<td>Converts all positive weights to 1</td>
-<td>Presence/absence networks</td>
-</tr>
-<tr>
-<td><code>"zscore"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>w</mi><mo>−</mo><mi>μ</mi><mo stretchy="false" form="postfix">)</mo><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">(w - \mu) / \sigma</annotation></semantics></math></td>
-<td>Standardizes weights to mean 0 and standard deviation 1</td>
-<td>Statistical comparison across networks</td>
-</tr>
-<tr>
-<td><code>"proportion"</code></td>
-<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>w</mi><mi>/</mi><mo>∑</mo><mi>w</mi></mrow><annotation encoding="application/x-tex">w / \sum w</annotation></semantics></math></td>
-<td>Divides each weight by the total sum of weights</td>
-<td>Expressing edges as relative importance</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<div class="section level2">
-<h2 id="filtering">Filtering<a class="anchor" aria-label="anchor" href="#filtering"></a>
-</h2>
-<p>Three filtering arguments control which edges appear in the result:</p>
-<ul>
-<li>
-<code>min_occur</code>: drops any entity appearing in fewer than a specified number of transactions, removing rare items before co-occurrences are computed.</li>
-<li>
-<code>threshold</code>: keeps only edges with a weight at or above a specified value, applied after similarity normalization and scaling.</li>
-<li>
-<code>top_n</code>: keeps only the <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> strongest edges by weight (ties at the cut are truncated, so exactly <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> edges are kept).</li>
-</ul>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Drop entities appearing in fewer than 3 transactions</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, min_occur <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Keep only edges with weight &gt;= 0.5 (applied after similarity + scaling)</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>, threshold <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Keep only the 10 strongest edges</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">baskets</span>, top_n <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div>
-<p>All three can be combined for fine-grained control over the network size and density:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>,</span>
-<span>             similarity <span class="op">=</span> <span class="st">"association"</span>, min_occur <span class="op">=</span> <span class="fl">2</span>,</span>
-<span>             threshold <span class="op">=</span> <span class="fl">0.01</span>, top_n <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="splitting-by-groups">Splitting by groups<a class="anchor" aria-label="anchor" href="#splitting-by-groups"></a>
-</h2>
-<p>The <code>split_by</code> argument (alias <code>group</code>) computes a separate co-occurrence network for each level of a grouping variable and returns them in a single data frame with a <code>group</code> column. This is useful for comparing co-occurrence patterns across time periods, disciplines, journals, or any categorical variable. Each group gets its own similarity computation, meaning item frequencies are group-specific. All other parameters (<code>similarity</code>, <code>scale</code>, <code>threshold</code>, <code>min_occur</code>, <code>top_n</code>) apply per group.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, split_by <span class="op">=</span> <span class="st">"year"</span>,</span>
-<span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # cooccurrence: 7 nodes, 8 edges</span></span>
-<span><span class="co">#&gt; # split_by: year (2 groups)</span></span>
-<span><span class="co">#&gt; # similarity: jaccard | counting: full</span></span>
-<span><span class="co">#&gt; # isolates: 0 | per-group metrics: summary()</span></span>
-<span><span class="co">#&gt;           from           to    weight count group</span></span>
-<span><span class="co">#&gt;        algebra        graph 0.6666667     2  2020</span></span>
-<span><span class="co">#&gt;          graph      network 0.6666667     2  2020</span></span>
-<span><span class="co">#&gt;         matrix      network 0.5000000     1  2020</span></span>
-<span><span class="co">#&gt;          graph       matrix 0.3333333     1  2020</span></span>
-<span><span class="co">#&gt;        algebra      network 0.3333333     1  2020</span></span>
-<span><span class="co">#&gt;  deep learning          nlp 0.6666667     2  2021</span></span>
-<span><span class="co">#&gt;            nlp transformers 0.6666667     2  2021</span></span>
-<span><span class="co">#&gt;  deep learning transformers 0.3333333     1  2021</span></span></code></pre></div>
-<p>Per-group density, size, and mean weight come from <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> as a tidy data frame:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">by_year</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, split_by <span class="op">=</span> <span class="st">"year"</span>,</span>
-<span>              similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">by_year</span><span class="op">)</span>, what <span class="op">=</span> <span class="st">"groups"</span><span class="op">)</span></span></code></pre></div>
-<p><code>aggregate_by</code> is the opposite choice: it computes one network per group and then combines the edge weights into ONE network (<code>aggregate = "sum"</code>, <code>"mean"</code>, <code>"min"</code>, or <code>"max"</code>; counts are always summed). Use it when items should be normalized within their own context (for example, keywords within a journal) before the contexts are pooled.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, aggregate_by <span class="op">=</span> <span class="st">"year"</span>,</span>
-<span>   similarity <span class="op">=</span> <span class="st">"jaccard"</span>, aggregate <span class="op">=</span> <span class="st">"mean"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
-</h2>
-<p><code><a href="reference/cooccurrence.html">cooccurrence()</a></code> returns a tidy data frame of class <code>cooccurrence</code> that can be piped, filtered, and joined like any standard data frame. The raw co-occurrence count is always preserved in the <code>count</code> column regardless of similarity or scaling, meaning the original counts can always be traced back.</p>
-<p>The full matrix, item frequencies, and parameters travel with the result, and accessor functions return them in tidy form:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span>                    <span class="co"># Normalized weight matrix</span></span>
-<span><span class="fu"><a href="reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span>, type <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span>      <span class="co"># Raw count matrix (diagonal zeroed)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span>       <span class="co"># One row per node: degree, strength, frequency</span></span></code></pre></div>
-<p>The <code>cooccurrence</code> object can be also printed, summarized, and plotted directly as a co-occurrence network (Saqr et al., 2024):</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Summary statistics: size, density, degree, weight distribution</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Heatmap</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Network plot (requires igraph)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">result</span>, type <span class="op">=</span> <span class="st">"network"</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="output-formats">Output formats<a class="anchor" aria-label="anchor" href="#output-formats"></a>
-</h3>
-<p>The <code>output</code> argument controls the format returned directly:</p>
-<ul>
-<li>
-<code>"default"</code> — tidy data frame with <code>from</code>, <code>to</code>, <code>weight</code>, <code>count</code> columns</li>
-<li>
-<code>"gephi"</code> — Gephi-ready format with <code>Source</code>, <code>Target</code>, <code>Weight</code>, <code>Type</code>, <code>Count</code> columns, writable directly to CSV</li>
-<li>
-<code>"igraph"</code> — igraph object for network analysis and visualization</li>
-<li>
-<code>"cograph"</code> — cograph object for use with the cograph package</li>
-<li>
-<code>"matrix"</code> — square co-occurrence matrix</li>
-</ul>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Default: tidy data frame with from, to, weight, count</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Gephi-ready: Source, Target, Weight, Type, Count columns</span></span>
-<span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"gephi"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;         Source       Target Weight       Type Count</span></span>
-<span><span class="co">#&gt;        algebra        graph      2 Undirected     2</span></span>
-<span><span class="co">#&gt;          graph      network      2 Undirected     2</span></span>
-<span><span class="co">#&gt;  deep learning          nlp      2 Undirected     2</span></span>
-<span><span class="co">#&gt;            nlp transformers      2 Undirected     2</span></span>
-<span><span class="co">#&gt;  ...</span></span>
-<span></span>
-<span><span class="co"># igraph object</span></span>
-<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"igraph"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># cograph object</span></span>
-<span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"cograph"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Square matrix</span></span>
-<span><span class="va">mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"matrix"</span><span class="op">)</span></span></code></pre></div>
-<p>The Gephi output can be written directly to CSV for import:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html" class="external-link">write.csv</a></span><span class="op">(</span><span class="fu"><a href="reference/cooccurrence.html">co</a></span><span class="op">(</span><span class="va">papers</span>, field <span class="op">=</span> <span class="st">"keywords"</span>, sep <span class="op">=</span> <span class="st">";"</span>, output <span class="op">=</span> <span class="st">"gephi"</span><span class="op">)</span>,</span>
-<span>          <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"network.csv"</span><span class="op">)</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="converters">Converters<a class="anchor" aria-label="anchor" href="#converters"></a>
-</h2>
-<p>A <code>cooccurrence</code> result can be converted to other network formats using the built-in converter functions. All converter packages are optional — install only what you need.</p>
-<div class="section level3">
-<h3 id="matrix">Matrix<a class="anchor" aria-label="anchor" href="#matrix"></a>
-</h3>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Normalized similarity matrix</span></span>
-<span><span class="fu"><a href="reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Raw co-occurrence count matrix</span></span>
-<span><span class="fu"><a href="reference/as_matrix.html">as_matrix</a></span><span class="op">(</span><span class="va">result</span>, type <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="igraph">igraph<a class="anchor" aria-label="anchor" href="#igraph"></a>
-</h3>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("igraph")</span></span>
-<span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/degree.html" class="external-link">degree</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span></span>
-<span><span class="fu">igraph</span><span class="fu">::</span><span class="fu"><a href="https://r.igraph.org/reference/betweenness.html" class="external-link">betweenness</a></span><span class="op">(</span><span class="va">g</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="tidygraph">tidygraph<a class="anchor" aria-label="anchor" href="#tidygraph"></a>
-</h3>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("tidygraph")</span></span>
-<span><span class="va">tg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_tidygraph.html">as_tidygraph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="co"># Use with ggraph</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="cograph">cograph<a class="anchor" aria-label="anchor" href="#cograph"></a>
-</h3>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("cograph")</span></span>
-<span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_cograph.html">as_cograph</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/splot.html" class="external-link">splot</a></span><span class="op">(</span><span class="va">net</span><span class="op">)</span></span>
-<span><span class="fu">cograph</span><span class="fu">::</span><span class="fu"><a href="https://sonsoles.me/cograph/reference/communities.html" class="external-link">communities</a></span><span class="op">(</span><span class="va">net</span><span class="op">)</span></span></code></pre></div>
-<p><strong>cograph</strong> exports its own <code><a href="reference/as_cograph.html">as_cograph()</a></code>. If you attach <strong>cograph</strong> with <code><a href="https://sonsoles.me/cograph/" class="external-link">library(cograph)</a></code> after <strong>cooccure</strong>, call <code>cooccure::as_cograph(result)</code> or build the network with <code>output = "cograph"</code>.</p>
-</div>
-<div class="section level3">
-<h3 id="nestimate">Nestimate<a class="anchor" aria-label="anchor" href="#nestimate"></a>
-</h3>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("Nestimate")</span></span>
-<span><span class="va">net</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/as_netobject.html">as_netobject</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="fu">Nestimate</span><span class="fu">::</span><span class="fu"><a href="https://pak.dynasite.org/Nestimate/reference/net_centrality.html" class="external-link">net_centrality</a></span><span class="op">(</span><span class="va">net</span><span class="op">)</span></span></code></pre></div>
-<p>The netobject carries the estimated weight matrix but not the raw transactions, so Nestimate functions that resample the original data (such as <code>bootstrap_network()</code>) do not run on it.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
-</h2>
-<p>Regardless of input format, the internal pipeline is:</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>Parse</strong> input into a list of character vectors (transactions); with <code>window</code>, each window of consecutive positions is a transaction</li>
-<li>
-<strong>Filter</strong> entities below <code>min_occur</code> frequency</li>
-<li>
-<strong>Build</strong> a sparse transaction matrix <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>B</mi><annotation encoding="application/x-tex">B</annotation></semantics></math> (rows = transactions, columns = items), weighted by the <code>counting</code> method</li>
-<li>
-<strong>Compute</strong> co-occurrence: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mo>=</mo><msup><mi>B</mi><mi>⊤</mi></msup><mi>B</mi></mrow><annotation encoding="application/x-tex">C = B^\top B</annotation></semantics></math> via sparse <code><a href="https://rdrr.io/pkg/Matrix/man/matmult-methods.html" class="external-link">Matrix::crossprod()</a></code>
-</li>
-<li>
-<strong>Normalize</strong> using the chosen <code>similarity</code> measure</li>
-<li>
-<strong>Scale</strong> weights if <code>scale</code> is specified</li>
-<li>
-<strong>Filter</strong> edges below <code>threshold</code> and keep <code>top_n</code>
-</li>
-<li>
-<strong>Return</strong> upper triangle as a tidy sorted edge data frame</li>
-</ol>
-<p>The computation is vectorized throughout - no loops in the hot path - and stays in sparse form, so it scales to corpora with hundreds of thousands of distinct items.</p>
-</div>
-<div class="section level2">
-<h2 id="full-parameter-reference">Full parameter reference<a class="anchor" aria-label="anchor" href="#full-parameter-reference"></a>
-</h2>
-<table style="width:100%;" class="table">
-<colgroup>
-<col width="26%">
-<col width="15%">
-<col width="34%">
-<col width="23%">
-</colgroup>
-<thead><tr>
-<th>Argument</th>
-<th>Type</th>
-<th>Description</th>
-<th>Default</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>data</code></td>
-<td>various</td>
-<td>Input data (data.frame, matrix, or list)</td>
-<td>required</td>
-</tr>
-<tr>
-<td><code>field</code></td>
-<td>character</td>
-<td>Column(s) containing entities (nodes)</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>by</code></td>
-<td>character</td>
-<td>Column grouping entities into transactions</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>weight_by</code></td>
-<td>character</td>
-<td>Column with numeric weights for long format (e.g. LDA topic probabilities)</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>sep</code></td>
-<td>character</td>
-<td>Delimiter for splitting delimited fields</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>split_by</code></td>
-<td>character</td>
-<td>Column to split data by (separate network per group)</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>similarity</code></td>
-<td>character</td>
-<td>Normalization measure</td>
-<td><code>"none"</code></td>
-</tr>
-<tr>
-<td><code>counting</code></td>
-<td>character</td>
 <td>
-<code>"full"</code>, <code>"fractional"</code>, or <code>"attention"</code>
-</td>
-<td><code>"full"</code></td>
-</tr>
-<tr>
-<td><code>scale</code></td>
-<td>character</td>
-<td>Weight scaling method</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>threshold</code></td>
-<td>numeric</td>
-<td>Minimum edge weight (after normalization + scaling); <code>0</code> keeps all edges</td>
-<td><code>0</code></td>
-</tr>
-<tr>
-<td><code>min_occur</code></td>
-<td>integer</td>
-<td>Minimum entity frequency (transactions)</td>
-<td><code>1</code></td>
-</tr>
-<tr>
-<td><code>top_n</code></td>
-<td>integer</td>
-<td>Keep only the top N edges by weight (per group if split)</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>output</code></td>
-<td>character</td>
-<td>Output format: <code>"default"</code>, <code>"gephi"</code>, <code>"igraph"</code>, <code>"cograph"</code>, <code>"matrix"</code>
-</td>
-<td><code>"default"</code></td>
-</tr>
-<tr>
-<td><code>vars</code></td>
-<td>column spec</td>
-<td>Indicator (one-hot) columns; other columns ignored</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>actor</code></td>
-<td>character</td>
-<td>Event log: column(s) identifying who acted</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>action</code></td>
-<td>character</td>
-<td>Event log: event/state column; turns on event-log input</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>time</code></td>
-<td>character</td>
-<td>Event log: timestamp column</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>session</code></td>
-<td>character</td>
-<td>Event log: explicit session column(s)</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>order</code></td>
-<td>character</td>
-<td>Event log: tie-breaking column for identical timestamps</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>time_threshold</code></td>
-<td>numeric</td>
-<td>Event log: gap in seconds that starts a new session</td>
-<td><code>900</code></td>
-</tr>
-<tr>
-<td><code>group</code></td>
-<td>character</td>
-<td>Alias for <code>split_by</code>
-</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>aggregate_by</code></td>
-<td>character</td>
-<td>Column to group by, then combine into one network</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>aggregate</code></td>
-<td>character</td>
-<td>Combiner for <code>aggregate_by</code>: <code>"sum"</code>, <code>"mean"</code>, <code>"min"</code>, <code>"max"</code>
-</td>
-<td><code>"sum"</code></td>
-</tr>
-<tr>
-<td><code>window</code></td>
-<td>integer</td>
-<td>Sliding-window size for ordered sequences</td>
-<td><code>NULL</code></td>
-</tr>
-<tr>
-<td><code>lambda</code></td>
-<td>numeric</td>
-<td>Decay rate for <code>counting = "attention"</code>
-</td>
-<td><code>1</code></td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>i</mi><mi>j</mi></mrow></msub><mi>/</mi><msub><mo>∑</mo><mi>k</mi></msub><msub><mi>C</mi><mrow><mi>i</mi><mi>k</mi></mrow></msub></mrow><annotation encoding="application/x-tex">C_{ij} / \sum_k C_{ik}</annotation></semantics></math> (directed)</td>
 </tr>
 </tbody>
 </table>
+<p>With fractional counting each transaction of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math> items contributes <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>n</mi><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">1/(n-1)</annotation></semantics></math> to each of its pairs instead of 1 (Perianes-Rodriguez et al., 2016); with attention counting a pair contributes <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">exp</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>−</mi><mo stretchy="false" form="prefix">|</mo><msub><mi>p</mi><mi>i</mi></msub><mo>−</mo><msub><mi>p</mi><mi>j</mi></msub><mo stretchy="false" form="prefix">|</mo><mi>/</mi><mi>λ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\exp(-|p_i - p_j| / \lambda)</annotation></semantics></math>, decaying with the distance between the two positions in an ordered transaction. Every measure except <code>"relative"</code> gives an undirected network; <code>"relative"</code> divides each row by its sum, so its edges have a direction and the edge list holds one row per direction.</p>
 </div>
 <div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>Perianes-Rodriguez, A., Waltman, L., &amp; van Eck, N. J. (2016). Constructing bibliometric networks: A comparison between full and fractional counting. <em>Journal of Informetrics</em>, <em>10</em>(4), 1178-1195. <a href="https://doi.org/10.1016/j.joi.2016.10.006" class="external-link uri">https://doi.org/10.1016/j.joi.2016.10.006</a></p>
-<p>Saqr, M., López-Pernas, S., Conde, M. Á., &amp; Hernández-García, Á. (2024). Social Network Analysis: A Primer, a Guide and a Tutorial in R. In Saqr, M. &amp; López-Pernas, S. (Eds.), <em>Learning Analytics Methods and Tutorials: A Practical Guide Using R</em>. Springer. <a href="https://doi.org/10.1007/978-3-031-54464-4_15" class="external-link uri">https://doi.org/10.1007/978-3-031-54464-4_15</a></p>
-<p>van Eck, N. J., &amp; Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well-known similarity measures. <em>Journal of the American Society for Information Science and Technology</em>, <em>60</em>(8), 1635-1651. <a href="https://doi.org/10.1002/asi.21075" class="external-link uri">https://doi.org/10.1002/asi.21075</a></p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cooccure"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># development version</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"mohsaqr/cooccure"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="authors">Authors<a class="anchor" aria-label="anchor" href="#authors"></a>
+<h2 id="examples">Examples<a class="anchor" aria-label="anchor" href="#examples"></a>
 </h2>
-<p><strong>Mohammed Saqr</strong> — University of Eastern Finland · <a href="https://saqr.me" class="external-link">saqr.me</a></p>
-<p><strong>Sonsoles López-Pernas</strong> — University of Eastern Finland · <a href="https://sonsoles.me" class="external-link">sonsoles.me</a></p>
-<p><strong>Kamila Misiejuk</strong> — FernUniversität in Hagen · <a href="https://kamilamisiejuk.com" class="external-link">kamilamisiejuk.com</a></p>
+<p><code>movies</code> holds 1,000 highly rated films with their genres in one comma-separated column. Genres are linked when they are assigned to the same film, and Jaccard similarity discounts the most common genres.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/mohsaqr/cooccure" class="external-link">cooccure</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">genres</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
+<span>                       similarity <span class="op">=</span> <span class="st">"jaccard"</span>, min_occur <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">genres</span>, n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # cooccurrence: 17 nodes, 102 edges | density: 0.7500 | mean degree: 12.0000 | 998 transactions</span></span>
+<span><span class="co">#&gt; # similarity: jaccard | counting: full</span></span>
+<span><span class="co">#&gt; # possible edges: 136 | isolates: 0</span></span>
+<span><span class="co">#&gt; # top nodes: Drama(deg=16,str=1.153), Comedy(deg=16,str=0.8949), Romance(deg=15,str=0.5377), Action(deg=14,str=1.009), Adventure(deg=14,str=0.8788)</span></span>
+<span><span class="co">#&gt;       from          to weight count</span></span>
+<span><span class="co">#&gt;  Adventure   Animation  0.285    39</span></span>
+<span><span class="co">#&gt;     Action       Crime  0.237    59</span></span>
+<span><span class="co">#&gt;     Comedy       Drama  0.211   159</span></span>
+<span><span class="co">#&gt;     Action   Adventure  0.208    44</span></span>
+<span><span class="co">#&gt;  Biography Documentary  0.204    44</span></span>
+<span><span class="co">#&gt;      Drama     Romance  0.198   131</span></span>
+<span><span class="co">#&gt; # ... 96 more edges</span></span></code></pre></div>
+<p>The weight matrix can be drawn as a heatmap.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">genres</span><span class="op">)</span></span></code></pre></div>
+<div class="figure" style="text-align: center">
+<img src="reference/figures/README-heatmap-1.png" alt="Jaccard weights of the genre network." width="100%"><p class="caption">
+Jaccard weights of the genre network.
+</p>
+</div>
+<p><code>split_by</code> builds one network per decade, and the group table compares them.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">by_decade</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">movies</span>, field <span class="op">=</span> <span class="st">"genres"</span>, sep <span class="op">=</span> <span class="st">","</span>,</span>
+<span>                          split_by <span class="op">=</span> <span class="st">"decade"</span>, similarity <span class="op">=</span> <span class="st">"jaccard"</span>,</span>
+<span>                          min_occur <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">by_decade</span>, what <span class="op">=</span> <span class="st">"groups"</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   group n_nodes n_edges possible_edges density weight_mean count_sum</span></span>
+<span><span class="co">#&gt; 1 1970s      12      34             66   0.515      0.1334       136</span></span>
+<span><span class="co">#&gt; 2 1980s      14      43             91   0.473      0.0977       164</span></span>
+<span><span class="co">#&gt; 3 1990s      13      39             78   0.500      0.1126       187</span></span>
+<span><span class="co">#&gt; 4 2000s      16      66            120   0.550      0.0769       335</span></span>
+<span><span class="co">#&gt; 5 2010s      17      85            136   0.625      0.0666       581</span></span>
+<span><span class="co">#&gt; 6 2020s      13      39             78   0.500      0.1004       184</span></span></code></pre></div>
+<p><code>actors</code> is a long table with one row per actor and film; actors in the same film are linked, giving a collaboration network. One decade of a split network converts to <code>igraph</code> with <code>group =</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">cast</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/cooccurrence.html">cooccurrence</a></span><span class="op">(</span><span class="va">actors</span>, field <span class="op">=</span> <span class="st">"actor"</span>, by <span class="op">=</span> <span class="st">"tconst"</span>,</span>
+<span>                     split_by <span class="op">=</span> <span class="st">"decade"</span>, min_occur <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="fu"><a href="reference/as_igraph.html">as_igraph</a></span><span class="op">(</span><span class="va">cast</span>, group <span class="op">=</span> <span class="st">"2010s"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; IGRAPH ab8d353 UNW- 145 756 -- </span></span>
+<span><span class="co">#&gt; + attr: name (v/c), weight (e/n), count (e/n)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+<h2 id="authors-and-citation">Authors and citation<a class="anchor" aria-label="anchor" href="#authors-and-citation"></a>
 </h2>
-<p>MIT</p>
+<p><code>cooccure</code> is written by <a href="https://saqr.me" class="external-link">Mohammed Saqr</a>, <a href="https://sonsoles.me" class="external-link">Sonsoles López-Pernas</a> and Kamila Misiejuk. Mohammed Saqr maintains the package. Questions and bug reports can be submitted through the <a href="https://github.com/mohsaqr/cooccure/issues" class="external-link">repository issue tracker</a>. The package citation is available through <code>citation("cooccure")</code>.</p>
+<p>The bundled <code>movies</code>, <code>actors</code> and <code>actor_genres</code> data are derived from the IMDb non-commercial datasets (<a href="https://data.imdb.com/non-commercial-datasets/" class="external-link uri">https://data.imdb.com/non-commercial-datasets/</a>).</p>
+<div class="section level3">
+<h3 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h3>
+<p>Perianes-Rodriguez, A., Waltman, L., &amp; van Eck, N. J. (2016). Constructing bibliometric networks: A comparison between full and fractional counting. <em>Journal of Informetrics</em>, <em>10</em>(4), 1178–1195. <a href="https://doi.org/10.1016/j.joi.2016.10.006" class="external-link uri">https://doi.org/10.1016/j.joi.2016.10.006</a></p>
+<p>Saqr, M., López-Pernas, S., Conde, M. Á., &amp; Hernández-García, Á. (2024). Social network analysis: A primer, a guide and a tutorial in R. In M. Saqr &amp; S. López-Pernas (Eds.), <em>Learning analytics methods and tutorials: A practical guide using R</em>. Springer. <a href="https://doi.org/10.1007/978-3-031-54464-4_15" class="external-link uri">https://doi.org/10.1007/978-3-031-54464-4_15</a></p>
+<p>van Eck, N. J., &amp; Waltman, L. (2009). How to normalize cooccurrence data? An analysis of some well-known similarity measures. <em>Journal of the American Society for Information Science and Technology</em>, <em>60</em>(8), 1635–1651. <a href="https://doi.org/10.1002/asi.21075" class="external-link uri">https://doi.org/10.1002/asi.21075</a></p>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -812,20 +259,27 @@
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Mohammed Saqr <br><small class="roles"> Author, maintainer, copyright holder </small>   </li>
-<li>Sonsoles López-Pernas <br><small class="roles"> Author, copyright holder </small>   </li>
+<li>
+<a href="https://saqr.me" class="external-link">Mohammed Saqr</a> <br><small class="roles"> Author, maintainer, copyright holder </small> <a href="https://orcid.org/0000-0001-5881-3109" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>
+<a href="https://sonsoles.me" class="external-link">Sonsoles López-Pernas</a> <br><small class="roles"> Author, copyright holder </small> <a href="https://orcid.org/0000-0002-9621-1392" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 <li>Kamila Misiejuk <br><small class="roles"> Author, copyright holder </small>   </li>
 </ul>
 </div>
 
-
+<div class="dev-status">
+<h2 data-toc-skip>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://CRAN.R-project.org/package=cooccure" class="external-link"><img src="https://www.r-pkg.org/badges/version/cooccure" alt="CRAN status"></a></li>
+</ul>
+</div>
 
   </aside>
 </div>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by Mohammed Saqr, Sonsoles López-Pernas, Kamila Misiejuk.</p>
+  <p>Developed by <a href="https://saqr.me" class="external-link">Mohammed Saqr</a>, <a href="https://sonsoles.me" class="external-link">Sonsoles López-Pernas</a>, Kamila Misiejuk.</p>
 </div>
 
 <div class="pkgdown-footer-right">

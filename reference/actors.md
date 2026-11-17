@@ -1,12 +1,11 @@
-# IMDB actor-movie long table (1970-2024)
+# Actors and the films they appeared in (IMDb, 1970-2024)
 
-Long-format bipartite table linking actors to movies in
-[`movies`](https://pak.dynasite.org/cooccure/reference/movies.md).
-Pre-filtered to the 624 actors who appear in at least two movies, so all
-similarity measures compute instantly. Pass `field = "actor"` and
-`by = "tconst"` to
-[`cooccurrence`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
-to build an actor co-appearance network.
+`actors` is a dataset of the 624 actors who appear in at least two of
+the films in
+[movies](https://pak.dynasite.org/cooccure/reference/movies.md), with
+one row per actor and film. The data illustrate co-occurrence from a
+long (item, transaction) table: actors are linked when they appear in
+the same film, which gives a collaboration network.
 
 ## Usage
 
@@ -50,6 +49,12 @@ A data frame with 1,267 rows and 7 variables:
 ## Source
 
 <https://data.imdb.com/non-commercial-datasets/>
+
+## See also
+
+[movies](https://pak.dynasite.org/cooccure/reference/movies.md);
+[actor_genres](https://pak.dynasite.org/cooccure/reference/actor_genres.md);
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 ## Examples
 

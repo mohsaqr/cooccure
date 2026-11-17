@@ -1,11 +1,22 @@
-# Plot a cooccurrence network
+# Plot a co-occurrence network
 
-Plots the co-occurrence matrix as a heatmap, an igraph network, or a
-base-R degree distribution. The heatmap shows which item pairs carry the
-heaviest weights; the degree distribution shows whether connectivity is
-concentrated on a few hub items or spread evenly. For
-publication-quality network drawings, convert with
-[`as_cograph`](https://pak.dynasite.org/cooccure/reference/as_cograph.md)
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws one of
+three displays of a co-occurrence network: a heatmap of the weight
+matrix (default), a network drawing through igraph, or the degree
+distribution as a bar chart. The heatmap shows which item pairs carry
+the heaviest weights and which never co-occur. The network drawing
+places linked items near one another. The degree distribution shows
+whether connectivity is concentrated on a few hub items or spread
+evenly.
+
+The heatmap uses a white-to-blue scale for non-negative weights and a
+red-white-blue scale centered on zero when weights can be negative
+(`scale = "zscore"`); rows are the source items, which matters for the
+directed `similarity = "relative"` network.
+
+For a result built with `split_by`, `group` names the network to draw.
+For publication-quality network drawings, convert with
+[`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md)
 and use
 [`cograph::splot()`](https://sonsoles.me/cograph/reference/splot.html).
 
@@ -13,40 +24,59 @@ and use
 
 ``` r
 # S3 method for class 'cooccurrence'
-plot(x, type = c("heatmap", "network", "degree"), ...)
+plot(x, type = c("heatmap", "network", "degree"), group = NULL, ...)
 ```
 
 ## Arguments
 
 - x:
 
-  A `cooccurrence` data frame.
+  A `cooccurrence` edge list from
+  [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 - type:
 
-  Character. `"heatmap"` (default), `"network"` (requires igraph), or
-  `"degree"` for a base-R degree distribution bar plot.
+  `"heatmap"` (default), `"network"` (requires igraph), or `"degree"`.
+
+- group:
+
+  For a result built with `split_by`, the name of the group to draw.
+  `NULL` (default) for an unsplit result.
 
 - ...:
 
-  Passed to the plotting function:
-  [`graphics::image()`](https://rdrr.io/r/graphics/image.html) for the
-  heatmap, [`plot()`](https://rdrr.io/r/graphics/plot.default.html) on
-  the `igraph` object for the network, and
+  Passed to [`graphics::image()`](https://rdrr.io/r/graphics/image.html)
+  for the heatmap,
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) on the
+  `igraph` object for the network, and
   [`graphics::barplot()`](https://rdrr.io/r/graphics/barplot.html) for
-  the degree distribution (where they override the default labels and
-  colors).
+  the degree distribution, where they override the defaults (for
+  instance `col` or `main`).
 
 ## Value
 
-Invisibly returns `x`, unchanged. Called for the side effect of drawing
-on the current graphics device.
+`x`, invisibly and unchanged. Called for the plot drawn on the current
+graphics device.
+
+## Conditions
+
+`cooccure_grouped_input` when `x` was built with `split_by` and `group`
+is `NULL`; `cooccure_missing_package` for `type = "network"` without
+igraph.
+
+## See also
+
+[`as_cograph()`](https://pak.dynasite.org/cooccure/reference/as_cograph.md)
+for publication network drawings;
+[`summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md)
+for the numbers behind the degree plot.
 
 ## Examples
 
 ``` r
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C"), c("C","D")))
-plot(res)
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard", min_occur = 50)
+plot(net)
 
-plot(res, type = "degree")
+plot(net, type = "degree")
 ```

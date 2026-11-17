@@ -1,12 +1,27 @@
-# Summarize a cooccurrence network
+# Summarize a co-occurrence network
 
-Computes network-level metrics (nodes, edges, possible edges, density,
-mean degree, isolates, weight and count distribution), node-level
-metrics (degree, strength, count strength, frequency), and, for a
-`split_by` result, one row of metrics per group. The summary is printed
-when computed. Node- and group-level metrics are available as tidy data
-frames via
-[`as.data.frame`](https://pak.dynasite.org/cooccure/reference/as.data.frame.summary.cooccurrence.md).
+[`summary()`](https://rdrr.io/r/base/summary.html) computes the metrics
+of a co-occurrence network at three levels: the network as a whole
+(size, density, mean degree, isolates and the distribution of edge
+weights and counts), each item in it (degree, strength and frequency),
+and, for a network built with `split_by`, each group. Together these
+show whether the network is sparse or saturated, which items are hubs,
+and how groups differ in size and density.
+
+The metrics are returned as an object; printing it shows the
+network-level block. The node and group tables are returned as tidy data
+frames by
+[`as.data.frame.summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/as.data.frame.summary.cooccurrence.md),
+or directly from the network with
+[`as.data.frame.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/as.data.frame.cooccurrence.md).
+
+For a network built with `split_by`, the frame stacks one network per
+group, so a pair can occur once per group. Pooled simple-graph metrics
+(`density`, `mean_degree`, `possible_edges`) are undefined and reported
+as `NA`; the node table has one row per node per group and the group
+table carries the per-group values. For the directed
+`similarity = "relative"` network, density is computed over ordered
+pairs and degree counts in- and out-edges.
 
 ## Usage
 
@@ -19,7 +34,8 @@ summary(object, ...)
 
 - object:
 
-  A `cooccurrence` data frame.
+  A `cooccurrence` edge list from
+  [`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 - ...:
 
@@ -27,64 +43,66 @@ summary(object, ...)
 
 ## Value
 
-Invisibly, a list of class `summary.cooccurrence` holding the scalar
-network metrics, the parameters used, a node table, and (for `split_by`
-results) a group table. The summary is also printed via
-[`print.summary.cooccurrence`](https://pak.dynasite.org/cooccure/reference/print.summary.cooccurrence.md)
-as a side effect. Get the tables with `as.data.frame(summary(x))` (one
-row per node) and `as.data.frame(summary(x), what = "groups")` (one row
-per group).
+An object of class `summary.cooccurrence`: a list of network metrics
+(`n_nodes`, `n_edges`, `possible_edges`, `density`, `mean_degree`,
+`isolates`), the parameters used, five-number summaries of the weights
+and counts, a node table and, for `split_by` results, a group table.
+Read the tables with
+[`as.data.frame.summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/as.data.frame.summary.cooccurrence.md).
 
-## Details
+## See also
 
-For a network built with `split_by`, the returned frame stacks one
-network per group, so a node pair can occur once per group. Pooled
-simple-graph metrics (`density`, `mean_degree`, `possible_edges`) are
-undefined in that case and reported as `NA`; the per-group table carries
-the correct values.
+[`print.summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/print.summary.cooccurrence.md);
+[`as.data.frame.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/as.data.frame.cooccurrence.md);
+[`plot.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/plot.cooccurrence.md)
+for the degree distribution.
 
 ## Examples
 
 ``` r
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-summary(res)
+net <- cooccurrence(movies, field = "genres", sep = ",",
+                    similarity = "jaccard")
+summary(net)
 #> cooccurrence network
 #> ------------------------------
-#> Nodes          : 3
-#> Edges          : 3
-#> Possible edges : 3
-#> Density        : 1.0000
-#> Mean degree    : 2.0000
+#> Nodes          : 22
+#> Edges          : 129
+#> Possible edges : 231
+#> Density        : 0.5584
+#> Mean degree    : 11.7273
 #> Isolates       : 0
-#> Transactions   : 3
-#> Similarity     : none
+#> Transactions   : 1000
+#> Similarity     : jaccard
 #> Counting       : full
-#> Weight range   : [1, 2]
-#> Weight mean    : 1.667
-#> Count range    : [1, 2]
-#> Count mean     : 1.667
-#> Top nodes      : C(2, 4), A(2, 3), B(2, 3)
+#> Weight range   : [0.001577, 0.2847]
+#> Weight mean    : 0.04503
+#> Count range    : [1, 159]
+#> Count mean     : 13.23
+#> Top nodes      : Drama(20, 1.178), Comedy(19, 0.9227), Action(17, 1.07), Romance(17, 0.5551), Adventure(15, 0.9235)
 
-# Node-level metrics as a tidy data frame
-as.data.frame(summary(res))
-#> cooccurrence network
-#> ------------------------------
-#> Nodes          : 3
-#> Edges          : 3
-#> Possible edges : 3
-#> Density        : 1.0000
-#> Mean degree    : 2.0000
-#> Isolates       : 0
-#> Transactions   : 3
-#> Similarity     : none
-#> Counting       : full
-#> Weight range   : [1, 2]
-#> Weight mean    : 1.667
-#> Count range    : [1, 2]
-#> Count mean     : 1.667
-#> Top nodes      : C(2, 4), A(2, 3), B(2, 3)
-#>   node degree strength count_strength frequency
-#> 1    C      2        4              4         3
-#> 2    A      2        3              3         2
-#> 3    B      2        3              3         2
+# The node table as a data frame
+as.data.frame(summary(net), what = "nodes")
+#>           node degree    strength count_strength frequency
+#> 1        Drama     20 1.177622464            812       634
+#> 2       Comedy     19 0.922671237            412       278
+#> 3       Action     17 1.069718544            295       155
+#> 4      Romance     17 0.555144865            237       160
+#> 5    Adventure     15 0.923450746            195       101
+#> 6    Animation     15 0.813375869            149        75
+#> 7  Documentary     14 0.664612219            138       152
+#> 8    Biography     13 0.744557686            185       108
+#> 9     Thriller     13 0.637683585            158        96
+#> 10     History     13 0.564867087            117        62
+#> 11       Crime     12 0.853922379            269       153
+#> 12     Fantasy     12 0.439408607             65        34
+#> 13     Mystery     12 0.391973213             76        41
+#> 14      Family     11 0.378315121             64        36
+#> 15       Music     10 0.359710616             73        52
+#> 16         War     10 0.267933813             53        32
+#> 17      Sci-Fi      9 0.265024671             31        16
+#> 18      Horror      9 0.243435685             19        11
+#> 19       Sport      7 0.197994819             44        28
+#> 20     Musical      7 0.121968041             19        12
+#> 21        News      2 0.022707980              2         1
+#> 22     Western      1 0.001577287              1         1
 ```

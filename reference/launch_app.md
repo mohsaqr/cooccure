@@ -1,7 +1,15 @@
-# Launch the cooccure Shiny explorer
+# Open the interactive co-occurrence explorer
 
-Opens an interactive Shiny application for building and exploring
-co-occurrence networks. Requires the shiny and DT packages.
+`launch_app()` opens an interactive co-occurrence explorer: a shiny
+application in which a data set (the bundled
+[demo](https://pak.dynasite.org/cooccure/reference/demo.md) table or an
+uploaded file) is turned into a network with
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md)
+and shown as a table and a plot. The explorer is a quick way to see how
+the choice of items, transactions, similarity measure and filters
+changes a co-occurrence network before writing the analysis as code.
+
+It requires the shiny and DT packages and an interactive session.
 
 ## Usage
 
@@ -18,7 +26,17 @@ launch_app(...)
 
 ## Value
 
-Called for its side effect (launches the app). No return value.
+No return value; called to run the application, which blocks the session
+until it is closed.
+
+## Conditions
+
+`cooccure_missing_package` when shiny or DT is not installed.
+
+## See also
+
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md);
+[demo](https://pak.dynasite.org/cooccure/reference/demo.md).
 
 ## Examples
 

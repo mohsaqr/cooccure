@@ -1,10 +1,14 @@
-# Print a cooccurrence summary
+# Print a co-occurrence network summary
 
-Prints the network-level metrics, the parameters used, the weight and
-count ranges, the top nodes by degree, and the largest groups by edge
-count. For a `split_by` result the pooled possible edges, density, mean
-degree, and top-node line are omitted, since they are undefined for
-stacked networks.
+[`print()`](https://rdrr.io/r/base/print.html) shows the network-level
+block of a
+[`summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md)
+object: the numbers of nodes, edges and possible edges, density, mean
+degree, isolates, transactions, the parameters used, the range and mean
+of the weights and counts, the top nodes by degree, and the largest
+groups by number of edges. For a `split_by` result the pooled metrics
+and the top-node line are omitted, since they are undefined for stacked
+networks.
 
 ## Usage
 
@@ -21,7 +25,7 @@ print(x, n = 5L, ...)
 
 - n:
 
-  Integer. Number of top nodes and groups to show. Default 5.
+  Number of top nodes and groups to show (default 5).
 
 - ...:
 
@@ -29,45 +33,32 @@ print(x, n = 5L, ...)
 
 ## Value
 
-Invisibly returns `x`, unchanged. Called for the side effect of
-printing.
+`x`, invisibly and unchanged. Called for the printed output.
+
+## See also
+
+[`summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/summary.cooccurrence.md);
+[`as.data.frame.summary.cooccurrence()`](https://pak.dynasite.org/cooccure/reference/as.data.frame.summary.cooccurrence.md).
 
 ## Examples
 
 ``` r
-res <- cooccurrence(list(c("A","B","C"), c("B","C"), c("A","C")))
-s <- summary(res)
+net <- cooccurrence(movies, field = "genres", sep = ",")
+print(summary(net), n = 3)
 #> cooccurrence network
 #> ------------------------------
-#> Nodes          : 3
-#> Edges          : 3
-#> Possible edges : 3
-#> Density        : 1.0000
-#> Mean degree    : 2.0000
+#> Nodes          : 22
+#> Edges          : 129
+#> Possible edges : 231
+#> Density        : 0.5584
+#> Mean degree    : 11.7273
 #> Isolates       : 0
-#> Transactions   : 3
+#> Transactions   : 1000
 #> Similarity     : none
 #> Counting       : full
-#> Weight range   : [1, 2]
-#> Weight mean    : 1.667
-#> Count range    : [1, 2]
-#> Count mean     : 1.667
-#> Top nodes      : C(2, 4), A(2, 3), B(2, 3)
-print(s, n = 2)
-#> cooccurrence network
-#> ------------------------------
-#> Nodes          : 3
-#> Edges          : 3
-#> Possible edges : 3
-#> Density        : 1.0000
-#> Mean degree    : 2.0000
-#> Isolates       : 0
-#> Transactions   : 3
-#> Similarity     : none
-#> Counting       : full
-#> Weight range   : [1, 2]
-#> Weight mean    : 1.667
-#> Count range    : [1, 2]
-#> Count mean     : 1.667
-#> Top nodes      : C(2, 4), A(2, 3)
+#> Weight range   : [1, 159]
+#> Weight mean    : 13.23
+#> Count range    : [1, 159]
+#> Count mean     : 13.23
+#> Top nodes      : Drama(20, 812), Comedy(19, 412), Action(17, 295)
 ```

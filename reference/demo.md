@@ -1,11 +1,12 @@
-# Demo actor-movie-genre table
+# A small cast table of ten films
 
-A small hand-crafted dataset of 30 well-known actors across 10 classic
-films, with each film carrying its full genre list. Designed for quick
-exploration in the Shiny app. One row per movie-actor-genre triple, so
-every pairing of `field` and `by` yields a network: actors linked by
+`demo` is a hand-built dataset of 30 actors in 10 well-known films, each
+film carrying its full genre list, with one row per film, actor and
+genre. Every pairing of two columns gives a network: actors linked by
 shared films, genres linked by shared films, or actors linked by shared
-genres.
+genres. It is small enough to check a network by hand and is the default
+data of
+[`launch_app()`](https://pak.dynasite.org/cooccure/reference/launch_app.md).
 
 ## Usage
 
@@ -29,6 +30,12 @@ A data frame with 89 rows and 3 variables:
 
   Genre label. Films carry every genre they belong to, so a movie
   contributes several rows per actor.
+
+## See also
+
+[actors](https://pak.dynasite.org/cooccure/reference/actors.md) for a
+larger cast table;
+[`cooccurrence()`](https://pak.dynasite.org/cooccure/reference/cooccurrence.md).
 
 ## Examples
 
